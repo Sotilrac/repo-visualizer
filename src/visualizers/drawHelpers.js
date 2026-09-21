@@ -1,6 +1,7 @@
 /** Shared draw helpers for canvas visualizers */
 
 import { isClusterExcluded } from '../engine/excludes.js';
+import { monoFont } from '../shared/fonts.js';
 
 /** Canvas arc/gradient radii must be non-negative finite numbers. */
 export function safeRadius(value, min = 0.5) {
@@ -73,7 +74,7 @@ export function drawInspectNodeLabels(ctx, frame, palette, style, clusterColorFo
 
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  ctx.font = `600 ${fontSize}px "JetBrains Mono", "SF Mono", ui-monospace, monospace`;
+  ctx.font = monoFont(600, fontSize);
   ctx.textBaseline = 'middle';
 
   for (const n of nodes) {
@@ -189,7 +190,7 @@ export function drawClusterLabels(ctx, frame, palette, style, clusterColorForFn)
   const fontSize = style === 'minimal' ? 10 : 11;
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  ctx.font = `600 ${fontSize}px "JetBrains Mono", "SF Mono", ui-monospace, monospace`;
+  ctx.font = monoFont(600, fontSize);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 

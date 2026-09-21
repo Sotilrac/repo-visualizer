@@ -16,6 +16,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     passWithNoTests: true,
+    setupFiles: ['tests/setup.js'],
     coverage: {
       provider: 'v8',
       include: ['src/engine/**', 'src/visualizers/**', 'scripts/**'],

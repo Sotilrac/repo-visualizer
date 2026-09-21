@@ -1,9 +1,15 @@
 import ExportPanel from './ExportPanel.jsx';
 import MobileChrome from './MobileChrome.jsx';
+import RepoList from './RepoList.jsx';
 
-const GITHUB_URL = 'https://github.com/Jany-M/repo-visualizer';
-const AUTHOR_URL =
-  'https://www.shambix.com/?utm_source=repo-visualizer&utm_medium=referral&utm_campaign=projects&utm_content=app-sidebar';
+const GITHUB_URL = 'https://github.com/Sotilrac/repo-visualizer';
+const UPSTREAM = 'Jany-M/repo-visualizer';
+
+/** Datasets written before the analyzer recorded remotes have only a name. */
+function repoList(dataset) {
+  if (dataset.repos?.length) return dataset.repos;
+  return dataset.repo ? [{ name: dataset.repo, remote: null }] : [];
+}
 
 function GitHubIcon() {
   return (
@@ -79,27 +85,20 @@ export default function Header({
       <div className="header-start">
         <div className="brand">
           <div className="brand-title-row">
-            <div className="brand-mark">
-              <span className="dot" />
-              Repo Visualizer
-            </div>
+            <div className="brand-mark">Repo Visualizer</div>
             <a
               className="brand-github"
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              title="View source on GitHub"
-              aria-label="GitHub repository"
+              title={`Source on GitHub, forked from ${UPSTREAM}`}
+              aria-label="Source on GitHub"
             >
               <GitHubIcon />
             </a>
           </div>
           <div className="brand-sub">
-            A cinematic timeline of your codebase
-            <span className="brand-sep"> · by </span>
-            <a className="brand-author" href={AUTHOR_URL} target="_blank" rel="noopener noreferrer">
-              Jany Martelli
-            </a>
+            <RepoList repos={repoList(dataset)} />
           </div>
         </div>
         <div className="header-repo-mobile">

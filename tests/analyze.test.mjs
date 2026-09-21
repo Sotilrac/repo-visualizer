@@ -172,6 +172,34 @@ describe('analyzing a repository', () => {
     expect(analyze().commits[1].stats).toMatchObject({ filesChanged: 1, deletions: 2 });
   });
 
+  it('lists the analyzed repository with a browsable remote', () => {
+    write('src/a.js', 'export const a = 1;\n');
+    commit('first');
+    git('remote', 'add', 'origin', 'git@github.com:Sotilrac/repo-visualizer.git');
+
+    const data = analyze();
+
+    expect(data.repos).toEqual([
+      { name: path.basename(repo), remote: 'https://github.com/Sotilrac/repo-visualizer' },
+    ]);
+  });
+
+  it('reports a null remote for a repository with no origin', () => {
+    write('src/a.js', 'export const a = 1;\n');
+    commit('first');
+
+    expect(analyze().repos[0].remote).toBeNull();
+  });
+
+  it('keeps the single repo name for readers that predate the list', () => {
+    write('src/a.js', 'export const a = 1;\n');
+    commit('first');
+
+    const data = analyze();
+
+    expect(data.repo).toBe(path.basename(repo));
+  });
+
   it('exits with an error when the path is not a repository', () => {
     const notARepo = mkdtempSync(path.join(tmpdir(), 'rv-plain-'));
     expect(() => execFileSync('node', [analyzer, notARepo], { stdio: 'pipe' })).toThrow();

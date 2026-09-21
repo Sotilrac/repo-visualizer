@@ -19,6 +19,7 @@ import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { simpleGit } from 'simple-git';
+import { toBrowseUrl } from '../src/shared/remoteUrl.js';
 import { ANALYZER_LANGUAGES, PARSERS } from './importParsers.mjs';
 import { createImportResolver, loadJsAliases, resolveChangeImports } from './importResolve.mjs';
 import {
@@ -63,6 +64,15 @@ const outPath = path.resolve(
  * --no-renames means renames always appear as 'D' on the old path and 'A' on
  * the new path, with no combined rename notation and no R/C entries.
  */
+/** The origin URL, or an empty string when the repo has no origin. */
+async function readOrigin(git) {
+  try {
+    return (await git.raw(['remote', 'get-url', 'origin'])).trim();
+  } catch {
+    return '';
+  }
+}
+
 async function getNameStatusMap(git, hash, parentHash) {
   const map = {};
   try {
@@ -145,8 +155,12 @@ async function analyze() {
   console.log(`→ Found ${commits.length} commits. Walking history...`);
 
   const allPaths = new Set();
+  const name = path.basename(repoPath);
+  const remote = toBrowseUrl(await readOrigin(git));
+
   const out = {
-    repo: path.basename(repoPath),
+    repo: name,
+    repos: [{ name, remote }],
     generatedAt: new Date().toISOString(),
     totalCommits: commits.length,
     firstCommit: commits[0]?.hash,

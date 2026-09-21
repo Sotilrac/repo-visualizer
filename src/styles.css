@@ -20,7 +20,6 @@
   --shadow-card: 0 8px 40px rgba(0, 0, 0, 0.5);
   --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-serif: "Fraunces", Georgia, serif;
 }
 
 @supports (height: 100dvh) {
@@ -172,22 +171,11 @@ button:focus-visible {
 }
 
 .brand-mark {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1;
-}
-
-.brand-mark .dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  background: var(--accent-hot);
-  border-radius: 50%;
-  margin-right: 8px;
-  vertical-align: middle;
-  box-shadow: 0 0 12px var(--accent-hot);
 }
 
 .brand-title-row {
@@ -208,17 +196,49 @@ button:focus-visible {
   color: var(--fg);
 }
 
-.brand-author {
+.repo-list {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.repo-list-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.repo-list-toggle:hover {
+  color: var(--accent);
+}
+
+.repo-list-toggle::after {
+  content: " \25be";
+}
+
+.repo-list.is-open .repo-list-toggle::after {
+  content: " \25b4";
+}
+
+.repo-list-items {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.repo-list-item {
   color: var(--fg-muted);
   text-decoration: none;
 }
 
-.brand-author:hover {
+a.repo-list-item:hover {
   color: var(--accent);
-}
-
-.brand-sep {
-  opacity: 0.5;
 }
 
 .brand-sub {
@@ -1823,7 +1843,7 @@ button:focus-visible {
 
 .modal h2 {
   margin: 0 0 6px;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 22px;
   letter-spacing: -0.02em;
   font-weight: 500;

@@ -2,6 +2,8 @@
  * Burned-in titles for timeline exports (canvas capture only).
  */
 
+import { monoFont, sansFont } from '../shared/fonts.js';
+
 function isLightBackground(hex) {
   if (!hex?.startsWith('#') || hex.length < 7) return false;
   const r = parseInt(hex.slice(1, 3), 16);
@@ -60,7 +62,7 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
 
   const dateStr = formatCommitDate(meta.commitDate);
   if (dateStr) {
-    ctx.font = '600 15px "JetBrains Mono", "SF Mono", ui-monospace, monospace';
+    ctx.font = monoFont(600, 15);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     const tw = ctx.measureText(dateStr).width + 28;
@@ -85,12 +87,12 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
     let authorW = 0;
 
     if (repoName) {
-      ctx.font = '600 20px "Outfit", system-ui, sans-serif';
+      ctx.font = sansFont(600, 20);
       nameW = ctx.measureText(repoName).width;
       blockH += 26;
     }
     if (repoAuthor) {
-      ctx.font = '500 13px "JetBrains Mono", "SF Mono", ui-monospace, monospace';
+      ctx.font = monoFont(500, 13);
       authorW = ctx.measureText(repoAuthor).width;
       blockH += repoName ? 22 : 20;
     }
@@ -105,13 +107,13 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
 
     let y = h - padY - 8;
     if (repoAuthor) {
-      ctx.font = '500 13px "JetBrains Mono", "SF Mono", ui-monospace, monospace';
+      ctx.font = monoFont(500, 13);
       ctx.fillStyle = fgMuted;
       ctx.fillText(repoAuthor, w / 2, y);
       y -= 22;
     }
     if (repoName) {
-      ctx.font = '600 20px "Outfit", system-ui, sans-serif';
+      ctx.font = sansFont(600, 20);
       ctx.fillStyle = fg;
       ctx.fillText(repoName, w / 2, y);
     }
