@@ -1,5 +1,5 @@
 /**
- * Timeline visibility — only show nodes/edges that exist at commitIndex.
+ * Timeline visibility: show only the nodes and edges that exist at commitIndex.
  */
 
 export function isNodeVisible(node, commitIndex) {
@@ -32,7 +32,6 @@ export function filterVisibleNodes(nodes, commitIndex) {
 export function filterVisibleLinks(links, commitIndex) {
   const out = [];
   for (const l of links) {
-    const from = l.source?.bornAt ?? l.source?.bornAt;
     if (!isNodeVisible(l.source, commitIndex) || !isNodeVisible(l.target, commitIndex)) continue;
     if (l.bornAt != null && l.bornAt > commitIndex) continue;
     out.push(l);
@@ -46,7 +45,7 @@ function nodeAge(node, commitIndex) {
   return commitIndex - born;
 }
 
-/** Fade-in for nodes born within the last few commits */
+/** Fade-in for nodes born within the last few commits. */
 export function nodeOpacity(node, commitIndex, fadeWindow = 4) {
   if (commitIndex < 0) return 0;
   const age = nodeAge(node, commitIndex);

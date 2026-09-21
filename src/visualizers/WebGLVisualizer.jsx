@@ -2,16 +2,19 @@
  * Optional WebGL renderer (Galaxy-style). Used only when node count exceeds threshold.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { createLayout } from '../engine/layout.js';
+import { useEffect, useRef } from 'react';
 import {
   applyCameraTransform,
-  createCamera, fitBounds, lerpCamera, snapCamera,
+  createCamera,
+  fitBounds,
+  lerpCamera,
+  snapCamera,
 } from '../engine/camera.js';
 import { attachCanvasGestures } from '../engine/canvasGestures.js';
-import { resolveFocusSet } from '../engine/graphState.js';
-import { isNodeVisible } from '../engine/visibility.js';
 import { clusterColor, clusterColorFor, paletteEntry } from '../engine/colors.js';
+import { resolveFocusSet } from '../engine/graphState.js';
+import { createLayout } from '../engine/layout.js';
+import { isNodeVisible } from '../engine/visibility.js';
 import { drawClusterLabels, drawInspectNodeLabels } from './drawHelpers.js';
 
 const VS = `#version 300 es
@@ -69,7 +72,8 @@ function compile(gl, type, src) {
 function hueToRgb(palette, dir) {
   const { hue, variant } = paletteEntry(palette, dir);
   const c = clusterColor(hue, 'galaxy', variant);
-  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c.core) || /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c.glow);
+  const m =
+    /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c.core) || /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c.glow);
   if (m) return [+m[1] / 255, +m[2] / 255, +m[3] / 255];
   return [0.7, 0.8, 1];
 }
@@ -87,10 +91,24 @@ export default function WebGLVisualizer({
 }) {
   const hostRef = useRef(null);
   const propsRef = useRef({
-    state, commitIndex, palette, autoFit, selectedPath, selectedCluster, excludePatterns, onNodeClick,
+    state,
+    commitIndex,
+    palette,
+    autoFit,
+    selectedPath,
+    selectedCluster,
+    excludePatterns,
+    onNodeClick,
   });
   propsRef.current = {
-    state, commitIndex, palette, autoFit, selectedPath, selectedCluster, excludePatterns, onNodeClick,
+    state,
+    commitIndex,
+    palette,
+    autoFit,
+    selectedPath,
+    selectedCluster,
+    excludePatterns,
+    onNodeClick,
   };
 
   useEffect(() => {
@@ -113,7 +131,6 @@ export default function WebGLVisualizer({
     let sizeBuf;
     let colBuf;
     let raf;
-    let failed = false;
 
     try {
       host.style.position = 'relative';
@@ -123,11 +140,13 @@ export default function WebGLVisualizer({
       canvas.style.display = 'block';
       host.appendChild(canvas);
       labelCanvas = document.createElement('canvas');
-      labelCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+      labelCanvas.style.cssText =
+        'position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
       host.appendChild(labelCanvas);
       labelCtx = labelCanvas.getContext('2d');
-      gl = canvas.getContext('webgl2', { alpha: true, antialias: true })
-        || canvas.getContext('webgl', { alpha: true });
+      gl =
+        canvas.getContext('webgl2', { alpha: true, antialias: true }) ||
+        canvas.getContext('webgl', { alpha: true });
       if (!gl) throw new Error('WebGL unavailable');
       program = gl.createProgram();
       gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VS));
@@ -138,7 +157,6 @@ export default function WebGLVisualizer({
       }
     } catch (e) {
       console.warn('WebGL init failed:', e);
-      failed = true;
       onInitFailed?.();
       return undefined;
     }
@@ -270,6 +288,7 @@ export default function WebGLVisualizer({
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      // biome-ignore lint/correctness/useHookAtTopLevel: gl.useProgram is a WebGL call, not a React hook
       gl.useProgram(program);
       gl.uniform2f(uRes, w, h);
       gl.uniform3f(uCam, camera.tx, camera.ty, camera.scale);
@@ -296,28 +315,40 @@ export default function WebGLVisualizer({
       labelCtx.clearRect(0, 0, w, h);
       labelCtx.save();
       applyCameraTransform(labelCtx, camera, dpr);
-      drawClusterLabels(labelCtx, {
-        w,
-        h,
-        nodes,
-        clusters: layout.getClusterCenters(),
-        selectedPath: p.selectedPath,
-        selectedCluster: p.selectedCluster,
-        focusSet,
-        dimOthers,
-        excludePatterns: p.excludePatterns,
-      }, p.palette, 'galaxy', clusterColorFor);
-      drawInspectNodeLabels(labelCtx, {
-        w,
-        h,
-        nodes,
-        clusters: layout.getClusterCenters(),
-        selectedPath: p.selectedPath,
-        selectedCluster: p.selectedCluster,
-        focusSet,
-        dimOthers,
-        excludePatterns: p.excludePatterns,
-      }, p.palette, 'galaxy', clusterColorFor);
+      drawClusterLabels(
+        labelCtx,
+        {
+          w,
+          h,
+          nodes,
+          clusters: layout.getClusterCenters(),
+          selectedPath: p.selectedPath,
+          selectedCluster: p.selectedCluster,
+          focusSet,
+          dimOthers,
+          excludePatterns: p.excludePatterns,
+        },
+        p.palette,
+        'galaxy',
+        clusterColorFor,
+      );
+      drawInspectNodeLabels(
+        labelCtx,
+        {
+          w,
+          h,
+          nodes,
+          clusters: layout.getClusterCenters(),
+          selectedPath: p.selectedPath,
+          selectedCluster: p.selectedCluster,
+          focusSet,
+          dimOthers,
+          excludePatterns: p.excludePatterns,
+        },
+        p.palette,
+        'galaxy',
+        clusterColorFor,
+      );
       labelCtx.restore();
 
       raf = requestAnimationFrame(frame);

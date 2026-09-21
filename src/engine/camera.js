@@ -53,7 +53,7 @@ export function panBy(cam, dx, dy) {
   cam.userAdjusted = true;
 }
 
-export function resetCamera(cam, w, h) {
+export function resetCamera(cam) {
   cam.scale = 1;
   cam.tx = 0;
   cam.ty = 0;
@@ -116,7 +116,7 @@ export function snapCamera(cam) {
 
 /** Smooth lerp toward target (auto-fit while playing). */
 export function lerpCamera(cam, dt, speed = 0.08) {
-  const t = 1 - Math.pow(1 - speed, dt / 16);
+  const t = 1 - (1 - speed) ** (dt / 16);
   cam.scale += (cam.targetScale - cam.scale) * t;
   cam.tx += (cam.targetTx - cam.tx) * t;
   cam.ty += (cam.targetTy - cam.ty) * t;

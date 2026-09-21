@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const MAX_TICKS = 64;
 
 /**
- * Interactive scrubber — milestone ticks only (virtualized for large histories).
+ * Interactive scrubber with milestone ticks only, virtualized for large histories.
  *
  * The handle tracks the pointer immediately for instant visual feedback.
  * The actual onSeek is debounced during drag so large async rebuilds don't
@@ -45,6 +45,29 @@ export default function Timeline({ commits, index, onSeek }) {
     setPendingIdx(idx);
   };
 
+  const handleKeyDown = (ev) => {
+    const last = commits.length - 1;
+    const current = pendingIdxRef.current ?? index;
+    const page = Math.max(1, Math.round(commits.length / 20));
+    const targets = {
+      ArrowLeft: current - 1,
+      ArrowRight: current + 1,
+      ArrowDown: current - 1,
+      ArrowUp: current + 1,
+      PageDown: current - page,
+      PageUp: current + page,
+      Home: 0,
+      End: last,
+    };
+    const next = targets[ev.key];
+    if (next === undefined) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const clamped = Math.max(0, Math.min(last, next));
+    setPending(clamped);
+    onSeek(clamped);
+  };
+
   const handleMouseDown = (ev) => {
     draggingRef.current = true;
     const idx = idxFromEvent(ev);
@@ -79,19 +102,20 @@ export default function Timeline({ commits, index, onSeek }) {
   }, [onSeek]);
 
   const handleClick = (ev) => {
-    // handled by mouseDown — suppress to avoid double-fire
+    // handled by mouseDown, so suppress it here to avoid a double fire
     ev.preventDefault();
   };
 
-  const progress = (pendingIdx ?? (index < 0 ? -1 : index));
+  const progress = pendingIdx ?? (index < 0 ? -1 : index);
   const progressPct = progress < 0 ? 0 : (progress / Math.max(1, commits.length - 1)) * 100;
 
   const firstDate = commits[0]?.date && new Date(commits[0].date);
   const lastDate = commits[commits.length - 1]?.date && new Date(commits[commits.length - 1].date);
-  const midDate = commits[Math.floor(commits.length / 2)]?.date
-    && new Date(commits[Math.floor(commits.length / 2)].date);
+  const midDate =
+    commits[Math.floor(commits.length / 2)]?.date &&
+    new Date(commits[Math.floor(commits.length / 2)].date);
 
-  const fmt = (d) => d ? d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : '';
+  const fmt = (d) => (d ? d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : '');
 
   return (
     <div className="timeline">
@@ -101,7 +125,10 @@ export default function Timeline({ commits, index, onSeek }) {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
         role="slider"
+        aria-label="Commit timeline"
         aria-valuemin={0}
         aria-valuemax={commits.length - 1}
         aria-valuenow={Math.max(0, index)}
@@ -117,9 +144,15 @@ export default function Timeline({ commits, index, onSeek }) {
             />
           ))}
         </div>
-        <div className="timeline-date" style={{ left: '0%', transform: 'translateX(0)' }}>{fmt(firstDate)}</div>
-        <div className="timeline-date" style={{ left: '50%' }}>{fmt(midDate)}</div>
-        <div className="timeline-date" style={{ left: '100%', transform: 'translateX(-100%)' }}>{fmt(lastDate)}</div>
+        <div className="timeline-date" style={{ left: '0%', transform: 'translateX(0)' }}>
+          {fmt(firstDate)}
+        </div>
+        <div className="timeline-date" style={{ left: '50%' }}>
+          {fmt(midDate)}
+        </div>
+        <div className="timeline-date" style={{ left: '100%', transform: 'translateX(-100%)' }}>
+          {fmt(lastDate)}
+        </div>
       </div>
     </div>
   );

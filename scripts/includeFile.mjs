@@ -3,8 +3,8 @@
  */
 
 import path from 'node:path';
-import { matchesExcludePattern } from './matchExclude.mjs';
 import { DEFAULT_EXCLUDE_PATTERNS, DEFAULT_SKIP_SEGMENTS } from './defaultExcludes.mjs';
+import { matchesExcludePattern } from './matchExclude.mjs';
 
 const DOC_EXTENSIONS = new Set([
   '.md',

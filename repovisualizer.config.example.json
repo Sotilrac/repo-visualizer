@@ -1,9 +1,3 @@
 {
-  "exclude": [
-    "legacy/**",
-    "docs/**",
-    "public/**",
-    ".json",
-    ".yaml"
-  ]
+  "exclude": ["legacy/**", "docs/**", "public/**", ".json", ".yaml"]
 }

@@ -1,27 +1,27 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useDataset } from './engine/useDataset.js';
-import { useTimeline } from './engine/useTimeline.js';
-import { clusterPalette, collectAllClusters } from './engine/graphState.js';
-import { isClusterExcluded } from './engine/excludes.js';
-import { countVisibleNodes } from './engine/visibility.js';
-import { primaryRepoAuthor } from './engine/recordingOverlay.js';
-import {
-  isWebGLAvailable,
-  WEBGL_NODE_THRESHOLD,
-  WEBGL_NODE_HYSTERESIS,
-} from './engine/webglSupport.js';
-import Header from './components/Header.jsx';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CommitCard from './components/CommitCard.jsx';
 import ControlBar from './components/ControlBar.jsx';
+import Header from './components/Header.jsx';
 import Legend from './components/Legend.jsx';
 import NodeInspector from './components/NodeInspector.jsx';
-import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
-import GalaxyVisualizer from './visualizers/GalaxyVisualizer.jsx';
-import OrganicVisualizer from './visualizers/OrganicVisualizer.jsx';
-import NeuralVisualizer from './visualizers/NeuralVisualizer.jsx';
-import MinimalVisualizer from './visualizers/MinimalVisualizer.jsx';
-import WebGLVisualizer from './visualizers/WebGLVisualizer.jsx';
+import { isClusterExcluded } from './engine/excludes.js';
+import { clusterPalette, collectAllClusters } from './engine/graphState.js';
 import { startRecording } from './engine/recorder.js';
+import { primaryRepoAuthor } from './engine/recordingOverlay.js';
+import { useDataset } from './engine/useDataset.js';
+import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
+import { useTimeline } from './engine/useTimeline.js';
+import { countVisibleNodes } from './engine/visibility.js';
+import {
+  isWebGLAvailable,
+  WEBGL_NODE_HYSTERESIS,
+  WEBGL_NODE_THRESHOLD,
+} from './engine/webglSupport.js';
+import GalaxyVisualizer from './visualizers/GalaxyVisualizer.jsx';
+import MinimalVisualizer from './visualizers/MinimalVisualizer.jsx';
+import NeuralVisualizer from './visualizers/NeuralVisualizer.jsx';
+import OrganicVisualizer from './visualizers/OrganicVisualizer.jsx';
+import WebGLVisualizer from './visualizers/WebGLVisualizer.jsx';
 
 const CANVAS_VISUALIZERS = {
   galaxy: GalaxyVisualizer,
@@ -67,8 +67,8 @@ export default function App() {
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [mobileInfoOpen, setMobileInfoOpen] = useState(false);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
-  const [commitCardCollapsed, setCommitCardCollapsed] = useState(
-    () => loadBool('rv-commit-card-collapsed', false),
+  const [commitCardCollapsed, setCommitCardCollapsed] = useState(() =>
+    loadBool('rv-commit-card-collapsed', false),
   );
 
   const stageRef = useRef(null);
@@ -78,6 +78,9 @@ export default function App() {
   const perfBeforeRecordRef = useRef(null);
   timelineRef.current = timeline;
 
+  // timeline.state is mutated in place, so stateVersion is the only signal
+  // that its contents changed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   const visibleCount = useMemo(
     () => countVisibleNodes(timeline.state, timeline.index),
     [timeline.state, timeline.index, timeline.stateVersion],
@@ -92,18 +95,15 @@ export default function App() {
       setUseWebGL(isWebGLAvailable() && !webglFailed);
       return;
     }
-    const want = visibleCount >= WEBGL_NODE_THRESHOLD
-      || (useWebGL && visibleCount >= WEBGL_NODE_HYSTERESIS);
+    const want =
+      visibleCount >= WEBGL_NODE_THRESHOLD || (useWebGL && visibleCount >= WEBGL_NODE_HYSTERESIS);
     setUseWebGL(want && isWebGLAvailable() && !webglFailed);
   }, [visibleCount, perfMode, webglFailed, useWebGL]);
 
   const excludePatterns = useMemo(() => dataset?.exclude ?? [], [dataset?.exclude]);
 
   const currentCommit = timeline.index >= 0 ? timeline.commits[timeline.index] : null;
-  const repoAuthor = useMemo(
-    () => primaryRepoAuthor(timeline.commits),
-    [timeline.commits],
-  );
+  const repoAuthor = useMemo(() => primaryRepoAuthor(timeline.commits), [timeline.commits]);
   const recordingOverlay = useMemo(() => {
     if (!recording) return null;
     return {
@@ -140,27 +140,33 @@ export default function App() {
     resumeAfterFocus();
   }, [resumeAfterFocus]);
 
-  const handleClusterSelect = useCallback((cluster) => {
-    if (cluster) {
-      pauseForFocus();
-      setSelectedPath(null);
-      setSelectedCluster(cluster);
-    } else {
-      setSelectedCluster(null);
-      if (!selectedPath) resumeAfterFocus();
-    }
-  }, [pauseForFocus, resumeAfterFocus, selectedPath]);
+  const handleClusterSelect = useCallback(
+    (cluster) => {
+      if (cluster) {
+        pauseForFocus();
+        setSelectedPath(null);
+        setSelectedCluster(cluster);
+      } else {
+        setSelectedCluster(null);
+        if (!selectedPath) resumeAfterFocus();
+      }
+    },
+    [pauseForFocus, resumeAfterFocus, selectedPath],
+  );
 
-  const handleNodeClick = useCallback((path) => {
-    if (path) {
-      pauseForFocus();
-      setSelectedCluster(null);
-      setSelectedPath(path);
-    } else {
-      setSelectedCluster(null);
-      handleCloseInspector();
-    }
-  }, [pauseForFocus, handleCloseInspector]);
+  const handleNodeClick = useCallback(
+    (path) => {
+      if (path) {
+        pauseForFocus();
+        setSelectedCluster(null);
+        setSelectedPath(path);
+      } else {
+        setSelectedCluster(null);
+        handleCloseInspector();
+      }
+    },
+    [pauseForFocus, handleCloseInspector],
+  );
 
   const CanvasVisualizer = CANVAS_VISUALIZERS[style];
   const showWebGL = useWebGL && style === 'galaxy';
@@ -254,65 +260,68 @@ export default function App() {
 
   const repoName = dataset?.repo;
 
-  const handleStartRecord = useCallback(async (opts) => {
-    const getCanvas = () => stageRef.current?.querySelector('canvas');
+  const handleStartRecord = useCallback(
+    async (opts) => {
+      const getCanvas = () => stageRef.current?.querySelector('canvas');
 
-    if (opts.format === 'png') {
+      if (opts.format === 'png') {
+        const canvas = getCanvas();
+        if (!canvas) return;
+        setExportOpen(false);
+        await startRecording({
+          canvas,
+          opts,
+          shouldStop: () => true,
+          repo: repoName,
+        });
+        return;
+      }
+
+      recordStopRef.current = false;
+      perfBeforeRecordRef.current = perfMode;
+      if (showWebGL || perfMode !== 'off') {
+        setPerfMode('off');
+        await waitMs(450);
+      }
+
       const canvas = getCanvas();
       if (!canvas) return;
+
       setExportOpen(false);
-      await startRecording({
-        canvas,
-        opts,
-        shouldStop: () => true,
-        repo: repoName,
-      });
-      return;
-    }
-
-    recordStopRef.current = false;
-    perfBeforeRecordRef.current = perfMode;
-    if (showWebGL || perfMode !== 'off') {
-      setPerfMode('off');
-      await waitMs(450);
-    }
-
-    let canvas = getCanvas();
-    if (!canvas) return;
-
-    setExportOpen(false);
-    setRecording(true);
-    setRecordingProgress(0);
-
-    timeline.restart();
-    await waitMs(200);
-    timeline.play();
-
-    const total = timeline.commits.length;
-
-    try {
-      await startRecording({
-        canvas,
-        opts,
-        onCaptureProgress: updateRecordingProgress,
-        onEncodeProgress: setEncodeProgress,
-        onEncodingStart: handleEncodingStart,
-        shouldStop: () => recordStopRef.current || timelineRef.current.index >= total - 1,
-        repo: repoName,
-      });
-    } finally {
-      timeline.pause();
-      setRecording(false);
-      setEncoding(false);
+      setRecording(true);
       setRecordingProgress(0);
-      setEncodeProgress(0);
-      setExportOpen(false);
-      if (perfBeforeRecordRef.current !== null) {
-        setPerfMode(perfBeforeRecordRef.current);
-        perfBeforeRecordRef.current = null;
+
+      timeline.restart();
+      await waitMs(200);
+      timeline.play();
+
+      const total = timeline.commits.length;
+
+      try {
+        await startRecording({
+          canvas,
+          opts,
+          onCaptureProgress: updateRecordingProgress,
+          onEncodeProgress: setEncodeProgress,
+          onEncodingStart: handleEncodingStart,
+          shouldStop: () => recordStopRef.current || timelineRef.current.index >= total - 1,
+          repo: repoName,
+        });
+      } finally {
+        timeline.pause();
+        setRecording(false);
+        setEncoding(false);
+        setRecordingProgress(0);
+        setEncodeProgress(0);
+        setExportOpen(false);
+        if (perfBeforeRecordRef.current !== null) {
+          setPerfMode(perfBeforeRecordRef.current);
+          perfBeforeRecordRef.current = null;
+        }
       }
-    }
-  }, [repoName, perfMode, showWebGL, timeline, updateRecordingProgress, handleEncodingStart]);
+    },
+    [repoName, perfMode, showWebGL, timeline, updateRecordingProgress, handleEncodingStart],
+  );
 
   const handleToggleExport = useCallback(() => {
     if (recording || encoding) return;
@@ -334,8 +343,9 @@ export default function App() {
       if (ev.target.matches('input, select, textarea')) return;
       if (ev.code === 'Escape') {
         if (recording) handleStopRecord();
-        else if (encoding) { /* wait for encode to finish */ }
-        else if (exportOpen) setExportOpen(false);
+        else if (encoding) {
+          /* wait for encode to finish */
+        } else if (exportOpen) setExportOpen(false);
         else {
           setSelectedCluster(null);
           handleCloseInspector();
@@ -343,7 +353,13 @@ export default function App() {
       } else if (ev.code === 'End' && !timeline.buildingFinal && !recording) {
         ev.preventDefault();
         timeline.goToFinal();
-      } else if (ev.code === 'Space' && !selectedPath && !selectedCluster && !recording && !timeline.buildingFinal) {
+      } else if (
+        ev.code === 'Space' &&
+        !selectedPath &&
+        !selectedCluster &&
+        !recording &&
+        !timeline.buildingFinal
+      ) {
         ev.preventDefault();
         handleTogglePlay();
       } else if (ev.code === 'ArrowRight') timeline.seek(timeline.index + 1);
@@ -355,7 +371,17 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [timeline, selectedPath, selectedCluster, handleCloseInspector, recording, exportOpen, handleStopRecord, handleTogglePlay]);
+  }, [
+    timeline,
+    selectedPath,
+    selectedCluster,
+    handleCloseInspector,
+    recording,
+    exportOpen,
+    handleStopRecord,
+    handleTogglePlay,
+    encoding,
+  ]);
 
   if (loading || !dataset) {
     return (
@@ -380,10 +406,7 @@ export default function App() {
     >
       <div className="stage" ref={stageRef}>
         {showWebGL ? (
-          <WebGLVisualizer
-            {...visProps}
-            onInitFailed={handleWebGLFailed}
-          />
+          <WebGLVisualizer {...visProps} onInitFailed={handleWebGLFailed} />
         ) : (
           <CanvasVisualizer {...visProps} />
         )}
@@ -432,7 +455,9 @@ export default function App() {
       {webglFailed && !bannerDismissed && (
         <div className="notice-banner">
           <span>High-performance renderer unavailable — using standard view.</span>
-          <button type="button" onClick={() => setBannerDismissed(true)} aria-label="Dismiss">×</button>
+          <button type="button" onClick={() => setBannerDismissed(true)} aria-label="Dismiss">
+            ×
+          </button>
         </div>
       )}
 
@@ -514,7 +539,6 @@ export default function App() {
         onTogglePlay={handleTogglePlay}
         onGoToFinal={timeline.goToFinal}
         buildingFinal={timeline.buildingFinal}
-        buildProgress={timeline.buildProgress}
         atFinal={timeline.atFinal}
         onSeek={timeline.seek}
         onSetSpeed={timeline.setSpeed}

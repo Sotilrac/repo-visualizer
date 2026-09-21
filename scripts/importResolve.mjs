@@ -2,16 +2,31 @@
  * Resolve raw import specifiers to repo-relative file paths.
  */
 
-import path from 'node:path';
-import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 const posix = path.posix;
 
 const FILE_EXTS = [
-  '', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs',
-  '.py', '.go', '.rs', '.php', '.rb', '.java', '.kt',
-  '.vue', '.svelte', '.css', '.scss',
+  '',
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.go',
+  '.rs',
+  '.php',
+  '.rb',
+  '.java',
+  '.kt',
+  '.vue',
+  '.svelte',
+  '.css',
+  '.scss',
 ];
 
 const INDEX_EXTS = ['/index.js', '/index.ts', '/index.tsx', '/index.jsx', '/index.mjs'];
@@ -55,7 +70,9 @@ function buildJavaIndex(pathSet) {
     if (!p.endsWith('.java') && !p.endsWith('.kt')) continue;
     const base = p.replace(/\.(java|kt)$/, '');
     const className = base.split('/').pop();
-    const pkgPath = base.includes('/') ? base.slice(0, base.lastIndexOf('/')).replace(/\//g, '.') : '';
+    const pkgPath = base.includes('/')
+      ? base.slice(0, base.lastIndexOf('/')).replace(/\//g, '.')
+      : '';
     const fq = pkgPath ? `${pkgPath}.${className}` : className;
     classToPath.set(fq, p);
     classToPath.set(className, p);
@@ -109,7 +126,7 @@ function resolveGoImport(raw, pathSet) {
     const hit = firstExisting(suffix, pathSet);
     if (hit) return hit;
     for (const p of pathSet) {
-      if (p.endsWith('/' + suffix + '.go')) return p;
+      if (p.endsWith(`/${suffix}.go`)) return p;
     }
   }
   return null;
@@ -152,7 +169,6 @@ function resolveJavaImport(raw, javaIndex) {
 
 /**
  * @param {string} repoPath
- * @param {Set<string>} allPaths
  */
 export async function loadJsAliases(repoPath) {
   const aliases = [];
@@ -254,8 +270,11 @@ export function createImportResolver(allPaths, options = {}) {
 }
 
 /**
- * @param {Array<{ imports?: string[], path: string }>} changes
- * @param {ReturnType<createImportResolver>} resolver
+ * Replaces each change's raw `imports` with the `resolvedImports` the graph
+ * reads, and reports how much resolved.
+ *
+ * @param {Array<{ path: string, imports?: string[], resolvedImports?: string[] }>} changes
+ * @param {ReturnType<typeof createImportResolver>} resolver
  */
 export function resolveChangeImports(changes, resolver) {
   let resolvedEdges = 0;

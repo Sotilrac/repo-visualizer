@@ -1,0 +1,4 @@
+# Lint and format-check only the staged files. Deliberately does not autofix:
+# rewriting files mid-commit would stage hunks the author left unstaged.
+# Run `npm run fix` to apply the fixes yourself.
+npx biome check --staged --no-errors-on-unmatched

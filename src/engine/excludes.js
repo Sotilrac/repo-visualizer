@@ -1,39 +1,11 @@
 /**
- * Exclude matching for the web app (mirrors scripts/matchExclude.mjs).
+ * Exclude helpers for the web app, over the shared pattern matcher.
  */
 
+import { matchesExcludePattern } from '../shared/matchExclude.js';
 import { isNodeVisible } from './visibility.js';
 
-function globToRegExp(pattern) {
-  const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '\u0000')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\u0000/g, '.*');
-  return new RegExp(`^${escaped}$`);
-}
-
-function matchesLiteral(norm, pattern) {
-  const p = pattern.replace(/\/$/, '');
-  if (!p) return false;
-  if (norm === p) return true;
-  if (norm.startsWith(`${p}/`)) return true;
-  return norm.split('/').includes(p);
-}
-
-export function matchesExcludePattern(filePath, patterns) {
-  if (!patterns?.length) return false;
-  const norm = filePath.split('\\').join('/').replace(/^\.\//, '');
-  for (const pattern of patterns) {
-    if (!pattern) continue;
-    if (pattern.includes('*')) {
-      if (globToRegExp(pattern).test(norm)) return true;
-    } else if (matchesLiteral(norm, pattern)) {
-      return true;
-    }
-  }
-  return false;
-}
+export { matchesExcludePattern };
 
 /** Repo-relative file path excluded from the graph. */
 export function isPathExcluded(filePath, patterns) {
@@ -43,8 +15,7 @@ export function isPathExcluded(filePath, patterns) {
 /** Feature cluster / top-level folder excluded (e.g. docs, public). */
 export function isClusterExcluded(cluster, patterns) {
   if (!cluster || cluster === '~root' || !patterns?.length) return false;
-  return isPathExcluded(cluster, patterns)
-    || isPathExcluded(`${cluster}/.`, patterns);
+  return isPathExcluded(cluster, patterns) || isPathExcluded(`${cluster}/.`, patterns);
 }
 
 export function resolveExcludePatterns(dataset, configExclude = []) {

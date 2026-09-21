@@ -3,17 +3,17 @@
  */
 
 import {
-  forceSimulation,
-  forceManyBody,
-  forceLink,
   forceCenter,
+  forceCollide,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
   forceX,
   forceY,
-  forceCollide,
 } from 'd3-force';
+import { isClusterExcluded, isPathExcluded } from './excludes.js';
 import { getInboundCounts } from './graphState.js';
-import { isPathExcluded, isClusterExcluded } from './excludes.js';
-import { isNodeVisible, isEdgeVisible } from './visibility.js';
+import { isEdgeVisible, isNodeVisible } from './visibility.js';
 
 function layoutRadius(n, inbound) {
   const sizeR = 6 + Math.min(22, Math.sqrt(Math.max(10, n.size)) * 1.35);
@@ -34,8 +34,8 @@ function applyDegrees(nodes, links) {
 }
 
 export function createLayout({ width, height }) {
-  let nodes = [];
-  let links = [];
+  const nodes = [];
+  const links = [];
   const nodeByPath = new Map();
   const clusterCenters = new Map();
   let syncCount = 0;
@@ -44,28 +44,37 @@ export function createLayout({ width, height }) {
   let lastLinkCount = 0;
 
   const sim = forceSimulation(nodes)
-    .force('charge', forceManyBody()
-      .strength((d) => {
-        const deg = d._degree || 1;
-        return -72 / Math.sqrt(deg);
-      })
-      .distanceMax(380))
-    .force('link', forceLink(links)
-      .id((d) => d.path)
-      .distance((l) => {
-        const ds = l.source._degree || 1;
-        const dt = l.target._degree || 1;
-        return 52 + 18 / Math.sqrt(ds + dt);
-      })
-      .strength((l) => {
-        const ds = l.source._degree || 1;
-        const dt = l.target._degree || 1;
-        return 0.14 / Math.sqrt(ds * dt);
-      }))
+    .force(
+      'charge',
+      forceManyBody()
+        .strength((d) => {
+          const deg = d._degree || 1;
+          return -72 / Math.sqrt(deg);
+        })
+        .distanceMax(380),
+    )
+    .force(
+      'link',
+      forceLink(links)
+        .id((d) => d.path)
+        .distance((l) => {
+          const ds = l.source._degree || 1;
+          const dt = l.target._degree || 1;
+          return 52 + 18 / Math.sqrt(ds + dt);
+        })
+        .strength((l) => {
+          const ds = l.source._degree || 1;
+          const dt = l.target._degree || 1;
+          return 0.14 / Math.sqrt(ds * dt);
+        }),
+    )
     .force('center', forceCenter(width / 2, height / 2).strength(0.035))
-    .force('collide', forceCollide()
-      .radius((d) => d.r + 1.5)
-      .strength(0.72))
+    .force(
+      'collide',
+      forceCollide()
+        .radius((d) => d.r + 1.5)
+        .strength(0.72),
+    )
     .force('x', forceX((d) => clusterCenters.get(d.dir)?.x ?? width / 2).strength(0.045))
     .force('y', forceY((d) => clusterCenters.get(d.dir)?.y ?? height / 2).strength(0.045))
     .alpha(0.32)
@@ -204,8 +213,8 @@ export function createLayout({ width, height }) {
     const nodesAdded = Math.max(0, visibleCount - prevVisible);
     const nodesRemoved = Math.max(0, prevVisible - visibleCount);
     const linksChanged = linkCount !== prevLinks;
-    const topologyChanged = nodesAdded > 0 || nodesRemoved > 0 || linksChanged
-      || forceRestart || syncCount <= 1;
+    const topologyChanged =
+      nodesAdded > 0 || nodesRemoved > 0 || linksChanged || forceRestart || syncCount <= 1;
 
     lastVisibleCount = visibleCount;
     lastLinkCount = linkCount;
@@ -229,10 +238,18 @@ export function createLayout({ width, height }) {
     sim.alpha(Math.max(sim.alpha(), heat)).restart();
   }
 
-  function getNodes() { return nodes; }
-  function getLinks() { return links; }
-  function getClusterCenters() { return clusterCenters; }
-  function getAlpha() { return sim.alpha(); }
+  function getNodes() {
+    return nodes;
+  }
+  function getLinks() {
+    return links;
+  }
+  function getClusterCenters() {
+    return clusterCenters;
+  }
+  function getAlpha() {
+    return sim.alpha();
+  }
 
   function tick() {
     if (sim.alpha() < 0.0008) {
@@ -259,9 +276,18 @@ export function createLayout({ width, height }) {
     sim.tick();
   }
 
-  function stop() { sim.stop(); }
+  function stop() {
+    sim.stop();
+  }
 
   return {
-    sync, resize, tick, stop, getNodes, getLinks, getClusterCenters, getAlpha,
+    sync,
+    resize,
+    tick,
+    stop,
+    getNodes,
+    getLinks,
+    getClusterCenters,
+    getAlpha,
   };
 }

@@ -3,20 +3,20 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { createLayout } from '../engine/layout.js';
 import {
-  createCamera,
   applyCameraTransform,
-  zoomAt,
-  resetCamera,
+  createCamera,
   fitBounds,
   lerpCamera,
+  resetCamera,
   snapCamera,
+  zoomAt,
 } from '../engine/camera.js';
 import { attachCanvasGestures } from '../engine/canvasGestures.js';
-import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
 import { getDepsForPath, resolveFocusSet } from '../engine/graphState.js';
+import { createLayout } from '../engine/layout.js';
 import { drawRecordingOverlay } from '../engine/recordingOverlay.js';
+import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
 
 export function useVisualizerCore({
   hostRef,
@@ -26,9 +26,9 @@ export function useVisualizerCore({
   clearStrategy = 'full',
   trailAlpha = 0.12,
   background = '#05060d',
-  onBeforeDraw,
-  onScreenDraw,
-  onScreenOverlay,
+  onBeforeDraw = null,
+  onScreenDraw = null,
+  onScreenOverlay = null,
   autoFit = true,
   selectedPath = null,
   selectedCluster = null,
@@ -44,13 +44,35 @@ export function useVisualizerCore({
   const lastCommitIdxRef = useRef(-1);
   const stateRef = useRef(state);
   const paramsRef = useRef({
-    draw, onBeforeDraw, onScreenDraw, onScreenOverlay, clearStrategy, trailAlpha, background,
-    autoFit, selectedPath, selectedCluster, excludePatterns, onNodeClick, commitIndex,
+    draw,
+    onBeforeDraw,
+    onScreenDraw,
+    onScreenOverlay,
+    clearStrategy,
+    trailAlpha,
+    background,
+    autoFit,
+    selectedPath,
+    selectedCluster,
+    excludePatterns,
+    onNodeClick,
+    commitIndex,
     recordingOverlay,
   });
   paramsRef.current = {
-    draw, onBeforeDraw, onScreenDraw, onScreenOverlay, clearStrategy, trailAlpha, background,
-    autoFit, selectedPath, selectedCluster, excludePatterns, onNodeClick, commitIndex,
+    draw,
+    onBeforeDraw,
+    onScreenDraw,
+    onScreenOverlay,
+    clearStrategy,
+    trailAlpha,
+    background,
+    autoFit,
+    selectedPath,
+    selectedCluster,
+    excludePatterns,
+    onNodeClick,
+    commitIndex,
     recordingOverlay,
   };
   stateRef.current = state;
@@ -74,7 +96,7 @@ export function useVisualizerCore({
         const cam = cameraRef.current;
         const w = host.clientWidth;
         const h = host.clientHeight;
-        resetCamera(cam, w, h);
+        resetCamera(cam);
         const idx = paramsRef.current.commitIndex;
         const pts = layout.getNodes().filter((n) => isNodeVisible(n, idx));
         fitBounds(cam, pts, w, h);
@@ -83,6 +105,9 @@ export function useVisualizerCore({
     };
   }
 
+  // Mount-only on purpose: the canvas, layout and frame loop are created once
+  // and every live value is read through paramsRef inside the loop.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -127,8 +152,12 @@ export function useVisualizerCore({
       onNodeClick: (path) => paramsRef.current.onNodeClick?.(path),
     });
 
-    const onPointerDownCursor = () => { canvas.style.cursor = 'grabbing'; };
-    const onPointerUpCursor = () => { canvas.style.cursor = 'grab'; };
+    const onPointerDownCursor = () => {
+      canvas.style.cursor = 'grabbing';
+    };
+    const onPointerUpCursor = () => {
+      canvas.style.cursor = 'grab';
+    };
     canvas.addEventListener('pointerdown', onPointerDownCursor);
     canvas.addEventListener('pointerup', onPointerUpCursor);
     canvas.addEventListener('pointercancel', onPointerUpCursor);
@@ -237,7 +266,10 @@ export function useVisualizerCore({
       }
 
       p.draw(ctx, {
-        w, h, dt, now,
+        w,
+        h,
+        dt,
+        now,
         nodes,
         links,
         highlightLinks,

@@ -11,7 +11,11 @@ function downloadBlob(blob, filename) {
 }
 
 function waitForEvent(target, event) {
-  return new Promise((resolve) => target.addEventListener(event, resolve, { once: true }));
+  /** @type {Promise<void>} */
+  const fired = new Promise((resolve) => {
+    target.addEventListener(event, () => resolve(), { once: true });
+  });
+  return fired;
 }
 
 function waitMs(ms) {
@@ -19,13 +23,15 @@ function waitMs(ms) {
 }
 
 function waitUntil(check, intervalMs = 100) {
-  return new Promise((resolve) => {
+  /** @type {Promise<void>} */
+  const settled = new Promise((resolve) => {
     const tick = () => {
       if (check()) resolve();
       else setTimeout(tick, intervalMs);
     };
     tick();
   });
+  return settled;
 }
 
 function captureFrame(canvas) {
@@ -46,7 +52,15 @@ function createReadbackContext(width, height) {
   return { el, ctx };
 }
 
-async function recordWebm(canvas, opts, onCaptureProgress, onEncodeProgress, onEncodingStart, shouldStop, repo) {
+async function recordWebm(
+  canvas,
+  opts,
+  onCaptureProgress,
+  onEncodeProgress,
+  onEncodingStart,
+  shouldStop,
+  repo,
+) {
   const stream = canvas.captureStream(opts.fps);
   const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
     ? 'video/webm;codecs=vp9'
@@ -78,7 +92,15 @@ async function recordWebm(canvas, opts, onCaptureProgress, onEncodeProgress, onE
   onEncodeProgress?.(1);
 }
 
-async function recordGif(canvas, opts, onCaptureProgress, onEncodeProgress, onEncodingStart, shouldStop, repo) {
+async function recordGif(
+  canvas,
+  opts,
+  onCaptureProgress,
+  onEncodeProgress,
+  onEncodingStart,
+  shouldStop,
+  repo,
+) {
   const gif = new GIF({
     workers: 2,
     quality: 10,
@@ -106,7 +128,8 @@ async function recordGif(canvas, opts, onCaptureProgress, onEncodeProgress, onEn
 
   onEncodingStart?.('gif');
 
-  return new Promise((resolve, reject) => {
+  /** @type {Promise<void>} */
+  const encoded = new Promise((resolve, reject) => {
     gif.on('progress', (p) => onEncodeProgress?.(p));
     gif.on('finished', (blob) => {
       onEncodeProgress?.(1);
@@ -117,13 +140,20 @@ async function recordGif(canvas, opts, onCaptureProgress, onEncodeProgress, onEn
     onEncodeProgress?.(0);
     gif.render();
   });
+  return encoded;
 }
 
 /**
  * Record or snapshot the stage canvas.
+ *
+ * @param {object} params
+ * @param {HTMLCanvasElement} params.canvas - the stage canvas to capture
+ * @param {{ format: 'webm'|'gif'|'png', fps?: number }} params.opts
  * @param {() => void} [params.onCaptureProgress] - timeline capture ticks
- * @param {(n: number) => void} [params.onEncodeProgress] - 0–1 while building file
+ * @param {(n: number) => void} [params.onEncodeProgress] - 0 to 1 while building the file
  * @param {(format: 'webm'|'gif') => void} [params.onEncodingStart] - capture finished, encode begun
+ * @param {() => boolean} params.shouldStop - polled to end the capture
+ * @param {{ name?: string }} [params.repo] - names the downloaded file
  */
 export async function startRecording({
   canvas,
@@ -143,9 +173,25 @@ export async function startRecording({
   }
 
   if (opts.format === 'gif') {
-    await recordGif(canvas, opts, onCaptureProgress, onEncodeProgress, onEncodingStart, shouldStop, repo);
+    await recordGif(
+      canvas,
+      opts,
+      onCaptureProgress,
+      onEncodeProgress,
+      onEncodingStart,
+      shouldStop,
+      repo,
+    );
     return;
   }
 
-  await recordWebm(canvas, opts, onCaptureProgress, onEncodeProgress, onEncodingStart, shouldStop, repo);
+  await recordWebm(
+    canvas,
+    opts,
+    onCaptureProgress,
+    onEncodeProgress,
+    onEncodingStart,
+    shouldStop,
+    repo,
+  );
 }

@@ -18,9 +18,9 @@
   --hairline: rgba(255, 255, 255, 0.08);
   --hairline-strong: rgba(255, 255, 255, 0.16);
   --shadow-card: 0 8px 40px rgba(0, 0, 0, 0.5);
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-serif: 'Fraunces', Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-serif: "Fraunces", Georgia, serif;
 }
 
 @supports (height: 100dvh) {
@@ -29,9 +29,13 @@
   }
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-html, body, #root {
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -70,12 +74,12 @@ button:focus-visible {
   overflow: hidden;
 }
 
-.app[data-style='minimal'] {
+.app[data-style="minimal"] {
   background: #f7f5f0;
   color: #0f1116;
 }
 
-.app[data-style='minimal'] {
+.app[data-style="minimal"] {
   --bg: #f7f5f0;
   --bg-elevated: rgba(255, 255, 255, 0.92);
   --fg: #0f1116;
@@ -113,7 +117,9 @@ button:focus-visible {
   pointer-events: none;
 }
 
-.header > * { pointer-events: auto; }
+.header > * {
+  pointer-events: auto;
+}
 
 .header-start {
   display: flex;
@@ -198,16 +204,22 @@ button:focus-visible {
   transition: color 0.15s ease;
 }
 
-.brand-github:hover { color: var(--fg); }
+.brand-github:hover {
+  color: var(--fg);
+}
 
 .brand-author {
   color: var(--fg-muted);
   text-decoration: none;
 }
 
-.brand-author:hover { color: var(--accent); }
+.brand-author:hover {
+  color: var(--accent);
+}
 
-.brand-sep { opacity: 0.5; }
+.brand-sep {
+  opacity: 0.5;
+}
 
 .brand-sub {
   font-size: 9px;
@@ -346,7 +358,10 @@ button:focus-visible {
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
-  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease,
+    visibility 0.15s;
 }
 
 .node-inspector-info-wrap:hover .node-inspector-info-tip,
@@ -454,7 +469,10 @@ button:focus-visible {
   list-style: none;
 }
 
-.node-inspector-section li.muted { color: var(--fg-dim); font-style: italic; }
+.node-inspector-section li.muted {
+  color: var(--fg-dim);
+  font-style: italic;
+}
 
 .node-inspector-commits button {
   display: block;
@@ -484,6 +502,7 @@ button:focus-visible {
 }
 
 .btn-sm {
+  /* biome-ignore lint/complexity/noImportantStyles: a size modifier applied on top of button variants with equal specificity */
   padding: 4px 10px !important;
   font-size: 14px;
   min-width: 28px;
@@ -502,7 +521,9 @@ button:focus-visible {
   -webkit-backdrop-filter: blur(20px);
   cursor: pointer;
   user-select: none;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .toggle-switch:hover {
@@ -536,7 +557,10 @@ button:focus-visible {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--hairline);
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .toggle-switch-thumb {
@@ -566,17 +590,17 @@ button:focus-visible {
   box-shadow: 0 0 8px rgba(138, 180, 255, 0.55);
 }
 
-.app[data-style='minimal'] .toggle-switch-track {
+.app[data-style="minimal"] .toggle-switch-track {
   background: rgba(15, 17, 22, 0.08);
 }
 
-.app[data-style='minimal'] .toggle-switch.is-on .toggle-switch-track {
+.app[data-style="minimal"] .toggle-switch.is-on .toggle-switch-track {
   background: rgba(15, 17, 22, 0.14);
   border-color: rgba(15, 17, 22, 0.22);
   box-shadow: none;
 }
 
-.app[data-style='minimal'] .toggle-switch.is-on .toggle-switch-thumb {
+.app[data-style="minimal"] .toggle-switch.is-on .toggle-switch-thumb {
   background: var(--fg);
   box-shadow: none;
 }
@@ -599,11 +623,11 @@ button:focus-visible {
   color: var(--fg);
 }
 
-.app[data-style='minimal'] .speed-control select {
+.app[data-style="minimal"] .speed-control select {
   color-scheme: light;
 }
 
-.app[data-style='minimal'] .speed-control select option {
+.app[data-style="minimal"] .speed-control select option {
   background-color: #f7f5f0;
   color: var(--fg);
 }
@@ -664,7 +688,10 @@ button:focus-visible {
   color: var(--fg-muted);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .perf-mode-btn:hover {
@@ -683,11 +710,11 @@ button:focus-visible {
   outline-offset: 1px;
 }
 
-.app[data-style='minimal'] .perf-mode-picker {
+.app[data-style="minimal"] .perf-mode-picker {
   background: rgba(15, 17, 22, 0.06);
 }
 
-.app[data-style='minimal'] .perf-mode-btn.active {
+.app[data-style="minimal"] .perf-mode-btn.active {
   background: rgba(15, 17, 22, 0.12);
   box-shadow: none;
   color: var(--fg);
@@ -842,7 +869,10 @@ button:focus-visible {
   letter-spacing: 0.04em;
   color: var(--fg-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .export-toggle-btn:hover {
@@ -861,11 +891,11 @@ button:focus-visible {
   outline-offset: 1px;
 }
 
-.app[data-style='minimal'] .export-toggle-group {
+.app[data-style="minimal"] .export-toggle-group {
   background: rgba(15, 17, 22, 0.06);
 }
 
-.app[data-style='minimal'] .export-toggle-btn.active {
+.app[data-style="minimal"] .export-toggle-btn.active {
   background: rgba(15, 17, 22, 0.12);
   box-shadow: none;
   color: var(--fg);
@@ -889,7 +919,7 @@ button:focus-visible {
   border-color: rgba(255, 90, 90, 0.5);
 }
 
-.app[data-style='minimal'] .header-export-btn {
+.app[data-style="minimal"] .header-export-btn {
   background: rgba(15, 17, 22, 0.06);
   border-color: var(--hairline-strong);
   color: var(--fg);
@@ -927,10 +957,15 @@ button:focus-visible {
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   box-shadow: var(--shadow-card);
   font-size: 13px;
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
 }
 
-.commit-card.entering { opacity: 0; transform: translateY(-8px); }
+.commit-card.entering {
+  opacity: 0;
+  transform: translateY(-8px);
+}
 
 .commit-card-collapse {
   position: absolute;
@@ -946,10 +981,13 @@ button:focus-visible {
   background: rgba(0, 0, 0, 0.2);
   color: var(--fg-muted);
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
-.app[data-style='minimal'] .commit-card-collapse {
+.app[data-style="minimal"] .commit-card-collapse {
   background: rgba(255, 255, 255, 0.5);
 }
 
@@ -981,7 +1019,9 @@ button:focus-visible {
   text-transform: uppercase;
   color: var(--fg-muted);
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .commit-card-tab:hover {
@@ -1045,8 +1085,12 @@ button:focus-visible {
   color: var(--fg-muted);
 }
 
-.commit-card .stats .ins { color: var(--accent-cool); }
-.commit-card .stats .del { color: var(--accent-hot); }
+.commit-card .stats .ins {
+  color: var(--accent-cool);
+}
+.commit-card .stats .del {
+  color: var(--accent-hot);
+}
 
 .commit-card .changes-list {
   margin-top: 10px;
@@ -1070,9 +1114,15 @@ button:focus-visible {
   text-align: center;
   font-weight: 700;
 }
-.commit-card .changes-list .status.A { color: var(--accent-cool); }
-.commit-card .changes-list .status.M { color: var(--accent-warm); }
-.commit-card .changes-list .status.D { color: var(--accent-hot); }
+.commit-card .changes-list .status.A {
+  color: var(--accent-cool);
+}
+.commit-card .changes-list .status.M {
+  color: var(--accent-warm);
+}
+.commit-card .changes-list .status.D {
+  color: var(--accent-hot);
+}
 
 .commit-card .changes-list .path {
   flex: 1;
@@ -1108,7 +1158,7 @@ button:focus-visible {
   display: none;
 }
 
-.app[data-style='minimal'] .control-bar {
+.app[data-style="minimal"] .control-bar {
   background: linear-gradient(to top, rgba(247, 245, 240, 0.85), transparent);
 }
 
@@ -1147,7 +1197,9 @@ button:focus-visible {
   background: #fff;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08), 0 0 24px rgba(255, 138, 216, 0.6);
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.08),
+    0 0 24px rgba(255, 138, 216, 0.6);
   pointer-events: none;
   transition: left 0.18s ease;
 }
@@ -1169,7 +1221,10 @@ button:focus-visible {
   border-radius: 1px;
 }
 
-.timeline-tick.large { height: 14px; background: var(--fg-muted); }
+.timeline-tick.large {
+  height: 14px;
+  background: var(--fg-muted);
+}
 
 .timeline-date {
   position: absolute;
@@ -1202,13 +1257,20 @@ button:focus-visible {
   font-size: 13px;
   font-weight: 500;
   letter-spacing: -0.01em;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
   backdrop-filter: blur(20px);
 }
 
-.btn:hover { border-color: var(--hairline-strong); }
-.btn:active { transform: translateY(1px); }
-.btn[aria-pressed='true'] {
+.btn:hover {
+  border-color: var(--hairline-strong);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn[aria-pressed="true"] {
   background: linear-gradient(135deg, rgba(138, 180, 255, 0.18), rgba(255, 138, 216, 0.14));
   border-color: var(--accent);
   color: var(--accent);
@@ -1232,8 +1294,12 @@ button:focus-visible {
   box-shadow: 0 6px 24px rgba(255, 138, 216, 0.32);
 }
 
-.btn-play:hover { transform: scale(1.05); }
-.btn-play:active { transform: scale(0.98); }
+.btn-play:hover {
+  transform: scale(1.05);
+}
+.btn-play:active {
+  transform: scale(0.98);
+}
 
 .mobile-play-hint {
   display: none;
@@ -1254,7 +1320,9 @@ button:focus-visible {
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 4px rgba(255, 138, 216, 0.24), 0 10px 30px rgba(138, 180, 255, 0.45);
+    box-shadow:
+      0 0 0 4px rgba(255, 138, 216, 0.24),
+      0 10px 30px rgba(138, 180, 255, 0.45);
     transform: scale(1.04);
   }
 }
@@ -1301,7 +1369,7 @@ button:focus-visible {
   pointer-events: all;
 }
 
-.app[data-style='minimal'] .final-state-loader {
+.app[data-style="minimal"] .final-state-loader {
   background: rgba(247, 245, 240, 0.78);
 }
 
@@ -1330,7 +1398,7 @@ button:focus-visible {
   overflow: hidden;
 }
 
-.app[data-style='minimal'] .final-state-loader-track {
+.app[data-style="minimal"] .final-state-loader-track {
   background: rgba(15, 17, 22, 0.08);
 }
 
@@ -1362,6 +1430,7 @@ button:focus-visible {
   color: var(--fg-muted);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: the more specific rule earlier in the file sets different properties, so order changes nothing */
 .speed-control select {
   background: transparent;
   border: none;
@@ -1403,17 +1472,21 @@ button:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
-.style-picker .style-btn:hover { color: var(--fg); }
+.style-picker .style-btn:hover {
+  color: var(--fg);
+}
 
-.style-picker .style-btn[aria-pressed='true'] {
+.style-picker .style-btn[aria-pressed="true"] {
   background: rgba(255, 255, 255, 0.08);
   color: var(--fg);
 }
 
-.app[data-style='minimal'] .style-picker .style-btn[aria-pressed='true'] {
+.app[data-style="minimal"] .style-picker .style-btn[aria-pressed="true"] {
   background: rgba(15, 17, 22, 0.06);
 }
 
@@ -1423,16 +1496,24 @@ button:focus-visible {
   border-radius: 50%;
 }
 
-.style-swatch.galaxy   { background: radial-gradient(circle at 30% 30%, #fff, #8ab4ff 60%, #2b1e6a); }
-.style-swatch.organic  { background: radial-gradient(circle at 30% 30%, #fff, #8affd3 50%, #14463c); }
-.style-swatch.neural   { background: linear-gradient(135deg, #00ffea, #ff00d4); }
+.style-swatch.galaxy {
+  background: radial-gradient(circle at 30% 30%, #fff, #8ab4ff 60%, #2b1e6a);
+}
+.style-swatch.organic {
+  background: radial-gradient(circle at 30% 30%, #fff, #8affd3 50%, #14463c);
+}
+.style-swatch.neural {
+  background: linear-gradient(135deg, #00ffea, #ff00d4);
+}
 .style-swatch.minimal {
   background: #fff;
   border: 1px solid rgba(15, 17, 22, 0.16);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
 }
 
-.spacer { flex: 1; }
+.spacer {
+  flex: 1;
+}
 
 .export-btn {
   background: linear-gradient(135deg, rgba(138, 255, 211, 0.18), rgba(138, 180, 255, 0.16));
@@ -1482,7 +1563,9 @@ button:focus-visible {
   font-size: 12px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .legend .legend-item:hover {
@@ -1495,11 +1578,11 @@ button:focus-visible {
   border-color: rgba(138, 180, 255, 0.35);
 }
 
-.app[data-style='minimal'] .legend .legend-item:hover {
+.app[data-style="minimal"] .legend .legend-item:hover {
   background: rgba(15, 17, 22, 0.06);
 }
 
-.app[data-style='minimal'] .legend .legend-item.is-active {
+.app[data-style="minimal"] .legend .legend-item.is-active {
   background: rgba(15, 17, 22, 0.08);
   border-color: rgba(15, 17, 22, 0.2);
 }
@@ -1512,7 +1595,7 @@ button:focus-visible {
   box-shadow: 0 0 8px currentColor;
 }
 
-.app[data-style='galaxy'] .legend .legend-dot {
+.app[data-style="galaxy"] .legend .legend-dot {
   box-shadow: none;
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -1557,7 +1640,9 @@ button:focus-visible {
   border-radius: 4px;
   padding: 0;
   line-height: 1;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .legend-collapse-btn:hover {
@@ -1565,7 +1650,7 @@ button:focus-visible {
   color: var(--fg);
 }
 
-.app[data-style='minimal'] .legend-collapse-btn:hover {
+.app[data-style="minimal"] .legend-collapse-btn:hover {
   background: rgba(15, 17, 22, 0.08);
 }
 
@@ -1587,7 +1672,9 @@ button:focus-visible {
   font-size: 11px;
   font-family: var(--font-mono);
   outline: none;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .legend-search-input::placeholder {
@@ -1599,11 +1686,11 @@ button:focus-visible {
   background: rgba(255, 255, 255, 0.09);
 }
 
-.app[data-style='minimal'] .legend-search-input {
+.app[data-style="minimal"] .legend-search-input {
   background: rgba(15, 17, 22, 0.06);
 }
 
-.app[data-style='minimal'] .legend-search-input:focus {
+.app[data-style="minimal"] .legend-search-input:focus {
   background: rgba(15, 17, 22, 0.1);
   border-color: rgba(15, 17, 22, 0.3);
 }
@@ -1661,7 +1748,9 @@ button:focus-visible {
   border-radius: 6px;
   cursor: pointer;
   text-align: left;
-  transition: background 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 }
 
 .legend-search-item:hover {
@@ -1669,7 +1758,7 @@ button:focus-visible {
   border-color: var(--hairline);
 }
 
-.app[data-style='minimal'] .legend-search-item:hover {
+.app[data-style="minimal"] .legend-search-item:hover {
   background: rgba(15, 17, 22, 0.06);
 }
 
@@ -1762,6 +1851,7 @@ button:focus-visible {
   font-weight: 600;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: the more specific rule earlier in the file sets different properties, so order changes nothing */
 .modal .field select,
 .modal .field input {
   background: rgba(0, 0, 0, 0.3);
@@ -1803,6 +1893,7 @@ button:focus-visible {
   font-size: 12px;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: the recording variant earlier in the file intentionally overrides this base */
 .rec-pulse {
   width: 10px;
   height: 10px;
@@ -1812,13 +1903,24 @@ button:focus-visible {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ───────── Loader ───────── */
@@ -1846,15 +1948,27 @@ button:focus-visible {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ───────── Scrollbar polish ───────── */
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--fg-dim); }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-dim);
+}
 
 /* ───────── Desktop control bar (single tool row) ───────── */
 
@@ -1890,7 +2004,10 @@ button:focus-visible {
   .legend {
     bottom: auto;
     top: clamp(148px, 38vh, 52vh);
-    max-height: min(380px, calc(var(--app-height) - clamp(148px, 38vh, 52vh) - var(--control-stack-height) - 24px));
+    max-height: min(
+      380px,
+      calc(var(--app-height) - clamp(148px, 38vh, 52vh) - var(--control-stack-height) - 24px)
+    );
     transform: translateY(-12%);
   }
 }
@@ -1936,7 +2053,10 @@ button:focus-visible {
     background: var(--bg-elevated);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease,
+      border-color 0.15s ease;
   }
 
   .mobile-chrome-btn.is-active {
@@ -2023,6 +2143,7 @@ button:focus-visible {
 
   .control-row--playback {
     order: 2;
+    /* biome-ignore lint/complexity/noImportantStyles: overrides display:contents on the parent cluster above */
     display: flex !important;
     justify-content: center;
     align-items: center;
@@ -2092,7 +2213,7 @@ button:focus-visible {
     border-top: 1px solid var(--hairline);
   }
 
-  .app[data-controls-open='true'] .control-row--tools {
+  .app[data-controls-open="true"] .control-row--tools {
     display: flex;
   }
 
@@ -2116,10 +2237,13 @@ button:focus-visible {
     visibility: hidden;
     pointer-events: none;
     transform: translateY(6px);
-    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease,
+      visibility 0.2s;
   }
 
-  .app[data-info-open='true'] .info-stack {
+  .app[data-info-open="true"] .info-stack {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -2131,19 +2255,19 @@ button:focus-visible {
     z-index: 9;
   }
 
-  .app[data-controls-open='true'][data-info-open='true'] .info-stack {
+  .app[data-controls-open="true"][data-info-open="true"] .info-stack {
     bottom: calc(var(--mobile-bar-bottom-expanded) + env(safe-area-inset-bottom, 0px));
   }
 
-  .app[data-info-open='true'] .info-stack > .commit-card,
-  .app[data-info-open='true'] .info-stack > .legend {
+  .app[data-info-open="true"] .info-stack > .commit-card,
+  .app[data-info-open="true"] .info-stack > .legend {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
     transform: translateY(0);
   }
 
-  .app[data-info-open='true'] .info-stack > .commit-card {
+  .app[data-info-open="true"] .info-stack > .commit-card {
     position: relative;
     top: auto;
     bottom: auto;
@@ -2157,7 +2281,7 @@ button:focus-visible {
     overflow-y: auto;
   }
 
-  .app[data-info-open='true'] .info-stack > .legend {
+  .app[data-info-open="true"] .info-stack > .legend {
     position: relative;
     top: auto;
     bottom: auto;
@@ -2265,16 +2389,16 @@ button:focus-visible {
     scroll-snap-align: center;
   }
 
-  .app[data-info-open='true'] .info-stack > .commit-card {
+  .app[data-info-open="true"] .info-stack > .commit-card {
     padding: 12px 14px;
     font-size: 12px;
   }
 
-  .app[data-info-open='true'] .info-stack > .commit-card .changes-list {
+  .app[data-info-open="true"] .info-stack > .commit-card .changes-list {
     max-height: none;
   }
 
-  .app[data-info-open='true'] .info-stack > .legend {
+  .app[data-info-open="true"] .info-stack > .legend {
     display: none;
   }
 }
@@ -2282,6 +2406,7 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .btn-play.is-cta,
   .mobile-play-hint {
+    /* biome-ignore lint/complexity/noImportantStyles: a reduced-motion override has to beat every animation rule */
     animation: none !important;
   }
 }

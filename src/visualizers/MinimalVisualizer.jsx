@@ -1,28 +1,51 @@
-import React, { useRef } from 'react';
-import { useVisualizerCore } from './useVisualizerCore.js';
+import { useRef } from 'react';
 import { clusterColorFor } from '../engine/colors.js';
 import {
-  applyNodeAlpha, drawClusterLabels, drawHighlightLinks, drawInspectNodeLabels,
-  drawSelectionRing, linkAlpha,
-  nodeDrawRadius, safeRadius, shouldDrawRipple, shouldGlow,
+  applyNodeAlpha,
+  drawClusterLabels,
+  drawHighlightLinks,
+  drawInspectNodeLabels,
+  drawSelectionRing,
+  linkAlpha,
+  nodeDrawRadius,
+  safeRadius,
+  shouldDrawRipple,
+  shouldGlow,
 } from './drawHelpers.js';
+import { useVisualizerCore } from './useVisualizerCore.js';
 
 /**
  * Minimal / Editorial visualizer.
  *
  * Cream paper background, restrained ink palette, hairline strokes, fine
  * typography labels on the largest nodes. Reads like a New York Times
- * Upshot piece — quiet, considered, information-dense.
+ * Upshot piece: restrained, considered, information-dense.
  */
 export default function MinimalVisualizer({
-  state, commitIndex, palette, autoFit, selectedPath, selectedCluster,
-  excludePatterns, onNodeClick, cameraApiRef, recordingOverlay,
+  state,
+  commitIndex,
+  palette,
+  autoFit,
+  selectedPath,
+  selectedCluster,
+  excludePatterns,
+  onNodeClick,
+  cameraApiRef,
+  recordingOverlay,
 }) {
   const hostRef = useRef(null);
 
   useVisualizerCore({
-    hostRef, state, commitIndex, autoFit, selectedPath, selectedCluster,
-    excludePatterns, onNodeClick, cameraApiRef, recordingOverlay,
+    hostRef,
+    state,
+    commitIndex,
+    autoFit,
+    selectedPath,
+    selectedCluster,
+    excludePatterns,
+    onNodeClick,
+    cameraApiRef,
+    recordingOverlay,
     clearStrategy: 'full',
     background: '#f7f5f0',
     draw: (ctx, frame) => drawMinimal(ctx, frame, { palette }),
@@ -47,7 +70,7 @@ function drawMinimal(ctx, frame, { palette }) {
   ctx.stroke();
 
   // -------- 2. Cluster boundary disks (very faint) --------
-  for (const [name, center] of clusters) {
+  for (const [, center] of clusters) {
     ctx.beginPath();
     ctx.arc(center.x, center.y, 100, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(15, 17, 22, 0.06)';
@@ -59,7 +82,8 @@ function drawMinimal(ctx, frame, { palette }) {
 
   // -------- 3. Edges as hairlines --------
   for (const link of links) {
-    const a = link.source, b = link.target;
+    const a = link.source,
+      b = link.target;
     if (!a || !b) continue;
     const la = linkAlpha(frame, a.path, b.path);
     ctx.globalAlpha = la;
@@ -103,7 +127,7 @@ function drawMinimal(ctx, frame, { palette }) {
     const n = nodeByPath.get(ripple.path);
     if (!n) continue;
     const t = Math.max(0, Math.min(1, ripple.progress ?? 0));
-    const easeOut = 1 - Math.pow(1 - t, 3);
+    const easeOut = 1 - (1 - t) ** 3;
     const maxR = 60 + 100 * (ripple.intensity ?? 0);
     const c = clusterColorFor(palette, n.dir, 'minimal');
 

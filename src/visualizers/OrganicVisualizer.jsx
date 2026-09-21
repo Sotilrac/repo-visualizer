@@ -1,11 +1,18 @@
-import React, { useMemo, useRef } from 'react';
-import { useVisualizerCore } from './useVisualizerCore.js';
+import { useMemo, useRef } from 'react';
 import { clusterColorFor } from '../engine/colors.js';
 import {
-  applyNodeAlpha, drawClusterLabels, drawHighlightLinks, drawInspectNodeLabels,
-  drawSelectionRing, linkAlpha,
-  nodeDrawRadius, safeRadius, shouldDrawRipple, shouldGlow,
+  applyNodeAlpha,
+  drawClusterLabels,
+  drawHighlightLinks,
+  drawInspectNodeLabels,
+  drawSelectionRing,
+  linkAlpha,
+  nodeDrawRadius,
+  safeRadius,
+  shouldDrawRipple,
+  shouldGlow,
 } from './drawHelpers.js';
+import { useVisualizerCore } from './useVisualizerCore.js';
 
 /**
  * Organic / Bioluminescent visualizer.
@@ -14,21 +21,40 @@ import {
  * radiating outward, and connective tissue between feature areas.
  */
 export default function OrganicVisualizer({
-  state, commitIndex, palette, autoFit, selectedPath, selectedCluster,
-  excludePatterns, onNodeClick, cameraApiRef, recordingOverlay,
+  state,
+  commitIndex,
+  palette,
+  autoFit,
+  selectedPath,
+  selectedCluster,
+  excludePatterns,
+  onNodeClick,
+  cameraApiRef,
+  recordingOverlay,
 }) {
   const hostRef = useRef(null);
 
   // Caustic-like background blobs that drift slowly
-  const caustics = useMemo(() => [
-    { x: 0.2, y: 0.3, r: 320, color: 'rgba(80, 200, 200, 0.035)' },
-    { x: 0.78, y: 0.35, r: 380, color: 'rgba(120, 220, 180, 0.03)' },
-    { x: 0.5, y: 0.7, r: 420, color: 'rgba(140, 90, 220, 0.025)' },
-  ], []);
+  const caustics = useMemo(
+    () => [
+      { x: 0.2, y: 0.3, r: 320, color: 'rgba(80, 200, 200, 0.035)' },
+      { x: 0.78, y: 0.35, r: 380, color: 'rgba(120, 220, 180, 0.03)' },
+      { x: 0.5, y: 0.7, r: 420, color: 'rgba(140, 90, 220, 0.025)' },
+    ],
+    [],
+  );
 
   useVisualizerCore({
-    hostRef, state, commitIndex, autoFit, selectedPath, selectedCluster,
-    excludePatterns, onNodeClick, cameraApiRef, recordingOverlay,
+    hostRef,
+    state,
+    commitIndex,
+    autoFit,
+    selectedPath,
+    selectedCluster,
+    excludePatterns,
+    onNodeClick,
+    cameraApiRef,
+    recordingOverlay,
     clearStrategy: 'trail',
     trailAlpha: 0.38,
     background: '#020a10',
@@ -56,7 +82,8 @@ function drawOrganic(ctx, frame, { caustics, palette }) {
   // -------- 2. Connective filaments --------
   ctx.globalCompositeOperation = 'source-over';
   for (const link of links) {
-    const a = link.source, b = link.target;
+    const a = link.source,
+      b = link.target;
     if (!a || !b) continue;
     const la = linkAlpha(frame, a.path, b.path);
     const c = clusterColorFor(palette, a.dir, 'organic');
@@ -142,7 +169,7 @@ function drawOrganic(ctx, frame, { caustics, palette }) {
     const n = nodeByPath.get(ripple.path);
     if (!n) continue;
     const t = Math.max(0, Math.min(1, ripple.progress ?? 0));
-    const easeOut = 1 - Math.pow(1 - t, 3);
+    const easeOut = 1 - (1 - t) ** 3;
     const maxR = 60 + 140 * (ripple.intensity ?? 0);
     const c = clusterColorFor(palette, n.dir, 'organic');
 
@@ -161,7 +188,7 @@ function drawOrganic(ctx, frame, { caustics, palette }) {
 
     // Initial bloom
     if (t < 0.25) {
-      const fa = (1 - t / 0.25);
+      const fa = 1 - t / 0.25;
       const fr = safeRadius(nodeDrawRadius(n, frame) * 4 * (1 + 0.5 * (1 - t / 0.25)), 0.5);
       const fg = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, fr);
       fg.addColorStop(0, `rgba(220, 255, 240, ${fa * 0.35})`);

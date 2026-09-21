@@ -1,5 +1,5 @@
 /**
- * Probe WebGL availability once — never throws.
+ * Probe WebGL availability once. Never throws.
  */
 
 let cached = null;

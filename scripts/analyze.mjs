@@ -1,6 +1,7 @@
 #!/usr/bin/env node
+
 /**
- * Repo Visualizer — Git History Analyzer
+ * Repo Visualizer: git history analyzer
  *
  * Walks a repository's commit history, parses imports from every changed file,
  * and produces a `history.json` describing the full evolution of the codebase
@@ -13,20 +14,20 @@
  * The output is consumed by the React app to drive the cinematic timeline.
  */
 
-import { simpleGit } from 'simple-git';
-import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { simpleGit } from 'simple-git';
+import { ANALYZER_LANGUAGES, PARSERS } from './importParsers.mjs';
+import { createImportResolver, loadJsAliases, resolveChangeImports } from './importResolve.mjs';
 import {
-  shouldIncludeFile,
-  setCustomExcludes,
   getDefaultExcludes,
   getEffectiveExcludes,
+  setCustomExcludes,
+  shouldIncludeFile,
 } from './includeFile.mjs';
 import { loadAnalyzeConfig } from './loadConfig.mjs';
-import { PARSERS, ANALYZER_LANGUAGES } from './importParsers.mjs';
-import { createImportResolver, loadJsAliases, resolveChangeImports } from './importResolve.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -35,18 +36,23 @@ const repoRoot = path.resolve(__dirname, '..');
 
 const argv = process.argv.slice(2);
 const positional = argv.filter((a) => !a.startsWith('--'));
+
+/** A bare `--flag` carries no value, so a flag is a string only when given one. */
+const asString = (value) => (typeof value === 'string' ? value : undefined);
+
+/** @type {Record<string, string | true>} */
 const flags = Object.fromEntries(
   argv
     .filter((a) => a.startsWith('--'))
     .map((a) => {
       const [k, ...rest] = a.replace(/^--/, '').split('=');
       return [k, rest.length ? rest.join('=') : true];
-    })
+    }),
 );
 
 const repoPath = positional[0] ? path.resolve(positional[0]) : repoRoot;
 const outPath = path.resolve(
-  flags.out || path.join(repoRoot, 'public', 'data', 'history.json')
+  asString(flags.out) || path.join(repoRoot, 'public', 'data', 'history.json'),
 );
 
 // ---------- Helpers --------------------------------------------------------
@@ -55,33 +61,30 @@ const outPath = path.resolve(
  * Returns a map of { filePath: 'D' | 'A' | 'M' } for a commit using the
  * reliable two-tree form `git diff --name-status --no-renames PARENT CHILD`.
  * --no-renames means renames always appear as 'D' on the old path and 'A' on
- * the new path — no combined rename notation, no R/C entries.
+ * the new path, with no combined rename notation and no R/C entries.
  */
 async function getNameStatusMap(git, hash, parentHash) {
   const map = {};
   try {
-    const raw = await git.raw([
-      'diff', '--name-status', '--no-renames',
-      parentHash, hash,
-    ]);
+    const raw = await git.raw(['diff', '--name-status', '--no-renames', parentHash, hash]);
     for (const line of raw.split('\n')) {
       const parts = line.trim().split('\t');
       if (parts.length < 2 || !parts[0]) continue;
       if (parts[1]) map[parts[1]] = parts[0][0]; // D, A, M, T, U
     }
   } catch {
-    // Silently fall back — status will be treated as 'M' for all files.
+    // Silently fall back; every file is then treated as status 'M'.
   }
   return map;
 }
-const maxCommits = flags.max ? parseInt(flags.max, 10) : 0; // 0 = all
+const maxCommits = asString(flags.max) ? parseInt(asString(flags.max), 10) : 0; // 0 = all
 
 if (!existsSync(path.join(repoPath, '.git'))) {
   console.error(`✗ Not a git repository: ${repoPath}`);
   process.exit(1);
 }
 
-const analyzeConfig = await loadAnalyzeConfig(repoPath, flags.config);
+const analyzeConfig = await loadAnalyzeConfig(repoPath, asString(flags.config));
 setCustomExcludes(analyzeConfig.exclude);
 
 const langSummary = ANALYZER_LANGUAGES.map((l) => l.name).join(', ');
@@ -89,11 +92,15 @@ const langSummary = ANALYZER_LANGUAGES.map((l) => l.name).join(', ');
 console.log(`→ Analyzing repo: ${repoPath}`);
 console.log(`→ Output: ${outPath}`);
 console.log(`→ Import parsers: ${langSummary}`);
-console.log(`→ Built-in excludes: ${getDefaultExcludes().length} pattern(s) (deps, build output, tests, …)`);
+console.log(
+  `→ Built-in excludes: ${getDefaultExcludes().length} pattern(s) (deps, build output, tests, …)`,
+);
 if (maxCommits) console.log(`→ Limiting to ${maxCommits} most recent commits`);
 if (analyzeConfig.configPath) {
   const tag = analyzeConfig.isFallback ? ' [visualizer fallback]' : '';
-  console.log(`→ Config: ${analyzeConfig.configPath}${tag} (+${analyzeConfig.exclude.length} custom exclude pattern(s))`);
+  console.log(
+    `→ Config: ${analyzeConfig.configPath}${tag} (+${analyzeConfig.exclude.length} custom exclude pattern(s))`,
+  );
 }
 
 // ---------- Main analyzer ---------------------------------------------------
@@ -122,7 +129,8 @@ async function analyze() {
   const parentMap = new Map(); // childHash → parentHash (or EMPTY_TREE for roots)
   {
     const rawParents = await git.raw([
-      'log', '--format=%H %P',
+      'log',
+      '--format=%H %P',
       ...(maxCommits ? ['-n', String(maxCommits)] : []),
     ]);
     for (const line of rawParents.split('\n')) {
@@ -259,7 +267,8 @@ async function analyze() {
 
   console.log('→ Building path index...');
   const jsAliases = await loadJsAliases(repoPath);
-  if (jsAliases.length) console.log(`  · ${jsAliases.length} JS/TS path alias(es) from tsconfig/jsconfig`);
+  if (jsAliases.length)
+    console.log(`  · ${jsAliases.length} JS/TS path alias(es) from tsconfig/jsconfig`);
 
   const resolver = createImportResolver(allPaths, { jsAliases });
 
@@ -288,8 +297,8 @@ async function analyze() {
   console.log(`✓ Wrote ${outPath} (${sizeKb} KB)`);
   console.log(`  ${out.totalCommits} commits, ${allPaths.size} unique files`);
   console.log(
-    `  ${totalChangesWithEdges} file changes with resolved imports`
-    + ` (${totalResolvedEdges} edges from ${totalChangesWithImports} parsed)`,
+    `  ${totalChangesWithEdges} file changes with resolved imports` +
+      ` (${totalResolvedEdges} edges from ${totalChangesWithImports} parsed)`,
   );
 }
 

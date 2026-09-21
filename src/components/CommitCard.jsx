@@ -1,13 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const CollapseIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    aria-hidden
+  >
     <path d="M4 8h8M9 5l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const ExpandIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    aria-hidden
+  >
     <path d="M12 8H4M7 5 4 8l3 3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
@@ -19,6 +35,9 @@ export default function CommitCard({
   onToggleCollapse,
 }) {
   const [entering, setEntering] = useState(false);
+  // commit.sha is a trigger, not an input: the enter animation has to replay
+  // on every commit.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
     setEntering(true);
     const id = setTimeout(() => setEntering(false), 30);
@@ -68,7 +87,11 @@ export default function CommitCard({
     );
   }
 
-  const initials = (commit.author || '?').split(' ').map((n) => n[0]).slice(0, 2).join('');
+  const initials = (commit.author || '?')
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('');
 
   return (
     <div className={`commit-card ${entering ? 'entering' : ''}`}>
@@ -79,10 +102,18 @@ export default function CommitCard({
         <span className="avatar">{initials}</span>
         <span>{commit.author}</span>
         <span style={{ color: 'var(--fg-dim)' }}>·</span>
-        <span>{new Date(commit.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        <span>
+          {new Date(commit.date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}
+        </span>
       </div>
       <div className="stats">
-        <span>{commit.stats.filesChanged} file{commit.stats.filesChanged === 1 ? '' : 's'}</span>
+        <span>
+          {commit.stats.filesChanged} file{commit.stats.filesChanged === 1 ? '' : 's'}
+        </span>
         <span className="ins">+{commit.stats.insertions}</span>
         <span className="del">−{commit.stats.deletions}</span>
       </div>
@@ -90,7 +121,9 @@ export default function CommitCard({
         {commit.changes.slice(0, 8).map((c) => (
           <div className="change-row" key={c.path}>
             <span className={`status ${c.status || 'M'}`}>{c.status || 'M'}</span>
-            <span className="path" title={c.path}>{c.path}</span>
+            <span className="path" title={c.path}>
+              {c.path}
+            </span>
           </div>
         ))}
         {commit.changes.length > 8 && (

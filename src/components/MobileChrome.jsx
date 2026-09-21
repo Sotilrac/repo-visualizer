@@ -1,9 +1,15 @@
-import React from 'react';
-
-/** Sliders — playback / view controls */
+/** Sliders: playback and view controls */
 function ControlsIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      aria-hidden="true"
+    >
       <path d="M2 4.5h1.5M7 4.5h7M2 8h4M9 8h5M2 11.5h6M11 11.5h3" strokeLinecap="round" />
       <circle cx="5.5" cy="4.5" r="1.25" fill="currentColor" stroke="none" />
       <circle cx="11" cy="8" r="1.25" fill="currentColor" stroke="none" />
@@ -14,7 +20,15 @@ function ControlsIcon() {
 
 function InfoIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      aria-hidden="true"
+    >
       <circle cx="8" cy="8" r="6" />
       <path d="M8 7.2V11M8 5.2h.01" strokeLinecap="round" />
     </svg>

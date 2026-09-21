@@ -5,7 +5,8 @@
  */
 
 export function hslToRgb(h, s, l) {
-  s /= 100; l /= 100;
+  s /= 100;
+  l /= 100;
   const k = (n) => (n + h / 30) % 12;
   const a = s * Math.min(l, 1 - l);
   const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
@@ -43,36 +44,36 @@ export function clusterColor(hue, style, variant = 0) {
   switch (style) {
     case 'galaxy':
       return {
-        core:   hslCss(hue, 70 + sat, 96 + light, 1),
+        core: hslCss(hue, 70 + sat, 96 + light, 1),
         swatch: hslCss(hue, 68 + sat, 48 + light, 1),
-        disk:   hslCss(hue, 55 + sat, 52 + light, 0.42),
-        glow:   hslCss(hue, 80 + sat, 72 + light, 0.2),
-        glowFar:hslCss(hue, 75 + sat, 62 + light, 0.05),
-        edge:   hslCss(hue, 75 + sat, 75 + light, 0.2),
+        disk: hslCss(hue, 55 + sat, 52 + light, 0.42),
+        glow: hslCss(hue, 80 + sat, 72 + light, 0.2),
+        glowFar: hslCss(hue, 75 + sat, 62 + light, 0.05),
+        edge: hslCss(hue, 75 + sat, 75 + light, 0.2),
         ripple: hslCss(hue, 85 + sat, 82 + light, 0.75),
       };
     case 'organic':
       return {
-        core:   hslCss(hue, 72 + sat, 58 + light, 0.88),
-        glow:   hslCss(hue, 68 + sat, 46 + light, 0.28),
-        glowFar:hslCss(hue, 62 + sat, 38 + light, 0.1),
-        edge:   hslCss(hue, 58 + sat, 48 + light, 0.28),
+        core: hslCss(hue, 72 + sat, 58 + light, 0.88),
+        glow: hslCss(hue, 68 + sat, 46 + light, 0.28),
+        glowFar: hslCss(hue, 62 + sat, 38 + light, 0.1),
+        edge: hslCss(hue, 58 + sat, 48 + light, 0.28),
         ripple: hslCss(hue, 75 + sat, 55 + light, 0.45),
       };
     case 'neural':
       return {
-        core:   hslCss(hue, 100, 68 + light, 1),
-        glow:   hslCss(hue, 95 + sat, 55 + light, 0.22),
-        glowFar:hslCss(hue, 90 + sat, 45 + light, 0.06),
-        edge:   hslCss(hue, 100, 58 + light, 0.55),
+        core: hslCss(hue, 100, 68 + light, 1),
+        glow: hslCss(hue, 95 + sat, 55 + light, 0.22),
+        glowFar: hslCss(hue, 90 + sat, 45 + light, 0.06),
+        edge: hslCss(hue, 100, 58 + light, 0.55),
         ripple: hslCss(hue, 100, 72 + light, 0.85),
       };
     case 'minimal':
       return {
-        core:   hslCss(hue, 42 + sat, 32 + light, 0.92),
-        glow:   hslCss(hue, 38 + sat, 42 + light, 0.16),
-        glowFar:hslCss(hue, 35 + sat, 50 + light, 0.06),
-        edge:   hslCss(hue, 40 + sat, 38 + light, 0.34),
+        core: hslCss(hue, 42 + sat, 32 + light, 0.92),
+        glow: hslCss(hue, 38 + sat, 42 + light, 0.16),
+        glowFar: hslCss(hue, 35 + sat, 50 + light, 0.06),
+        edge: hslCss(hue, 40 + sat, 38 + light, 0.34),
         ripple: hslCss(hue, 45 + sat, 36 + light, 0.48),
       };
     default:

@@ -11,8 +11,7 @@ export function parseJsTs(src) {
     /import\(\s*['"`]([^'"`]+)['"`]\s*\)/g,
   ];
   for (const re of patterns) {
-    let m;
-    while ((m = re.exec(src))) imports.add(m[1]);
+    for (const m of src.matchAll(re)) imports.add(m[1]);
   }
   return [...imports];
 }
@@ -21,11 +20,13 @@ export function parsePython(src) {
   const imports = new Set();
   const fromRe = /^\s*from\s+(\.+[\w.]*|[\w.]+)\s+import/gm;
   const importRe = /^\s*import\s+([\w.]+(?:\s+as\s+\w+)?(?:\s*,\s*[\w.]+(?:\s+as\s+\w+)?)*)/gm;
-  let m;
-  while ((m = fromRe.exec(src))) imports.add(m[1]);
-  while ((m = importRe.exec(src))) {
+  for (const m of src.matchAll(fromRe)) imports.add(m[1]);
+  for (const m of src.matchAll(importRe)) {
     for (const part of m[1].split(',')) {
-      const name = part.trim().split(/\s+as\s+/)[0].trim();
+      const name = part
+        .trim()
+        .split(/\s+as\s+/)[0]
+        .trim();
       if (name) imports.add(name);
     }
   }
@@ -36,35 +37,30 @@ export function parseGo(src) {
   const imports = new Set();
   const blockRe = /import\s*\(([\s\S]*?)\)/g;
   const singleRe = /import\s+"([^"]+)"/g;
-  let m;
-  while ((m = blockRe.exec(src))) {
-    const lineRe = /"([^"]+)"/g;
-    let n;
-    while ((n = lineRe.exec(m[1]))) imports.add(n[1]);
+  for (const m of src.matchAll(blockRe)) {
+    for (const n of m[1].matchAll(/"([^"]+)"/g)) imports.add(n[1]);
   }
-  while ((m = singleRe.exec(src))) imports.add(m[1]);
+  for (const m of src.matchAll(singleRe)) imports.add(m[1]);
   return [...imports];
 }
 
 export function parseRust(src) {
   const imports = new Set();
-  const useRe = /^\s*use\s+((?:crate|super|self|self)::)?([\w:*{}]+)/gm;
-  let m;
-  while ((m = useRe.exec(src))) {
+  const useRe = /^\s*use\s+((?:crate|super|self)::)?([\w:*{}]+)/gm;
+  for (const m of src.matchAll(useRe)) {
     const prefix = m[1] || '';
     const path = m[2].split('{')[0].replace(/::\*$/, '').trim();
     if (path) imports.add(prefix + path);
   }
-  const modRe = /^\s*mod\s+([\w]+)\s*;/gm;
-  while ((m = modRe.exec(src))) imports.add(`mod:${m[1]}`);
+  const modRe = /^\s*mod\s+(\w+)\s*;/gm;
+  for (const m of src.matchAll(modRe)) imports.add(`mod:${m[1]}`);
   return [...imports];
 }
 
 export function parseJava(src) {
   const imports = new Set();
   const re = /^\s*import\s+(?:static\s+)?([\w.*]+);/gm;
-  let m;
-  while ((m = re.exec(src))) {
+  for (const m of src.matchAll(re)) {
     const name = m[1];
     if (!name.startsWith('java.') && !name.startsWith('javax.')) imports.add(name);
   }
@@ -78,8 +74,7 @@ export function parseRuby(src) {
     /^\s*load(?:_relative)?\s+['"]([^'"]+)['"]/gm,
   ];
   for (const re of patterns) {
-    let m;
-    while ((m = re.exec(src))) imports.add(m[1]);
+    for (const m of src.matchAll(re)) imports.add(m[1]);
   }
   return [...imports];
 }
@@ -93,8 +88,7 @@ export function parsePhp(src) {
     /(?:require|include)(?:_once)?\s*\(?\s*__DIR__\s*\.\s*['"]([^'"]+)['"]/g,
   ];
   for (const re of patterns) {
-    let m;
-    while ((m = re.exec(src))) imports.add(m[1]);
+    for (const m of src.matchAll(re)) imports.add(m[1]);
   }
   return [...imports];
 }
@@ -102,8 +96,7 @@ export function parsePhp(src) {
 export function parseCss(src) {
   const imports = new Set();
   const re = /@import\s+(?:url\()?['"]?([^'")\s;]+)['"]?\)?/g;
-  let m;
-  while ((m = re.exec(src))) imports.add(m[1]);
+  for (const m of src.matchAll(re)) imports.add(m[1]);
   return [...imports];
 }
 
@@ -160,7 +153,5 @@ export const ANALYZER_LANGUAGES = [
 ];
 
 export const PARSERS = Object.fromEntries(
-  ANALYZER_LANGUAGES.flatMap((lang) =>
-    lang.extensions.map((ext) => [ext, lang.parse]),
-  ),
+  ANALYZER_LANGUAGES.flatMap((lang) => lang.extensions.map((ext) => [ext, lang.parse])),
 );

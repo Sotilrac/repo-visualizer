@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /** perfMode values: auto | off (canvas) | on (WebGL) */
 export const PERF_MODES = [
@@ -48,6 +48,7 @@ export default function PerfModePicker({ perfMode, onChange }) {
   };
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: a labelled group of controls, not a form field group
     <div
       ref={rootRef}
       className={`perf-mode-picker${open ? ' is-open' : ''}`}

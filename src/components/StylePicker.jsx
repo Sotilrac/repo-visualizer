@@ -1,9 +1,7 @@
-import React from 'react';
-
 const STYLES = [
-  { id: 'galaxy',  label: 'Galaxy' },
+  { id: 'galaxy', label: 'Galaxy' },
   { id: 'organic', label: 'Organic' },
-  { id: 'neural',  label: 'Neural' },
+  { id: 'neural', label: 'Neural' },
   { id: 'minimal', label: 'Minimal' },
 ];
 
@@ -13,9 +11,10 @@ export default function StylePicker({ style, onChange }) {
       {STYLES.map((s) => (
         <button
           key={s.id}
+          type="button"
           className="style-btn"
           onClick={() => onChange(s.id)}
-          aria-pressed={style === s.id}
+          aria-selected={style === s.id}
           role="tab"
         >
           <span className={`style-swatch ${s.id}`} />

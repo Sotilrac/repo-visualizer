@@ -7,12 +7,14 @@ import { bundledDemo } from '../data/bundledDemo.js';
 
 function normalizeExcludeList(value) {
   if (!Array.isArray(value)) return [];
-  return [...new Set(
-    value
-      .filter((v) => typeof v === 'string')
-      .map((v) => v.trim().replace(/\\/g, '/').replace(/^\.\//, ''))
-      .filter(Boolean),
-  )];
+  return [
+    ...new Set(
+      value
+        .filter((v) => typeof v === 'string')
+        .map((v) => v.trim().replace(/\\/g, '/').replace(/^\.\//, ''))
+        .filter(Boolean),
+    ),
+  ];
 }
 
 async function loadConfigExclude() {
@@ -63,7 +65,9 @@ export function useDataset() {
         setError(err.message);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { dataset, source, error, loading: source === 'loading' };

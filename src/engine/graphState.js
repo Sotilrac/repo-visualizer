@@ -6,7 +6,7 @@
  * fade old activity and pulse on touch.
  */
 
-import { isPathExcluded, isClusterExcluded } from './excludes.js';
+import { isClusterExcluded, isPathExcluded } from './excludes.js';
 import { isNodeVisible } from './visibility.js';
 
 export function emptyState() {
@@ -26,8 +26,8 @@ export function emptyState() {
 export function topLevelDir(path) {
   const parts = path.split('/');
   if (parts.length === 1) return '~root';
-  if (parts[0] === 'src' && parts.length > 2) return 'src/' + parts[1];
-  if (parts[0] === 'tests' && parts.length > 2) return 'tests/' + parts[1];
+  if (parts[0] === 'src' && parts.length > 2) return `src/${parts[1]}`;
+  if (parts[0] === 'tests' && parts.length > 2) return `tests/${parts[1]}`;
   return parts[0];
 }
 
@@ -193,7 +193,7 @@ export function applyCommit(state, commit, commitIdx, excludePatterns = []) {
 /**
  * Revert a single commit (step backward one index).
  */
-export function revertCommit(state, commit, commitIdx, excludePatterns = []) {
+export function revertCommit(state, _commit, commitIdx, excludePatterns = []) {
   const undo = state.undoByCommit.get(commitIdx);
   if (!undo) return state;
 
@@ -212,7 +212,10 @@ export function revertCommit(state, commit, commitIdx, excludePatterns = []) {
   for (let i = undo.nodes.length - 1; i >= 0; i--) {
     const op = undo.nodes[i];
     if (op.type === 'delete') {
-      removeAllEdgesForPath(state, op.path, []);
+      // Only the node goes. Every edge this commit touched was already undone
+      // by the loop above, and an edge can point at a path before that path
+      // has a node of its own, so sweeping the path's edges here would drop
+      // edges that belong to earlier commits.
       state.nodes.delete(op.path);
       state.cluster.delete(op.path);
     } else if (op.type === 'restore' && op.snapshot) {
@@ -268,9 +271,15 @@ export function cloneStateForCache(state) {
   const nodes = new Map();
   for (const [k, v] of state.nodes) {
     nodes.set(k, {
-      path: v.path, dir: v.dir, ext: v.ext,
-      size: v.size, churn: v.churn, commits: v.commits,
-      bornAt: v.bornAt, lastTouchedAt: v.lastTouchedAt, deleted: v.deleted,
+      path: v.path,
+      dir: v.dir,
+      ext: v.ext,
+      size: v.size,
+      churn: v.churn,
+      commits: v.commits,
+      bornAt: v.bornAt,
+      lastTouchedAt: v.lastTouchedAt,
+      deleted: v.deleted,
       touchCommits: v.touchCommits ? [...v.touchCommits] : [],
     });
   }
@@ -297,7 +306,7 @@ export function cloneStateForCache(state) {
   };
 }
 
-/** Chunk size for async rebuild — smaller chunks on very long histories. */
+/** Chunk size for async rebuild. Long histories get smaller chunks. */
 export function pickRebuildChunkSize(commitCount) {
   if (commitCount <= 80) return commitCount;
   if (commitCount <= 300) return 24;
@@ -308,6 +317,18 @@ export function pickRebuildChunkSize(commitCount) {
 /**
  * Rebuild graph state in chunks, yielding to the main thread between batches.
  * Builds into a fresh state object so the UI can show progress without layout thrash.
+ *
+ * @param {any[]} commits
+ * @param {number} targetIdx
+ * @param {string[]} [excludePatterns]
+ * @param {{
+ *   onProgress?: (fraction: number) => void,
+ *   shouldCancel?: () => boolean,
+ *   startState?: any,
+ *   startIdx?: number,
+ *   chunkSize?: number,
+ *   yieldToMain?: () => Promise<unknown>,
+ * }} [options]
  */
 export async function rebuildToCommitAsync(
   commits,
@@ -397,9 +418,16 @@ export function getClusterFocusSet(state, cluster, commitIndex, excludePatterns 
 }
 
 /** Node selection takes precedence over folder focus for graph dimming. */
-export function resolveFocusSet(state, commitIndex, selectedPath, selectedCluster, excludePatterns = []) {
+export function resolveFocusSet(
+  state,
+  commitIndex,
+  selectedPath,
+  selectedCluster,
+  excludePatterns = [],
+) {
   if (selectedPath) return getNeighborSet(state, selectedPath);
-  if (selectedCluster) return getClusterFocusSet(state, selectedCluster, commitIndex, excludePatterns);
+  if (selectedCluster)
+    return getClusterFocusSet(state, selectedCluster, commitIndex, excludePatterns);
   return new Set();
 }
 
@@ -433,9 +461,7 @@ function circularHueDistance(a, b) {
 }
 
 /** Hand-picked hues (°) that read clearly apart on dark backgrounds. */
-const DISTINCT_HUES = [
-  8, 38, 68, 98, 128, 158, 188, 218, 248, 278, 308, 338,
-];
+const DISTINCT_HUES = [8, 38, 68, 98, 128, 158, 188, 218, 248, 278, 308, 338];
 
 /**
  * Spread `n` hues around the wheel with a minimum perceptual gap so neighbors
@@ -461,7 +487,7 @@ function buildDistinctHues(n) {
       h = (h + minSep) % 360;
       guard++;
     }
-    if (hues.length === i) hues.push(Math.round(((i * 137.508) + 21) % 360));
+    if (hues.length === i) hues.push(Math.round((i * 137.508 + 21) % 360));
   }
 
   return hues;

@@ -1,11 +1,18 @@
-import React, { useRef } from 'react';
-import { useVisualizerCore } from './useVisualizerCore.js';
+import { useRef } from 'react';
 import { clusterColorFor } from '../engine/colors.js';
 import {
-  applyNodeAlpha, drawClusterLabels, drawHighlightLinks, drawInspectNodeLabels,
-  drawSelectionRing, linkAlpha,
-  nodeDrawRadius, safeRadius, shouldDrawRipple, shouldGlow,
+  applyNodeAlpha,
+  drawClusterLabels,
+  drawHighlightLinks,
+  drawInspectNodeLabels,
+  drawSelectionRing,
+  linkAlpha,
+  nodeDrawRadius,
+  safeRadius,
+  shouldDrawRipple,
+  shouldGlow,
 } from './drawHelpers.js';
+import { useVisualizerCore } from './useVisualizerCore.js';
 
 /**
  * Neural / Circuit visualizer.
@@ -15,14 +22,30 @@ import {
  * High-contrast, tech-forward, dashboard-grade aesthetic.
  */
 export default function NeuralVisualizer({
-  state, commitIndex, palette, autoFit, selectedPath, selectedCluster,
-  excludePatterns, onNodeClick, cameraApiRef, recordingOverlay,
+  state,
+  commitIndex,
+  palette,
+  autoFit,
+  selectedPath,
+  selectedCluster,
+  excludePatterns,
+  onNodeClick,
+  cameraApiRef,
+  recordingOverlay,
 }) {
   const hostRef = useRef(null);
 
   useVisualizerCore({
-    hostRef, state, commitIndex, autoFit, selectedPath, selectedCluster,
-    excludePatterns, onNodeClick, cameraApiRef, recordingOverlay,
+    hostRef,
+    state,
+    commitIndex,
+    autoFit,
+    selectedPath,
+    selectedCluster,
+    excludePatterns,
+    onNodeClick,
+    cameraApiRef,
+    recordingOverlay,
     clearStrategy: 'full',
     background: '#04060c',
     draw: (ctx, frame) => drawNeural(ctx, frame, { palette }),
@@ -66,7 +89,8 @@ function drawNeural(ctx, frame, { palette }) {
 
   // -------- 3. Connection wires --------
   for (const link of links) {
-    const a = link.source, b = link.target;
+    const a = link.source,
+      b = link.target;
     if (!a || !b) continue;
     const la = linkAlpha(frame, a.path, b.path);
     const c = clusterColorFor(palette, a.dir, 'neural');
@@ -151,7 +175,7 @@ function drawNeural(ctx, frame, { palette }) {
     const n = nodeByPath.get(ripple.path);
     if (!n) continue;
     const t = Math.max(0, Math.min(1, ripple.progress ?? 0));
-    const ease = 1 - Math.pow(1 - t, 2);
+    const ease = 1 - (1 - t) ** 2;
     const maxR = 60 + 130 * (ripple.intensity ?? 0);
     const r = safeRadius(ease * maxR, 0);
     if (r < 0.5) continue;

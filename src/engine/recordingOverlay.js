@@ -3,7 +3,7 @@
  */
 
 function isLightBackground(hex) {
-  if (!hex || !hex.startsWith('#') || hex.length < 7) return false;
+  if (!hex?.startsWith('#') || hex.length < 7) return false;
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -52,7 +52,6 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
   const fg = light ? 'rgba(12, 14, 20, 0.94)' : 'rgba(255, 255, 255, 0.94)';
   const fgMuted = light ? 'rgba(12, 14, 20, 0.62)' : 'rgba(255, 255, 255, 0.62)';
   const panel = light ? 'rgba(255, 255, 255, 0.72)' : 'rgba(6, 8, 16, 0.55)';
-  const padX = Math.max(20, w * 0.04);
   const padY = Math.max(22, h * 0.04);
 
   ctx.save();

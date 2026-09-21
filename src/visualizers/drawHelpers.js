@@ -101,7 +101,7 @@ export function drawInspectNodeLabels(ctx, frame, palette, style, clusterColorFo
     const boxPadY = 3;
     const boxW = tw + boxPadX * 2;
     const boxH = fontSize + boxPadY * 2;
-    let boxX = textX - (align === 'center' ? boxW / 2 : align === 'right' ? boxW : 0);
+    const boxX = textX - (align === 'center' ? boxW / 2 : align === 'right' ? boxW : 0);
     const boxY = labelY - boxH / 2;
 
     ctx.globalAlpha = 1;
@@ -113,9 +113,7 @@ export function drawInspectNodeLabels(ctx, frame, palette, style, clusterColorFo
     ctx.fillRect(boxX, boxY, boxW, boxH);
 
     ctx.globalAlpha = isSelected ? 1 : 0.95;
-    ctx.fillStyle = isSelected
-      ? (style === 'minimal' ? '#0f1116' : '#ffffff')
-      : c.core;
+    ctx.fillStyle = isSelected ? (style === 'minimal' ? '#0f1116' : '#ffffff') : c.core;
     ctx.fillText(name, textX, labelY);
   }
 
@@ -239,8 +237,7 @@ export function drawClusterLabels(ctx, frame, palette, style, clusterColorForFn)
 
     const c = clusterColorForFn(palette, dir, style);
     const hasHighlight = frame.dimOthers;
-    const clusterTouched = hasHighlight
-      && clusterNodes.some((n) => inFocus(frame, n.path));
+    const clusterTouched = hasHighlight && clusterNodes.some((n) => inFocus(frame, n.path));
     ctx.globalAlpha = hasHighlight && !clusterTouched ? 0.22 : 0.95;
     ctx.fillStyle = c.core;
     ctx.fillText(dir, labelX, labelY);

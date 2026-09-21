@@ -24,6 +24,7 @@ function ToggleRow({ label, options, value, onChange }) {
   return (
     <div className="export-toggle-row">
       <span className="export-toggle-label">{label}</span>
+      {/* biome-ignore lint/a11y/useSemanticElements: a labelled group of toggle buttons, not a form field group */}
       <div className="export-toggle-group" role="group" aria-label={label}>
         {options.map((opt) => (
           <button
@@ -41,12 +42,7 @@ function ToggleRow({ label, options, value, onChange }) {
   );
 }
 
-export default function ExportPanel({
-  open,
-  onClose,
-  onStartRecord,
-  useWebGL,
-}) {
+export default function ExportPanel({ open, onClose, onStartRecord, useWebGL }) {
   const [opts, setOpts] = useState(DEFAULT_OPTS);
 
   if (!open) return null;
@@ -55,9 +51,7 @@ export default function ExportPanel({
 
   return (
     <div className="header-export-panel">
-      {useWebGL && (
-        <p className="export-panel-warn">Recording uses Hi-Res for full detail.</p>
-      )}
+      {useWebGL && <p className="export-panel-warn">Recording uses Hi-Res for full detail.</p>}
       <ToggleRow
         label="Format"
         options={FORMATS}
@@ -84,11 +78,7 @@ export default function ExportPanel({
         <button type="button" className="btn" onClick={onClose}>
           Close
         </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => onStartRecord(opts)}
-        >
+        <button type="button" className="btn btn-primary" onClick={() => onStartRecord(opts)}>
           {isVideo ? 'Record' : 'Save frame'}
         </button>
       </div>

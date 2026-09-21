@@ -1,12 +1,18 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { useVisualizerCore } from './useVisualizerCore.js';
+import { useMemo, useRef } from 'react';
 import { clusterColorFor } from '../engine/colors.js';
 import { nodeBirthGlow } from '../engine/visibility.js';
 import {
-  applyNodeAlpha, drawClusterLabels, drawHighlightLinks, drawInspectNodeLabels,
-  drawSelectionRing, linkAlpha,
-  nodeDrawRadius, safeRadius, shouldDrawRipple,
+  applyNodeAlpha,
+  drawClusterLabels,
+  drawHighlightLinks,
+  drawInspectNodeLabels,
+  drawSelectionRing,
+  linkAlpha,
+  nodeDrawRadius,
+  safeRadius,
+  shouldDrawRipple,
 } from './drawHelpers.js';
+import { useVisualizerCore } from './useVisualizerCore.js';
 
 /**
  * Galaxy / Cosmic visualizer.
@@ -36,7 +42,7 @@ export default function GalaxyVisualizer({
     let seed = 12345;
     const rand = () => {
       seed = (seed * 1664525 + 1013904223) >>> 0;
-      return seed / 0xFFFFFFFF;
+      return seed / 0xffffffff;
     };
     for (let i = 0; i < 380; i++) {
       arr.push({
@@ -50,13 +56,16 @@ export default function GalaxyVisualizer({
     return arr;
   }, []);
 
-  // Nebula color spots — large, soft, slowly drifting blobs
-  const nebulae = useMemo(() => [
-    { x: 0.18, y: 0.32, r: 380, color: 'rgba(140, 90, 220, 0.10)' },
-    { x: 0.82, y: 0.22, r: 420, color: 'rgba(60, 110, 220, 0.10)' },
-    { x: 0.62, y: 0.78, r: 460, color: 'rgba(220, 90, 160, 0.08)' },
-    { x: 0.32, y: 0.85, r: 400, color: 'rgba(90, 220, 180, 0.07)' },
-  ], []);
+  // Nebula color spots: large, soft, slowly drifting blobs
+  const nebulae = useMemo(
+    () => [
+      { x: 0.18, y: 0.32, r: 380, color: 'rgba(140, 90, 220, 0.10)' },
+      { x: 0.82, y: 0.22, r: 420, color: 'rgba(60, 110, 220, 0.10)' },
+      { x: 0.62, y: 0.78, r: 460, color: 'rgba(220, 90, 160, 0.08)' },
+      { x: 0.32, y: 0.85, r: 400, color: 'rgba(90, 220, 180, 0.07)' },
+    ],
+    [],
+  );
 
   useVisualizerCore({
     hostRef,
@@ -112,8 +121,12 @@ function drawGalaxyScreen(ctx, { w, h, now }, { stars, nebulae }) {
 function drawGalaxyVignette(ctx, { w, h }) {
   ctx.globalCompositeOperation = 'multiply';
   const vignette = ctx.createRadialGradient(
-    w / 2, h / 2, Math.min(w, h) * 0.3,
-    w / 2, h / 2, Math.max(w, h) * 0.7,
+    w / 2,
+    h / 2,
+    Math.min(w, h) * 0.3,
+    w / 2,
+    h / 2,
+    Math.max(w, h) * 0.7,
   );
   vignette.addColorStop(0, 'rgba(255, 255, 255, 1)');
   vignette.addColorStop(1, 'rgba(40, 45, 80, 1)');
@@ -172,7 +185,7 @@ function drawGalaxy(ctx, frame, { palette }) {
     const n = nodeByPath.get(ripple.path);
     if (!n) continue;
     const t = Math.max(0, Math.min(1, ripple.progress ?? 0));
-    const ease = 1 - Math.pow(1 - t, 2);
+    const ease = 1 - (1 - t) ** 2;
     const maxR = 50 + 120 * (ripple.intensity ?? 0);
     const r = safeRadius(ease * maxR, 0);
     if (r < 0.5) continue;
@@ -197,7 +210,7 @@ function drawGalaxy(ctx, frame, { palette }) {
 
     // Brief flash sprite on the node itself for the first 20% of the ripple
     if (t < 0.2) {
-      const flashAlpha = (1 - t / 0.2);
+      const flashAlpha = 1 - t / 0.2;
       const flashR = safeRadius(nodeDrawRadius(n, frame) * (1.8 + (1 - t) * 1.2), 0.5);
       const flashGrad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, flashR);
       flashGrad.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.85})`);
@@ -277,7 +290,7 @@ function drawGalaxyStarNode(ctx, n, frame, palette, commitIndex, now) {
     }
   }
 
-  // Hot stellar core — small bright point, not a filled blob
+  // Hot stellar core: a small bright point rather than a filled blob
   const coreR = safeRadius(baseR * (isPlanet ? 0.32 : 0.42), 0.35);
   ctx.globalAlpha = nodeA * (0.85 + birth * 0.15);
   const core = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, coreR);

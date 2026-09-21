@@ -1,0 +1,4 @@
+# Everything CI runs, so a red pipeline is a surprise rather than the norm.
+npm run lint
+npm run typecheck
+npm run test:run

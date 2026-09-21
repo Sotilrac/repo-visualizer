@@ -13,9 +13,9 @@ function modeFromWidth(width) {
 
 /** @returns {'mobile' | 'tablet' | 'desktop'} */
 export function useLayoutMode() {
-  const [mode, setMode] = useState(() => modeFromWidth(
-    typeof window !== 'undefined' ? window.innerWidth : LAYOUT_BREAKPOINTS.desktop,
-  ));
+  const [mode, setMode] = useState(() =>
+    modeFromWidth(typeof window !== 'undefined' ? window.innerWidth : LAYOUT_BREAKPOINTS.desktop),
+  );
 
   useEffect(() => {
     const update = () => setMode(modeFromWidth(window.innerWidth));

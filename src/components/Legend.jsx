@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { clusterColorFor } from '../engine/colors.js';
 import { isClusterActive } from '../engine/excludes.js';
 import { isNodeVisible } from '../engine/visibility.js';
@@ -42,9 +42,10 @@ export default function Legend({
   }
 
   const items = [...counts.entries()]
-    .filter(([cluster, count]) => (
-      count > 0 && isClusterActive(state, cluster, commitIndex, excludePatterns)
-    ))
+    .filter(
+      ([cluster, count]) =>
+        count > 0 && isClusterActive(state, cluster, commitIndex, excludePatterns),
+    )
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
 
@@ -62,6 +63,7 @@ export default function Legend({
   };
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/useSemanticElements: backdrop dismissal is a pointer convenience (Escape closes the legend, bound globally in App), and this is a labelled group of controls rather than a form field group
     <div
       className={`legend${collapsed ? ' is-collapsed' : ''}`}
       onClick={handleBackdropClick}
@@ -73,7 +75,10 @@ export default function Legend({
         <button
           type="button"
           className="legend-collapse-btn"
-          onClick={(ev) => { ev.stopPropagation(); setCollapsed((c) => !c); }}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            setCollapsed((c) => !c);
+          }}
           aria-label={collapsed ? 'Expand' : 'Collapse'}
           title={collapsed ? 'Expand' : 'Collapse'}
         >
@@ -99,39 +104,49 @@ export default function Legend({
               <button
                 type="button"
                 className="legend-search-clear"
-                onClick={(ev) => { ev.stopPropagation(); setQuery(''); }}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  setQuery('');
+                }}
                 aria-label="Clear search"
-              >×</button>
+              >
+                ×
+              </button>
             )}
           </div>
 
           {trimmedQuery ? (
-            <ul className="legend-search-results" role="listbox">
+            <ul className="legend-search-results">
               {searchResults.length === 0 ? (
                 <li className="legend-search-empty">No matches</li>
-              ) : searchResults.map((path) => {
-                const dir = state.nodes.get(path)?.dir ?? path.split('/')[0];
-                const color = clusterColorFor(palette, dir, style);
-                return (
-                  <li key={path}>
-                    <button
-                      type="button"
-                      className="legend-search-item"
-                      onClick={(ev) => { ev.stopPropagation(); handleSelectFile(path); }}
-                      title={path}
-                    >
-                      <span className="legend-search-row">
-                        <span
-                          className="legend-search-dot"
-                          style={{ background: color.swatch ?? color.core }}
-                        />
-                        <span className="legend-search-name">{path.split('/').pop()}</span>
-                      </span>
-                      <span className="legend-search-path">{path}</span>
-                    </button>
-                  </li>
-                );
-              })}
+              ) : (
+                searchResults.map((path) => {
+                  const dir = state.nodes.get(path)?.dir ?? path.split('/')[0];
+                  const color = clusterColorFor(palette, dir, style);
+                  return (
+                    <li key={path}>
+                      <button
+                        type="button"
+                        className="legend-search-item"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          handleSelectFile(path);
+                        }}
+                        title={path}
+                      >
+                        <span className="legend-search-row">
+                          <span
+                            className="legend-search-dot"
+                            style={{ background: color.swatch ?? color.core }}
+                          />
+                          <span className="legend-search-name">{path.split('/').pop()}</span>
+                        </span>
+                        <span className="legend-search-path">{path}</span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
             </ul>
           ) : (
             items.map(([cluster, count]) => {
@@ -148,10 +163,7 @@ export default function Legend({
                     onClusterSelect?.(active ? null : cluster);
                   }}
                 >
-                  <span
-                    className="legend-dot"
-                    style={{ background: color.swatch ?? color.core }}
-                  />
+                  <span className="legend-dot" style={{ background: color.swatch ?? color.core }} />
                   <span className="legend-label">{cluster}</span>
                   <span className="legend-count">{count}</span>
                 </button>
