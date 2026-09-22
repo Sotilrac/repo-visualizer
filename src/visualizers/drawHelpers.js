@@ -59,6 +59,51 @@ function fileBaseName(filePath) {
 }
 
 /**
+ * Repos and folders, drawn as boundaries rather than as blobs.
+ *
+ * A body that stands for a whole folder or repo is not one thing, and a
+ * solid dot that size reads as an enormous file. A ring says it holds what
+ * is inside it, and a folder is labelled with its name and how many files
+ * it came from.
+ */
+export function drawContainers(ctx, frame, palette, style, clusterColorForFn) {
+  const { nodes, cameraScale = 1 } = frame;
+  if (!nodes?.length) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.font = monoFont(600, 9);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  for (const n of nodes) {
+    if (!n.kind || n.kind === 'file') continue;
+
+    const alpha = applyNodeAlpha(ctx, n, frame);
+    const c = clusterColorForFn(palette, n.dir, style);
+    const r = nodeDrawRadius(n, frame);
+
+    ctx.globalAlpha = alpha * 0.55;
+    ctx.strokeStyle = c.core;
+    ctx.lineWidth = n.kind === 'repo' ? 1.6 : 1;
+    if (n.kind !== 'repo') ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, safeRadius(r + 4), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Repo names are already drawn once per cluster, and at a distance the
+    // folder names are unreadable anyway.
+    if (n.kind === 'repo' || (r + 4) * cameraScale < 14) continue;
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.fillStyle = c.core;
+    ctx.fillText(`${fileBaseName(n.path)} ${n.files}`, n.x, n.y + r + 7);
+  }
+
+  ctx.restore();
+}
+
+/**
  * File name labels beside highlighted nodes while the node inspector is open.
  */
 export function drawInspectNodeLabels(ctx, frame, palette, style, clusterColorForFn) {

@@ -3,6 +3,7 @@ import { clusterColorFor } from '../engine/colors.js';
 import {
   applyNodeAlpha,
   drawClusterLabels,
+  drawContainers,
   drawHighlightLinks,
   drawInspectNodeLabels,
   drawSelectionRing,
@@ -24,6 +25,7 @@ import { useVisualizerCore } from './useVisualizerCore.js';
 export default function MinimalVisualizer({
   state,
   commitIndex,
+  dataset,
   palette,
   autoFit,
   showActors,
@@ -41,6 +43,7 @@ export default function MinimalVisualizer({
     hostRef,
     state,
     commitIndex,
+    dataset,
     autoFit,
     showActors,
     resolveAuthor,
@@ -122,6 +125,7 @@ function drawMinimal(ctx, frame, { palette }) {
     }
   }
 
+  drawContainers(ctx, frame, palette, 'minimal', clusterColorFor);
   drawHighlightLinks(ctx, frame, palette, 'minimal', clusterColorFor);
 
   // -------- 5. Concentric ring ripples (no glow) --------

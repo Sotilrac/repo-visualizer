@@ -1,5 +1,11 @@
 /**
  * Force-directed layout engine.
+ *
+ * What it simulates is a list of bodies, not a list of files: at one level
+ * of detail a body is a file, at another it is the folder or the repo the
+ * files were rolled up into. A body mid-transition is drawn part of the way
+ * towards the repo it is falling into, which is the collapse animation, and
+ * the same interpolation run backwards is the burst outward.
  */
 
 import {
@@ -11,14 +17,18 @@ import {
   forceX,
   forceY,
 } from 'd3-force';
-import { isClusterExcluded, isPathExcluded } from './excludes.js';
-import { getInboundCounts } from './graphState.js';
-import { isEdgeVisible, isNodeVisible } from './visibility.js';
 
-function layoutRadius(n, inbound) {
-  const sizeR = 6 + Math.min(22, Math.sqrt(Math.max(10, n.size)) * 1.35);
+function layoutRadius(body, inbound) {
   const importBoost = Math.min(5, Math.sqrt(inbound) * 0.65);
-  return sizeR + importBoost;
+  // A container is sized by how much it holds, a file by how big it is.
+  if (body.kind !== 'file') return 10 + Math.min(38, Math.sqrt(body.files) * 4.2) + importBoost;
+  return 6 + Math.min(22, Math.sqrt(Math.max(10, body.size)) * 1.35) + importBoost;
+}
+
+function inboundCounts(edges) {
+  const counts = new Map();
+  for (const edge of edges) counts.set(edge.target, (counts.get(edge.target) ?? 0) + 1);
+  return counts;
 }
 
 function applyDegrees(nodes, links) {
@@ -122,84 +132,64 @@ export function createLayout({ width, height }) {
     });
   }
 
-  function sync(state, commitIndex = Infinity, options = {}) {
-    const { forceRestart = false, excludePatterns = [] } = options;
+  /**
+   * @param {any[]} bodies what to simulate now, from `bodyIndex`
+   * @param {Array<{ source: string, target: string, weight: number }>} edges
+   *   already lifted to those bodies
+   * @param {{ forceRestart?: boolean }} [options]
+   */
+  function sync(bodies, edges = [], options = {}) {
+    const { forceRestart = false } = options;
     syncCount++;
-    const inboundCounts = getInboundCounts(state);
+    const inbound = inboundCounts(edges);
     const prevVisible = lastVisibleCount;
     const prevLinks = lastLinkCount;
 
     const seen = new Set();
-    for (const [path, n] of state.nodes) {
-      if (isPathExcluded(path, excludePatterns) || isClusterExcluded(n.dir, excludePatterns)) {
-        if (nodeByPath.has(path)) {
-          const idx = nodes.findIndex((nd) => nd.path === path);
-          if (idx >= 0) nodes.splice(idx, 1);
-          nodeByPath.delete(path);
-        }
-        continue;
-      }
-      if (!isNodeVisible(n, commitIndex)) {
-        if (nodeByPath.has(path)) {
-          const idx = nodes.findIndex((nd) => nd.path === path);
-          if (idx >= 0) nodes.splice(idx, 1);
-          nodeByPath.delete(path);
-        }
-        continue;
-      }
-
-      seen.add(path);
-      const inbound = inboundCounts.get(path) || 0;
-      const targetR = layoutRadius(n, inbound);
-      let node = nodeByPath.get(path);
+    for (const body of bodies) {
+      const id = body.id;
+      seen.add(id);
+      const targetR = layoutRadius(body, inbound.get(id) ?? 0);
+      let node = nodeByPath.get(id);
       if (!node) {
-        const center = clusterCenters.get(n.dir) || { x: width / 2, y: height / 2 };
+        const center = clusterCenters.get(body.repo) || { x: width / 2, y: height / 2 };
         const jitter = 22 + Math.random() * 28;
         const a = Math.random() * Math.PI * 2;
         node = {
-          path,
-          dir: n.dir,
-          ext: n.ext,
-          r: targetR,
-          _targetR: targetR,
+          path: id,
+          dir: body.repo,
           x: center.x + Math.cos(a) * jitter,
           y: center.y + Math.sin(a) * jitter,
           vx: 0,
           vy: 0,
+          r: targetR,
         };
-        nodeByPath.set(path, node);
-        nodes.push(node);
-      } else {
-        node._targetR = targetR;
-        node.dir = n.dir;
+        nodeByPath.set(id, node);
       }
-      node.size = n.size;
-      node.churn = n.churn;
-      node.commits = n.commits;
-      node.lastTouchedAt = n.lastTouchedAt;
-      node.bornAt = n.bornAt;
-      node.deleted = n.deleted;
+      node._targetR = targetR;
+      node.dir = body.repo;
+      node.kind = body.kind;
+      node.parent = body.parent;
+      node.size = body.size;
+      node.churn = body.churn;
+      node.files = body.files;
+      node.commits = body.commits;
+      node.lastTouchedAt = body.lastTouchedAt;
+      node.bornAt = body.bornAt;
+      node.deleted = false;
     }
 
-    for (const [path] of nodeByPath) {
-      if (!seen.has(path)) {
-        const idx = nodes.findIndex((n) => n.path === path);
-        if (idx >= 0) nodes.splice(idx, 1);
-        nodeByPath.delete(path);
-      }
+    for (const id of [...nodeByPath.keys()]) {
+      if (!seen.has(id)) nodeByPath.delete(id);
     }
+    nodes.length = 0;
+    for (const node of nodeByPath.values()) nodes.push(node);
 
     links.length = 0;
-    for (const [, e] of state.edges) {
-      if (!isEdgeVisible(e, commitIndex)) continue;
-      if (isPathExcluded(e.from, excludePatterns) || isPathExcluded(e.to, excludePatterns)) {
-        continue;
-      }
-      const from = nodeByPath.get(e.from);
-      const to = nodeByPath.get(e.to);
-      if (from && to) {
-        links.push({ source: from, target: to, weight: e.weight, bornAt: e.bornAt });
-      }
+    for (const edge of edges) {
+      const from = nodeByPath.get(edge.source);
+      const to = nodeByPath.get(edge.target);
+      if (from && to) links.push({ source: from, target: to, weight: edge.weight, bornAt: 0 });
     }
 
     applyDegrees(nodes, links);
@@ -238,6 +228,53 @@ export function createLayout({ width, height }) {
     sim.alpha(Math.max(sim.alpha(), heat)).restart();
   }
 
+  /**
+   * How far each body has fallen towards its repo, and how solid it is.
+   *
+   * Called every frame, so it only touches the bodies that are moving.
+   *
+   * @param {(repo: string) => { phase: string, progress: number } | null} stateFor
+   */
+  function setMotion(stateFor) {
+    for (const node of nodes) {
+      const transition = stateFor(node.dir);
+      if (!transition || transition.phase === 'steady') {
+        node.pull = 0;
+        node.alpha = 1;
+        continue;
+      }
+      const collapsing = transition.phase === 'collapsing';
+      node.pull = collapsing ? transition.progress : 1 - transition.progress;
+      node.alpha = collapsing ? 1 - transition.progress : transition.progress;
+    }
+  }
+
+  /**
+   * Interpolate the moving bodies towards what they are falling into, and
+   * keep the position the simulation gave them so the next frame starts
+   * from the trajectory rather than from the interpolated point.
+   */
+  function applyPull() {
+    for (const node of nodes) {
+      if (node._sx !== undefined) {
+        node.x = node._sx;
+        node.y = node._sy;
+      }
+      if (!node.pull) continue;
+
+      node._sx = node.x;
+      node._sy = node.y;
+      const into = (node.parent && nodeByPath.get(node.parent)) || clusterCenters.get(node.dir);
+      if (!into) continue;
+      node.x += (into.x - node.x) * node.pull;
+      node.y += (into.y - node.y) * node.pull;
+    }
+  }
+
+  function getNode(path) {
+    return nodeByPath.get(path) ?? null;
+  }
+
   function getNodes() {
     return nodes;
   }
@@ -259,6 +296,7 @@ export function createLayout({ width, height }) {
         n.vx = 0;
         n.vy = 0;
       }
+      applyPull();
       return;
     }
 
@@ -274,6 +312,7 @@ export function createLayout({ width, height }) {
     }
 
     sim.tick();
+    applyPull();
   }
 
   function stop() {
@@ -282,6 +321,8 @@ export function createLayout({ width, height }) {
 
   return {
     sync,
+    setMotion,
+    getNode,
     resize,
     tick,
     stop,

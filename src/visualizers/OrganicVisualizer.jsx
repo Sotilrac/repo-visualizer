@@ -3,6 +3,7 @@ import { clusterColorFor } from '../engine/colors.js';
 import {
   applyNodeAlpha,
   drawClusterLabels,
+  drawContainers,
   drawHighlightLinks,
   drawInspectNodeLabels,
   drawSelectionRing,
@@ -23,6 +24,7 @@ import { useVisualizerCore } from './useVisualizerCore.js';
 export default function OrganicVisualizer({
   state,
   commitIndex,
+  dataset,
   palette,
   autoFit,
   showActors,
@@ -50,6 +52,7 @@ export default function OrganicVisualizer({
     hostRef,
     state,
     commitIndex,
+    dataset,
     autoFit,
     showActors,
     resolveAuthor,
@@ -163,6 +166,7 @@ function drawOrganic(ctx, frame, { caustics, palette }) {
     drawSelectionRing(ctx, n, frame, 'rgba(200, 255, 240, 0.9)');
   }
 
+  drawContainers(ctx, frame, palette, 'organic', clusterColorFor);
   drawHighlightLinks(ctx, frame, palette, 'organic', clusterColorFor);
 
   // -------- 5. Organic ripples (sonar waves) --------

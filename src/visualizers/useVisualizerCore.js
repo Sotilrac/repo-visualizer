@@ -2,9 +2,10 @@
  * Shared scaffolding for canvas-based visualizers.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { createActors } from '../engine/actors.js';
 import { createAvatarImages } from '../engine/avatarImages.js';
+import { levelKey, projectsOf, simulatedLevels } from '../engine/bodies.js';
 import {
   applyCameraTransform,
   createCamera,
@@ -15,16 +16,24 @@ import {
   zoomAt,
 } from '../engine/camera.js';
 import { attachCanvasGestures } from '../engine/canvasGestures.js';
+import { editIntensity, FLOOR } from '../engine/editIntensity.js';
 import { getDepsForPath, resolveFocusSet } from '../engine/graphState.js';
 import { createLayout } from '../engine/layout.js';
+import { createLodTransitions } from '../engine/lodTransitions.js';
 import { drawRecordingOverlay } from '../engine/recordingOverlay.js';
+import { buildRepoClock } from '../engine/repoClock.js';
+import { syncBodies } from '../engine/syncBodies.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
 import { drawActors } from './drawActors.js';
+
+/** Stable empty list, so effects do not refire on a fresh literal. */
+const NO_REPOS = Object.freeze([]);
 
 export function useVisualizerCore({
   hostRef,
   state,
   commitIndex,
+  dataset = null,
   draw,
   clearStrategy = 'full',
   trailAlpha = 0.12,
@@ -51,6 +60,18 @@ export function useVisualizerCore({
   const avatarsRef = useRef(createAvatarImages());
   const lastCommitIdxRef = useRef(-1);
   const stateRef = useRef(state);
+  const transitionsRef = useRef(null);
+  if (!transitionsRef.current) transitionsRef.current = createLodTransitions();
+  // What is drawn right now: the level each repo is at, and the body each
+  // file was rolled into. The frame loop reads both.
+  const hierarchyRef = useRef({ targets: {}, key: '', idFor: () => null });
+  const rebuildRef = useRef(null);
+  const intensityRef = useRef(new Map());
+
+  const repos = dataset?.repos ?? NO_REPOS;
+  const folderDepth = dataset?.folderDepth ?? 2;
+  const clock = useMemo(() => buildRepoClock(dataset?.commits ?? []), [dataset?.commits]);
+  const projects = useMemo(() => projectsOf(dataset), [dataset]);
   const paramsRef = useRef({
     draw,
     onBeforeDraw,
@@ -231,7 +252,16 @@ export function useVisualizerCore({
 
       if (p.onScreenDraw) p.onScreenDraw(ctx, { w, h, dt, now });
 
-      if (!hasFocus && layout.getAlpha() > 0.0008) layout.tick();
+      // Level of detail moves on wall-clock time, so the transitions are
+      // advanced every frame. A repo crossing into a new level changes what
+      // there is to simulate, which is the only reason to rebuild here.
+      const transitions = transitionsRef.current;
+      transitions.update(hierarchyRef.current.targets, now);
+      const levels = simulatedLevels(hierarchyRef.current.targets, transitions);
+      if (levelKey(levels) !== hierarchyRef.current.key) rebuildRef.current?.();
+      layout.setMotion((repo) => transitions.stateFor(repo));
+
+      if (!hasFocus) layout.tick();
 
       const ripples = ripplesRef.current;
       const nowMs = now;
@@ -281,7 +311,7 @@ export function useVisualizerCore({
       for (const path of landed) {
         ripplesRef.current.push({
           path,
-          intensity: 0.6,
+          intensity: intensityRef.current.get(path) ?? FLOOR,
           status: 'M',
           bornAt: now,
           ttl: 2400,
@@ -304,7 +334,9 @@ export function useVisualizerCore({
         selectedPath: p.selectedPath,
         selectedCluster: p.selectedCluster,
         focusSet,
-        nodeOpacity: (n) => nodeOpacity(n, idx),
+        // A body mid-collapse is faded by the transition on top of the
+        // ordinary fade-in.
+        nodeOpacity: (n) => nodeOpacity(n, idx) * (n.alpha ?? 1),
         dimOthers: focusSet.size > 0,
         cameraScale: cam.scale,
         excludePatterns: p.excludePatterns,
@@ -351,12 +383,25 @@ export function useVisualizerCore({
   }, [resolveAuthor]);
 
   useEffect(() => {
-    if (!layoutRef.current || !state) return;
-    layoutRef.current.sync(state, commitIndex, {
-      forceRestart: commitIndex === 0,
-      excludePatterns,
-    });
-  }, [state, commitIndex, excludePatterns]);
+    const layout = layoutRef.current;
+    if (!layout || !state) return;
+
+    const rebuild = () => {
+      const { targets, levels, idFor } = syncBodies(layout, state, commitIndex, {
+        repos,
+        folderDepth,
+        projects,
+        clock,
+        transitions: transitionsRef.current,
+        excludePatterns,
+        at: performance.now(),
+      });
+      hierarchyRef.current = { targets, key: levelKey(levels), idFor };
+    };
+
+    rebuildRef.current = rebuild;
+    rebuild();
+  }, [state, commitIndex, excludePatterns, repos, folderDepth, projects, clock]);
 
   useEffect(() => {
     if (commitIndex === lastCommitIdxRef.current) return;
@@ -364,21 +409,45 @@ export function useVisualizerCore({
     if (commitIndex >= 0 && state?.lastCommit && commitIndex > lastCommitIdxRef.current) {
       const now = performance.now();
       const layout = layoutRef.current;
+      // A commit touches files, but at most levels a file is not on screen:
+      // what is drawn is the folder or repo it was rolled into. Collect the
+      // edit per body so one beam is fired at each, carrying how much of
+      // that body the commit rewrote.
+      const idFor = hierarchyRef.current.idFor;
+      const edits = new Map();
+      for (const ch of state.lastCommit.changes) {
+        const id = idFor(ch.path);
+        if (!id) continue;
+        const edit = edits.get(id) ?? { path: id, added: 0, removed: 0, status: 'M' };
+        edit.added += ch.added || 0;
+        edit.removed += ch.removed || 0;
+        if (ch.status === 'D' && id === ch.path) edit.status = 'D';
+        edits.set(id, edit);
+      }
+
+      const nodesById = {};
+      intensityRef.current.clear();
+      for (const [id, edit] of edits) {
+        const node = layout?.getNode(id);
+        if (node) nodesById[id] = node;
+        intensityRef.current.set(id, editIntensity(edit, { lines: node?.size }));
+      }
+
       if (paramsRef.current.showActors) {
         actorsRef.current.onCommit(
-          state.lastCommit,
-          Object.fromEntries((layout?.getNodes() ?? []).map((node) => [node.path, node])),
+          { ...state.lastCommit, changes: [...edits.values()] },
+          nodesById,
           now,
         );
       }
       // With actors on, the ripple waits for the beam. Without them it fires
       // straight away, which is what the visualizer did before.
       if (!paramsRef.current.showActors) {
-        for (const ch of state.lastCommit.changes) {
+        for (const edit of edits.values()) {
           ripplesRef.current.push({
-            path: ch.path,
-            intensity: Math.min(1, ((ch.added || 0) + (ch.removed || 0)) / 80),
-            status: ch.status || 'M',
+            path: edit.path,
+            intensity: intensityRef.current.get(edit.path) ?? FLOOR,
+            status: edit.status,
             bornAt: now,
             ttl: 2400,
             progress: 0,

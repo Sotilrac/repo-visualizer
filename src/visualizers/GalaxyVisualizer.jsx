@@ -4,6 +4,7 @@ import { nodeBirthGlow } from '../engine/visibility.js';
 import {
   applyNodeAlpha,
   drawClusterLabels,
+  drawContainers,
   drawHighlightLinks,
   drawInspectNodeLabels,
   drawSelectionRing,
@@ -24,6 +25,7 @@ import { useVisualizerCore } from './useVisualizerCore.js';
 export default function GalaxyVisualizer({
   state,
   commitIndex,
+  dataset,
   palette,
   autoFit,
   showActors,
@@ -73,6 +75,7 @@ export default function GalaxyVisualizer({
     hostRef,
     state,
     commitIndex,
+    dataset,
     clearStrategy: 'full',
     background: '#03040a',
     autoFit,
@@ -179,6 +182,7 @@ function drawGalaxy(ctx, frame, { palette }) {
     drawGalaxyStarNode(ctx, n, frame, palette, idx, now);
   }
 
+  drawContainers(ctx, frame, palette, 'galaxy', clusterColorFor);
   drawHighlightLinks(ctx, frame, palette, 'galaxy', clusterColorFor);
 
   // -------- Ripple shockwaves --------

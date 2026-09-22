@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { levelKey, projectsOf, simulatedLevels } from '../engine/bodies.js';
 import {
   applyCameraTransform,
   createCamera,
@@ -14,6 +15,9 @@ import { attachCanvasGestures } from '../engine/canvasGestures.js';
 import { clusterColor, clusterColorFor, paletteEntry } from '../engine/colors.js';
 import { resolveFocusSet } from '../engine/graphState.js';
 import { createLayout } from '../engine/layout.js';
+import { createLodTransitions } from '../engine/lodTransitions.js';
+import { buildRepoClock } from '../engine/repoClock.js';
+import { syncBodies } from '../engine/syncBodies.js';
 import { isNodeVisible } from '../engine/visibility.js';
 import { drawClusterLabels, drawInspectNodeLabels } from './drawHelpers.js';
 
@@ -81,6 +85,7 @@ function hueToRgb(palette, dir) {
 export default function WebGLVisualizer({
   state,
   commitIndex,
+  dataset,
   palette,
   autoFit = true,
   selectedPath = null,
@@ -93,6 +98,7 @@ export default function WebGLVisualizer({
   const propsRef = useRef({
     state,
     commitIndex,
+    dataset,
     palette,
     autoFit,
     selectedPath,
@@ -103,6 +109,7 @@ export default function WebGLVisualizer({
   propsRef.current = {
     state,
     commitIndex,
+    dataset,
     palette,
     autoFit,
     selectedPath,
@@ -163,6 +170,9 @@ export default function WebGLVisualizer({
 
     layout = createLayout({ width: host.clientWidth, height: host.clientHeight });
     camera = createCamera();
+    const transitions = createLodTransitions();
+    let clock = new Map();
+    let clockFor = null;
 
     aPos = gl.getAttribLocation(program, 'a_pos');
     aSize = gl.getAttribLocation(program, 'a_size');
@@ -196,6 +206,8 @@ export default function WebGLVisualizer({
 
     let last = performance.now();
     let lastSyncKey = '';
+    let levelTargets = {};
+    let levelState = '';
     function frame(now) {
       const dt = now - last;
       last = now;
@@ -203,18 +215,40 @@ export default function WebGLVisualizer({
       const h = host.clientHeight;
       const p = propsRef.current;
 
-      const syncKey = `${p.commitIndex}|${p.state?.commitIndex ?? -1}|${p.excludePatterns?.join('\0') ?? ''}`;
-      if (syncKey !== lastSyncKey) {
-        layout.sync(p.state, p.commitIndex, {
-          forceRestart: p.commitIndex === 0,
+      if (p.dataset?.commits && clockFor !== p.dataset.commits) {
+        clock = buildRepoClock(p.dataset.commits);
+        clockFor = p.dataset.commits;
+      }
+
+      const rebuild = () => {
+        const { targets, levels } = syncBodies(layout, p.state, p.commitIndex, {
+          repos: p.dataset?.repos ?? [],
+          folderDepth: p.dataset?.folderDepth ?? 2,
+          projects: projectsOf(p.dataset),
+          clock,
+          transitions,
           excludePatterns: p.excludePatterns,
+          at: now,
         });
+        levelTargets = targets;
+        levelState = levelKey(levels);
+      };
+
+      const syncKey = `${p.commitIndex}|${p.state?.commitIndex ?? -1}|${p.excludePatterns?.join('\0') ?? ''}`;
+      if (p.state && syncKey !== lastSyncKey) {
+        rebuild();
         lastSyncKey = syncKey;
+      }
+
+      if (p.state) {
+        transitions.update(levelTargets, now);
+        if (levelKey(simulatedLevels(levelTargets, transitions)) !== levelState) rebuild();
+        layout.setMotion((repo) => transitions.stateFor(repo));
       }
 
       const hasFocus = !!(p.selectedPath || p.selectedCluster);
       const focusKey = `${p.selectedPath ?? ''}|${p.selectedCluster ?? ''}|${p.commitIndex}`;
-      if (!hasFocus && layout.getAlpha() > 0.0008) layout.tick();
+      if (!hasFocus) layout.tick();
 
       if (p.autoFit && !camera.userAdjusted) {
         const allPts = layout.getNodes().filter((n) => isNodeVisible(n, p.commitIndex));

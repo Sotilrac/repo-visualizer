@@ -20,6 +20,7 @@ const VISUALIZERS = [
 const SHARED = [
   'state',
   'commitIndex',
+  'dataset',
   'autoFit',
   'showActors',
   'resolveAuthor',

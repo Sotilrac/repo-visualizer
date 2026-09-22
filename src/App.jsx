@@ -181,6 +181,7 @@ export default function App() {
   const visProps = {
     state: timeline.state,
     commitIndex: timeline.index,
+    dataset,
     palette,
     autoFit,
     showActors,

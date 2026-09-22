@@ -3,6 +3,7 @@ import { clusterColorFor } from '../engine/colors.js';
 import {
   applyNodeAlpha,
   drawClusterLabels,
+  drawContainers,
   drawHighlightLinks,
   drawInspectNodeLabels,
   drawSelectionRing,
@@ -24,6 +25,7 @@ import { useVisualizerCore } from './useVisualizerCore.js';
 export default function NeuralVisualizer({
   state,
   commitIndex,
+  dataset,
   palette,
   autoFit,
   showActors,
@@ -41,6 +43,7 @@ export default function NeuralVisualizer({
     hostRef,
     state,
     commitIndex,
+    dataset,
     autoFit,
     showActors,
     resolveAuthor,
@@ -169,6 +172,7 @@ function drawNeural(ctx, frame, { palette }) {
     drawSelectionRing(ctx, n, frame, 'rgba(0, 255, 234, 0.95)');
   }
 
+  drawContainers(ctx, frame, palette, 'neural', clusterColorFor);
   drawHighlightLinks(ctx, frame, palette, 'neural', clusterColorFor);
 
   // -------- 6. Hexagonal shockwaves --------
