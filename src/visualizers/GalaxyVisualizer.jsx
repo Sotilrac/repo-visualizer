@@ -244,10 +244,15 @@ function drawGalaxyStarNode(ctx, n, frame, palette, commitIndex, now) {
   if (nodeA < 0.02) return;
 
   const c = clusterColorFor(palette, n.dir, 'galaxy');
-  const baseR = nodeDrawRadius(n, frame);
+  const drawR = nodeDrawRadius(n, frame);
   const birth = nodeBirthGlow(n, commitIndex);
   const twinkle = 0.9 + 0.1 * Math.sin(now * 0.0018 + n.x * 0.04 + n.y * 0.035);
-  const isPlanet = baseR >= 7;
+  // A repo or folder is a ring with a nucleus in it. Filling one in the way
+  // a file is filled turns a screen of containers into overlapping
+  // translucent bubbles, and the ring already says how much it holds.
+  const container = !!n.kind && n.kind !== 'file';
+  const baseR = container ? Math.min(drawR, 9) : drawR;
+  const isPlanet = !container && drawR >= 7;
 
   ctx.globalCompositeOperation = 'lighter';
 

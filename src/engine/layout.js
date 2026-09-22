@@ -18,11 +18,24 @@ import {
   forceY,
 } from 'd3-force';
 
-function layoutRadius(body, inbound) {
+/**
+ * How big to draw a body.
+ *
+ * A container is sized by how much it holds, a file by how big it is. File
+ * counts run from one to thousands, so the container scale is logarithmic:
+ * a square root saturates against any cap low enough to keep the biggest
+ * repo on screen, and once a hundred folders all sit at the cap the graph
+ * is a field of identical circles.
+ *
+ * @param {{ kind?: string, files?: number, size?: number }} body
+ * @param {number} inbound how many other bodies import this one
+ */
+export function bodyRadius(body, inbound = 0) {
   const importBoost = Math.min(5, Math.sqrt(inbound) * 0.65);
-  // A container is sized by how much it holds, a file by how big it is.
-  if (body.kind !== 'file') return 10 + Math.min(38, Math.sqrt(body.files) * 4.2) + importBoost;
-  return 6 + Math.min(22, Math.sqrt(Math.max(10, body.size)) * 1.35) + importBoost;
+  if (body.kind && body.kind !== 'file') {
+    return Math.min(64, 8 + 14 * Math.log10(1 + (body.files ?? 0))) + importBoost;
+  }
+  return 6 + Math.min(22, Math.sqrt(Math.max(10, body.size ?? 0)) * 1.35) + importBoost;
 }
 
 function inboundCounts(edges) {
@@ -149,7 +162,7 @@ export function createLayout({ width, height }) {
     for (const body of bodies) {
       const id = body.id;
       seen.add(id);
-      const targetR = layoutRadius(body, inbound.get(id) ?? 0);
+      const targetR = bodyRadius(body, inbound.get(id) ?? 0);
       let node = nodeByPath.get(id);
       if (!node) {
         const center = clusterCenters.get(body.repo) || { x: width / 2, y: height / 2 };
