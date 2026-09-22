@@ -112,6 +112,15 @@ describe('syncBodies', () => {
     expect(result.levels).toEqual({ battery: 2, core: 1 });
   });
 
+  it('reports how many bodies there are, which is what picks the renderer', () => {
+    const { bodies, result } = run([
+      { name: 'battery', lod: 2 },
+      { name: 'core', lod: 1 },
+    ]);
+
+    expect(result.count).toBe(bodies.length);
+  });
+
   it('tells the caller which body a file was rolled into', () => {
     const { result } = run([{ name: 'battery', lod: 2 }]);
 

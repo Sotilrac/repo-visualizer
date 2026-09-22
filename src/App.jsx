@@ -12,7 +12,6 @@ import { useDataset } from './engine/useDataset.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
 import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
 import { useTimeline } from './engine/useTimeline.js';
-import { countVisibleNodes } from './engine/visibility.js';
 import {
   isWebGLAvailable,
   WEBGL_NODE_HYSTERESIS,
@@ -85,13 +84,14 @@ export default function App() {
   const perfBeforeRecordRef = useRef(null);
   timelineRef.current = timeline;
 
-  // timeline.state is mutated in place, so stateVersion is the only signal
-  // that its contents changed.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
-  const visibleCount = useMemo(
-    () => countVisibleNodes(timeline.state, timeline.index),
-    [timeline.state, timeline.index, timeline.stateVersion],
-  );
+  // What the layout is simulating, which is not the number of files: at one
+  // bubble per repo a hundred thousand files are seventy bodies. Switching
+  // renderers off the file count put the whole six years on the WebGL path,
+  // which has no starfield, no nebula and no people on it.
+  const [bodyCount, setBodyCount] = useState(0);
+  const handleBodyCount = useCallback((count) => {
+    setBodyCount((previous) => (previous === count ? previous : count));
+  }, []);
 
   useEffect(() => {
     if (perfMode === 'off') {
@@ -103,9 +103,9 @@ export default function App() {
       return;
     }
     const want =
-      visibleCount >= WEBGL_NODE_THRESHOLD || (useWebGL && visibleCount >= WEBGL_NODE_HYSTERESIS);
+      bodyCount >= WEBGL_NODE_THRESHOLD || (useWebGL && bodyCount >= WEBGL_NODE_HYSTERESIS);
     setUseWebGL(want && isWebGLAvailable() && !webglFailed);
-  }, [visibleCount, perfMode, webglFailed, useWebGL]);
+  }, [bodyCount, perfMode, webglFailed, useWebGL]);
 
   const excludePatterns = useMemo(() => dataset?.exclude ?? [], [dataset?.exclude]);
 
@@ -190,6 +190,7 @@ export default function App() {
     selectedCluster,
     excludePatterns,
     onNodeClick: handleNodeClick,
+    onBodyCount: handleBodyCount,
     cameraApiRef,
     recordingOverlay,
   };

@@ -34,6 +34,7 @@ export default function MinimalVisualizer({
   selectedCluster,
   excludePatterns,
   onNodeClick,
+  onBodyCount,
   cameraApiRef,
   recordingOverlay,
 }) {
@@ -51,6 +52,7 @@ export default function MinimalVisualizer({
     selectedCluster,
     excludePatterns,
     onNodeClick,
+    onBodyCount,
     cameraApiRef,
     recordingOverlay,
     clearStrategy: 'full',

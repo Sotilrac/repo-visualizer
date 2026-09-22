@@ -28,6 +28,7 @@ const SHARED = [
   'selectedCluster',
   'excludePatterns',
   'onNodeClick',
+  'onBodyCount',
   'cameraApiRef',
   'recordingOverlay',
 ];

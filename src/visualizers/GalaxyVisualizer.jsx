@@ -34,6 +34,7 @@ export default function GalaxyVisualizer({
   selectedCluster,
   excludePatterns,
   onNodeClick,
+  onBodyCount,
   cameraApiRef,
   recordingOverlay,
 }) {
@@ -85,6 +86,7 @@ export default function GalaxyVisualizer({
     selectedCluster,
     excludePatterns,
     onNodeClick,
+    onBodyCount,
     cameraApiRef,
     recordingOverlay,
     onScreenDraw: (ctx, meta) => drawGalaxyScreen(ctx, meta, { stars, nebulae }),

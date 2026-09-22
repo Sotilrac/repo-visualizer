@@ -34,6 +34,7 @@ export function useVisualizerCore({
   state,
   commitIndex,
   dataset = null,
+  onBodyCount = null,
   draw,
   clearStrategy = 'full',
   trailAlpha = 0.12,
@@ -387,7 +388,7 @@ export function useVisualizerCore({
     if (!layout || !state) return;
 
     const rebuild = () => {
-      const { targets, levels, idFor } = syncBodies(layout, state, commitIndex, {
+      const { targets, levels, count, idFor } = syncBodies(layout, state, commitIndex, {
         repos,
         folderDepth,
         projects,
@@ -397,11 +398,12 @@ export function useVisualizerCore({
         at: performance.now(),
       });
       hierarchyRef.current = { targets, key: levelKey(levels), idFor };
+      onBodyCount?.(count);
     };
 
     rebuildRef.current = rebuild;
     rebuild();
-  }, [state, commitIndex, excludePatterns, repos, folderDepth, projects, clock]);
+  }, [state, commitIndex, excludePatterns, repos, folderDepth, projects, clock, onBodyCount]);
 
   useEffect(() => {
     if (commitIndex === lastCommitIdxRef.current) return;

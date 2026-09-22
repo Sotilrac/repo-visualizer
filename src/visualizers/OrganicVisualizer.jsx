@@ -33,6 +33,7 @@ export default function OrganicVisualizer({
   selectedCluster,
   excludePatterns,
   onNodeClick,
+  onBodyCount,
   cameraApiRef,
   recordingOverlay,
 }) {
@@ -60,6 +61,7 @@ export default function OrganicVisualizer({
     selectedCluster,
     excludePatterns,
     onNodeClick,
+    onBodyCount,
     cameraApiRef,
     recordingOverlay,
     clearStrategy: 'trail',

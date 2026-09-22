@@ -92,6 +92,7 @@ export default function WebGLVisualizer({
   selectedCluster = null,
   excludePatterns = [],
   onNodeClick,
+  onBodyCount,
   onInitFailed,
 }) {
   const hostRef = useRef(null);
@@ -105,6 +106,7 @@ export default function WebGLVisualizer({
     selectedCluster,
     excludePatterns,
     onNodeClick,
+    onBodyCount,
   });
   propsRef.current = {
     state,
@@ -116,6 +118,7 @@ export default function WebGLVisualizer({
     selectedCluster,
     excludePatterns,
     onNodeClick,
+    onBodyCount,
   };
 
   useEffect(() => {
@@ -221,7 +224,7 @@ export default function WebGLVisualizer({
       }
 
       const rebuild = () => {
-        const { targets, levels } = syncBodies(layout, p.state, p.commitIndex, {
+        const { targets, levels, count } = syncBodies(layout, p.state, p.commitIndex, {
           repos: p.dataset?.repos ?? [],
           folderDepth: p.dataset?.folderDepth ?? 2,
           projects: projectsOf(p.dataset),
@@ -232,6 +235,7 @@ export default function WebGLVisualizer({
         });
         levelTargets = targets;
         levelState = levelKey(levels);
+        p.onBodyCount?.(count);
       };
 
       const syncKey = `${p.commitIndex}|${p.state?.commitIndex ?? -1}|${p.excludePatterns?.join('\0') ?? ''}`;

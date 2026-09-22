@@ -26,7 +26,7 @@ import { isEdgeVisible } from './visibility.js';
  *   at?: number,
  * }} options
  * @returns {{ targets: Record<string, number>, levels: Record<string, number>,
- *   idFor: (path: string) => string | null }}
+ *   count: number, idFor: (path: string) => string | null }}
  */
 export function syncBodies(layout, state, commitIndex, options) {
   const {
@@ -62,5 +62,5 @@ export function syncBodies(layout, state, commitIndex, options) {
     forceRestart: commitIndex === 0,
   });
 
-  return { targets, levels, idFor: index.idFor };
+  return { targets, levels, count: bodies.length, idFor: index.idFor };
 }
