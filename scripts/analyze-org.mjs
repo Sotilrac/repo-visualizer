@@ -53,7 +53,11 @@ export function selectRepos(discovered, config) {
   const settings = new Map((config.repos ?? []).map((repo) => [repo.name, repo]));
   return discovered
     .filter((repo) => (settings.get(repo.name)?.lod ?? 1) > 0)
-    .map((repo) => ({ ...repo, project: settings.get(repo.name)?.project }));
+    .map((repo) => ({
+      ...repo,
+      lod: settings.get(repo.name)?.lod ?? 1,
+      project: settings.get(repo.name)?.project,
+    }));
 }
 
 /** Run `work` over `items`, `limit` at a time. */
@@ -96,11 +100,20 @@ async function main() {
     const result = await walkRepo(repo.path, { since: window.since, until: window.until });
     done += 1;
     process.stdout.write(`\r  ${done}/${selected.length} repos`);
-    return { ...result, name: repo.name, remote: repo.remote, project: repo.project };
+    return {
+      ...result,
+      name: repo.name,
+      remote: repo.remote,
+      lod: repo.lod,
+      project: repo.project,
+    };
   });
   process.stdout.write('\n');
 
-  const { manifest, shards } = buildDataset(histories, { window });
+  const { manifest, shards } = buildDataset(histories, {
+    window,
+    folderDepth: config.defaults?.folderDepth ?? 2,
+  });
 
   mkdirSync(path.join(args.out, 'shards'), { recursive: true });
   writeFileSync(path.join(args.out, 'manifest.json'), JSON.stringify(manifest));

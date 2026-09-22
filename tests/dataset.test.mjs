@@ -258,3 +258,38 @@ describe('a commit that changes nothing visible', () => {
     expect(dataset.manifest.repos[0].commits).toBe(0);
   });
 });
+
+describe('what the app needs to draw a repo', () => {
+  it('carries the level of detail through to the manifest', () => {
+    const dataset = buildDataset([
+      {
+        ...walked('battery', [commit('a', '2021-01-01T10:00:00Z', ada, [change('a.js')])]),
+        lod: 3,
+      },
+    ]);
+
+    expect(dataset.manifest.repos[0].lod).toBe(3);
+  });
+
+  it('defaults a repo with no level set to one bubble', () => {
+    const dataset = buildDataset([walked('battery', [])]);
+
+    expect(dataset.manifest.repos[0].lod).toBe(1);
+  });
+
+  it('carries the project, so repos can be grouped', () => {
+    const dataset = buildDataset([{ ...walked('battery', []), project: 'power' }]);
+
+    expect(dataset.manifest.repos[0].project).toBe('power');
+  });
+
+  it('carries the folder depth the config asked for', () => {
+    const dataset = buildDataset([], { folderDepth: 3 });
+
+    expect(dataset.manifest.folderDepth).toBe(3);
+  });
+
+  it('defaults the folder depth when the config says nothing', () => {
+    expect(buildDataset([]).manifest.folderDepth).toBe(2);
+  });
+});

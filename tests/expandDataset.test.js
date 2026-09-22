@@ -35,8 +35,8 @@ describe('expandDataset', () => {
 
   it('lists every repo, so the header can name them', () => {
     expect(dataset.repos).toEqual([
-      { name: 'battery', remote: 'https://github.com/Acme/battery' },
-      { name: 'core', remote: null },
+      { name: 'battery', remote: 'https://github.com/Acme/battery', lod: 1 },
+      { name: 'core', remote: null, lod: 1 },
     ]);
   });
 
@@ -138,5 +138,37 @@ describe('the stats the commit card reads', () => {
     });
 
     expect(empty.commits[0].stats).toEqual({ filesChanged: 0, insertions: 0, deletions: 0 });
+  });
+});
+
+describe('the drawing settings', () => {
+  const withLod = {
+    ...manifest,
+    folderDepth: 3,
+    repos: [
+      { name: 'battery', remote: null, lod: 3 },
+      { name: 'core', remote: null, lod: 1, project: 'power' },
+    ],
+  };
+
+  it('carries the level of detail per repo', () => {
+    const dataset = expandDataset(withLod, shards);
+
+    expect(dataset.repos.map((r) => r.lod)).toEqual([3, 1]);
+  });
+
+  it('carries the project a repo belongs to', () => {
+    expect(expandDataset(withLod, shards).repos[1].project).toBe('power');
+  });
+
+  it('carries the folder depth', () => {
+    expect(expandDataset(withLod, shards).folderDepth).toBe(3);
+  });
+
+  it('defaults both when an older dataset does not say', () => {
+    const dataset = expandDataset(manifest, shards);
+
+    expect(dataset.folderDepth).toBe(2);
+    expect(dataset.repos[0].lod).toBe(1);
   });
 });

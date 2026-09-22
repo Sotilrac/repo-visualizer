@@ -17,6 +17,7 @@
  * @property {string} name
  * @property {string | null} [remote]
  * @property {string} [project]
+ * @property {number} [lod]  0 hidden, 1 bubble, 2 folders, 3 files
  * @property {any[]} commits  oldest first, as the repo walk produced them
  */
 
@@ -43,9 +44,15 @@ function interner(keyOf = (value) => value) {
 
 /**
  * @param {WalkedRepo[]} repos
- * @param {{ window?: { since: string | null, until: string | null } }} [options]
+ * @param {{
+ *   window?: { since: string | null, until: string | null },
+ *   folderDepth?: number,
+ * }} [options]
  */
-export function buildDataset(repos, { window = { since: null, until: null } } = {}) {
+export function buildDataset(
+  repos,
+  { window = { since: null, until: null }, folderDepth = 2 } = {},
+) {
   // `git log --since` filters on the committer date, and a commit shows its
   // author date, so a 2015 commit rebased in 2021 gets through the git
   // filter and then lands in a 2015 shard. Filter again on the date that is
@@ -108,6 +115,9 @@ export function buildDataset(repos, { window = { since: null, until: null } } = 
     return {
       name: repo.name,
       remote: repo.remote ?? null,
+      // The app needs these to decide what to draw, and it cannot read the
+      // config, so they travel with the dataset.
+      lod: repo.lod ?? 1,
       ...(repo.project ? { project: repo.project } : {}),
       commits: kept,
       files: touched.size,
@@ -127,6 +137,7 @@ export function buildDataset(repos, { window = { since: null, until: null } } = 
   const manifest = {
     generatedAt: new Date().toISOString(),
     window,
+    folderDepth,
     repos: manifestRepos,
     authors: authors.values,
     paths: paths.values,

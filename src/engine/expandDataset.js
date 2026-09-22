@@ -32,6 +32,8 @@ export function expandDataset(manifest, shards) {
   const repos = (manifest.repos ?? []).map((repo) => ({
     name: repo.name,
     remote: repo.remote ?? null,
+    lod: repo.lod ?? 1,
+    ...(repo.project ? { project: repo.project } : {}),
   }));
 
   const commits = Object.keys(shards)
@@ -72,6 +74,7 @@ export function expandDataset(manifest, shards) {
     repo: repos.length === 1 ? repos[0].name : `${repos.length} repos`,
     repos,
     generatedAt: manifest.generatedAt,
+    folderDepth: manifest.folderDepth ?? 2,
     totalCommits: commits.length,
     exclude: manifest.exclude ?? [],
     commits,
