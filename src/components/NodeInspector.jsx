@@ -1,5 +1,10 @@
 import { clusterColorFor } from '../engine/colors.js';
-import { getDepsForPath, getTouchCommitsForPath, topLevelDir } from '../engine/graphState.js';
+import {
+  getDepsForPath,
+  getTouchCommitsForPath,
+  summarizeSubtree,
+  topLevelDir,
+} from '../engine/graphState.js';
 
 const NO_IMPORTS_HELP =
   'No import links for this file at the current commit. Scrub the timeline toward the end of the project, or re-run npm run analyze -- /path/to/repo so changes include resolvedImports (JS/TS, Python, Go, and other supported languages).';
@@ -81,15 +86,20 @@ export default function NodeInspector({
   if (!path || !state) return null;
 
   const graphNode = state.nodes.get(path);
+  // A repo or folder bubble is not a file, so what it holds is rolled up
+  // from the files underneath it.
+  const held = graphNode ? null : summarizeSubtree(state, path);
   const { inbound, outbound } = getDepsForPath(state, path);
-  const touches = getTouchCommitsForPath(commits, path).slice(-12).reverse();
+  const touches = (held ? held.touches : getTouchCommitsForPath(commits, path))
+    .slice(-12)
+    .reverse();
 
   const dependsOn = outbound.map((e) => e.to).slice(0, 16);
   const importedIn = inbound.map((e) => e.from).slice(0, 16);
   const hasGraph = outbound.length + inbound.length > 0;
 
   return (
-    <aside className="node-inspector" role="dialog" aria-label="File details">
+    <aside className="node-inspector" role="dialog" aria-label="Node details">
       <div className="node-inspector-header">
         <div className="node-inspector-title-row">
           <h3 className="node-inspector-path">{path}</h3>
@@ -105,6 +115,14 @@ export default function NodeInspector({
             <span>{graphNode.dir}</span>
             <span>{graphNode.commits} commits</span>
             <span>churn {Math.round(graphNode.churn)}</span>
+          </div>
+        )}
+        {held && held.files > 0 && (
+          <div className="node-inspector-meta">
+            <span>{held.dir}</span>
+            <span>{held.files} files</span>
+            <span>{held.commits} commits</span>
+            <span>churn {Math.round(held.churn)}</span>
           </div>
         )}
         {dependsOn.length > 0 && (

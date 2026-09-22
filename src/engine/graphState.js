@@ -515,3 +515,32 @@ export function clusterPalette(state, allClusters = null) {
 
   return palette;
 }
+
+/**
+ * What a container holds, for a repo or folder the user clicked on.
+ *
+ * At most levels of detail the thing on screen is not a file, so the
+ * inspector has no node to read. The files are all still in the state, and
+ * the container's id is the prefix they share.
+ *
+ * @param {any} state
+ * @param {string} id an entity id, with or without a `~project/` prefix
+ * @returns {{ dir: string, files: number, commits: number, churn: number, touches: number[] }}
+ */
+export function summarizeSubtree(state, id) {
+  const prefix = id.startsWith('~') ? id.slice(id.indexOf('/') + 1) : id;
+  const summary = { dir: topLevelDir(prefix), files: 0, commits: 0, churn: 0, touches: [] };
+  const touched = new Set();
+
+  for (const [path, node] of state.nodes) {
+    if (node.deleted) continue;
+    if (path !== prefix && !path.startsWith(`${prefix}/`)) continue;
+    summary.files += 1;
+    summary.commits += node.commits ?? 0;
+    summary.churn += node.churn ?? 0;
+    for (const idx of node.touchCommits ?? []) touched.add(idx);
+  }
+
+  summary.touches = [...touched].sort((a, b) => a - b);
+  return summary;
+}
