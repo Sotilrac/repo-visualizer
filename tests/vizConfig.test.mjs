@@ -279,7 +279,7 @@ describe('a person whose display name changes', () => {
       { id: 'grace', name: 'Grace', emails: ['grace@acme.com'], names: ['Grace'], commits: 1 },
     ]);
 
-    expect(config.people.map((p) => p.id).sort()).toEqual(['grace', 'ghopper']);
+    expect(config.people.map((p) => p.id).sort()).toEqual(['ghopper', 'grace']);
   });
 });
 

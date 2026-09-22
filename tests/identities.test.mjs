@@ -104,7 +104,7 @@ describe('bucketIdentities', () => {
       id(['Donald Knuth', 'dknuth@acme.com', 3]),
     ]);
 
-    expect(people.map((p) => p.name).sort()).toEqual(['Margaret Hamilton', 'Donald Knuth']);
+    expect(people.map((p) => p.name).sort()).toEqual(['Donald Knuth', 'Margaret Hamilton']);
   });
 
   it('keeps a malformed address on the person it belongs to', () => {

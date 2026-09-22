@@ -5,6 +5,8 @@ dist
 .env.local
 public/data/*.json
 !public/data/demo.json
+# The analyzed history itself: commit messages and shas from private repos.
+public/data/shards/
 # Copied in from a config by `make people`. Generated, and not this
 # repository's to carry: they are pictures of real people.
 public/data/avatars/
