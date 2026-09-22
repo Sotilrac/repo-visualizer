@@ -2,7 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildScan, parseArgs } from '../scripts/scan.mjs';
 
-const emptyStats = { commits: 0, files: 0, first: null, last: null, identities: [] };
+const emptyStats = { commits: 0, files: 0, folders: 0, first: null, last: null, identities: [] };
 
 describe('parseArgs', () => {
   it('takes the root from the first positional argument', () => {
@@ -57,6 +57,7 @@ describe('buildScan', () => {
       ? {
           commits: 3,
           files: 9,
+          folders: 2,
           first: '2021-01-01',
           last: '2023-01-01',
           identities: [
@@ -67,6 +68,7 @@ describe('buildScan', () => {
       : {
           commits: 1,
           files: 2,
+          folders: 1,
           first: '2022-01-01',
           last: '2022-01-01',
           identities: [{ name: 'ada', email: 'ada@acme.com', commits: 1 }],
@@ -79,6 +81,7 @@ describe('buildScan', () => {
         remote: 'https://github.com/Acme/battery',
         commits: 3,
         files: 9,
+        folders: 2,
         first: '2021-01-01',
         last: '2023-01-01',
       },
@@ -87,6 +90,7 @@ describe('buildScan', () => {
         remote: 'https://github.com/Acme/pace',
         commits: 1,
         files: 2,
+        folders: 1,
         first: '2022-01-01',
         last: '2022-01-01',
       },

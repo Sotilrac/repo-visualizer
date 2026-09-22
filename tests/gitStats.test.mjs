@@ -123,3 +123,34 @@ describe('readRepoStats', () => {
     expect(readRepoStats(dir).commits).toBe(0);
   });
 });
+
+describe('the folder count a level-2 preview needs', () => {
+  it('counts the distinct folders its files sit in', () => {
+    commit('one', { 'src/a.js': 'a\n', 'lib/b.js': 'b\n' });
+
+    expect(readRepoStats(dir).folders).toBe(2);
+  });
+
+  it('counts a folder once however many files it holds', () => {
+    commit('one', { 'src/a.js': 'a\n', 'src/b.js': 'b\n', 'src/c.js': 'c\n' });
+
+    expect(readRepoStats(dir).folders).toBe(1);
+  });
+
+  it('nests to the depth it is given', () => {
+    commit('one', { 'src/deep/a.js': 'a\n' });
+
+    expect(readRepoStats(dir, { folderDepth: 1 }).folders).toBe(1);
+    expect(readRepoStats(dir, { folderDepth: 2 }).folders).toBe(2);
+  });
+
+  it('does not count a file at the repo root as a folder', () => {
+    commit('one', { 'a.js': 'a\n' });
+
+    expect(readRepoStats(dir).folders).toBe(0);
+  });
+
+  it('is zero for a repo with no files', () => {
+    expect(readRepoStats(dir).folders).toBe(0);
+  });
+});

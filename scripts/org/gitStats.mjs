@@ -17,6 +17,8 @@ const FIELD = '\u001f';
  * @typedef {object} RepoStats
  * @property {number} commits
  * @property {number} files    distinct paths touched, after the analyzer's excludes
+ * @property {number} folders  distinct folders those files sit in, to the
+ *   configured depth; what a level-2 repo would draw
  * @property {string | null} first  author date of the oldest commit, as YYYY-MM-DD
  * @property {string | null} last
  * @property {Array<{ name: string, email: string, commits: number }>} identities
@@ -24,10 +26,10 @@ const FIELD = '\u001f';
 
 /**
  * @param {string} repoPath
- * @param {{ since?: string | null, until?: string | null }} [window]
+ * @param {{ since?: string | null, until?: string | null, folderDepth?: number }} [window]
  * @returns {RepoStats}
  */
-export function readRepoStats(repoPath, { since = null, until = null } = {}) {
+export function readRepoStats(repoPath, { since = null, until = null, folderDepth = 2 } = {}) {
   const args = [
     '-C',
     repoPath,
@@ -56,6 +58,7 @@ export function readRepoStats(repoPath, { since = null, until = null } = {}) {
   /** @type {Map<string, { name: string, email: string, commits: number }>} */
   const identities = new Map();
   const files = new Set();
+  const folders = new Set();
   let commits = 0;
   let first = null;
   let last = null;
@@ -78,13 +81,20 @@ export function readRepoStats(repoPath, { since = null, until = null } = {}) {
 
     for (const line of pathLines) {
       const file = line.trim();
-      if (file && shouldIncludeFile(file)) files.add(file);
+      if (!file || !shouldIncludeFile(file)) continue;
+      files.add(file);
+      // The folders a level-2 view would draw: every prefix down to the
+      // configured depth, so the editor can show a real count instead of a
+      // guess from the file total.
+      const parts = file.split('/').slice(0, -1).slice(0, folderDepth);
+      for (let i = 1; i <= parts.length; i++) folders.add(parts.slice(0, i).join('/'));
     }
   }
 
   return {
     commits,
     files: files.size,
+    folders: folders.size,
     first,
     last,
     identities: [...identities.values()].sort((a, b) => b.commits - a.commits),

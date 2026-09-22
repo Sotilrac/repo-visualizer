@@ -82,6 +82,7 @@ export function buildScan(
       remote: repo.remote,
       commits: s.commits,
       files: s.files,
+      folders: s.folders,
       first: s.first,
       last: s.last,
     };
@@ -120,11 +121,12 @@ async function main() {
   // Teams come from the config once it has any, so adding a partner company
   // is an edit to the file rather than a flag on the command line.
   const teams = existing.teams?.length ? existing.teams : DEFAULT_TEAMS;
+  const folderDepth = existing.defaults?.folderDepth ?? 2;
   if (merge.length) console.log(`  ${merge.length} merge group(s) from the config`);
 
   const scan = buildScan(
     discovered,
-    (p) => readRepoStats(p, { since: args.since, until: args.until }),
+    (p) => readRepoStats(p, { since: args.since, until: args.until, folderDepth }),
     {
       teams,
       since: args.since,

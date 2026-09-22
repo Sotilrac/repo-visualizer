@@ -9,11 +9,14 @@
 const LEVELS = {
   0: { label: 'hidden', bodies: () => 0 },
   1: { label: 'one bubble', bodies: () => 1 },
-  2: { label: 'folders', bodies: (repo) => estimateFolders(repo) },
+  2: { label: 'folders', bodies: (repo) => repo.folders ?? estimateFolders(repo) },
   3: { label: 'files', bodies: (repo) => repo.files ?? 0 },
 };
 
-/** Folder count is not scanned; approximate it so the number is not a blank. */
+/**
+ * For a config written before the scan counted folders. A square root of the
+ * file count is a poor guess: it put Talaria at 33 folders when it has 254.
+ */
 function estimateFolders(repo) {
   const files = repo.files ?? 0;
   if (files === 0) return 0;
@@ -61,7 +64,7 @@ export default function LodPreview({ repo, lod }) {
       </svg>
       <span className="lod-caption">
         {bodies.toLocaleString()} {lod === 2 ? 'folders' : lod === 3 ? 'files' : 'bubble'}
-        {lod === 2 && <em> est.</em>}
+        {lod === 2 && repo.folders === undefined && <em> est.</em>}
       </span>
     </div>
   );
