@@ -41,6 +41,14 @@ export function expandDataset(manifest, shards) {
     .sort((a, b) => a.t - b.t)
     .map((commit) => {
       const author = authors[commit.a] ?? { name: '', email: '' };
+      const changes = (commit.c ?? []).map(([pathId, added, removed, status, imports]) => ({
+        path: paths[pathId],
+        added,
+        removed,
+        status: status === STATUS_DELETED ? 'D' : 'M',
+        resolvedImports: (imports ?? []).map((id) => paths[id]),
+      }));
+
       return {
         sha: commit.sha,
         shortSha: commit.sha,
@@ -49,13 +57,14 @@ export function expandDataset(manifest, shards) {
         authorEmail: author.email,
         message: commit.m,
         repo: repos[commit.r]?.name,
-        changes: (commit.c ?? []).map(([pathId, added, removed, status, imports]) => ({
-          path: paths[pathId],
-          added,
-          removed,
-          status: status === STATUS_DELETED ? 'D' : 'M',
-          resolvedImports: (imports ?? []).map((id) => paths[id]),
-        })),
+        // Derived rather than stored: the numbers are a sum of the changes,
+        // and the dataset is big enough without repeating them.
+        stats: {
+          filesChanged: changes.length,
+          insertions: changes.reduce((total, c) => total + c.added, 0),
+          deletions: changes.reduce((total, c) => total + c.removed, 0),
+        },
+        changes,
       };
     });
 

@@ -34,7 +34,7 @@ export default function CommitCard({
   author = null,
   collapsed = false,
   collapsible = false,
-  onToggleCollapse,
+  onToggleCollapse = () => {},
 }) {
   const [entering, setEntering] = useState(false);
   // commit.sha is a trigger, not an input: the enter animation has to replay
@@ -93,6 +93,10 @@ export default function CommitCard({
   // there is one, the commit's own author where there is not.
   const name = author?.name ?? commit.author;
   const initials = initialsFor(name || '?');
+  // A dataset written before these were derived, or one hand-made, has no
+  // stats. A missing count is not worth taking the whole page down for.
+  const stats = commit.stats ?? { filesChanged: 0, insertions: 0, deletions: 0 };
+  const changes = commit.changes ?? [];
   const hue = author?.hue;
 
   return (
@@ -123,13 +127,13 @@ export default function CommitCard({
       </div>
       <div className="stats">
         <span>
-          {commit.stats.filesChanged} file{commit.stats.filesChanged === 1 ? '' : 's'}
+          {stats.filesChanged} file{stats.filesChanged === 1 ? '' : 's'}
         </span>
-        <span className="ins">+{commit.stats.insertions}</span>
-        <span className="del">−{commit.stats.deletions}</span>
+        <span className="ins">+{stats.insertions}</span>
+        <span className="del">−{stats.deletions}</span>
       </div>
       <div className="changes-list">
-        {commit.changes.slice(0, 8).map((c) => (
+        {changes.slice(0, 8).map((c) => (
           <div className="change-row" key={c.path}>
             <span className={`status ${c.status || 'M'}`}>{c.status || 'M'}</span>
             <span className="path" title={c.path}>
@@ -137,10 +141,8 @@ export default function CommitCard({
             </span>
           </div>
         ))}
-        {commit.changes.length > 8 && (
-          <div style={{ color: 'var(--fg-dim)', paddingTop: 4 }}>
-            + {commit.changes.length - 8} more…
-          </div>
+        {changes.length > 8 && (
+          <div style={{ color: 'var(--fg-dim)', paddingTop: 4 }}>+ {changes.length - 8} more…</div>
         )}
       </div>
     </div>

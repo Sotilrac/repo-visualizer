@@ -120,3 +120,23 @@ describe('shardsForWindow', () => {
     ]);
   });
 });
+
+describe('the stats the commit card reads', () => {
+  const dataset = expandDataset(manifest, shards);
+
+  it('counts the files a commit changed', () => {
+    expect(dataset.commits[0].stats.filesChanged).toBe(1);
+  });
+
+  it('adds up the insertions and deletions', () => {
+    expect(dataset.commits[0].stats).toMatchObject({ insertions: 10, deletions: 2 });
+  });
+
+  it('is present on every commit, not only the ones with changes', () => {
+    const empty = expandDataset(manifest, {
+      2021: { commits: [{ t: 1609502400, r: 0, a: 0, sha: 'ddd4444', m: 'nothing', c: [] }] },
+    });
+
+    expect(empty.commits[0].stats).toEqual({ filesChanged: 0, insertions: 0, deletions: 0 });
+  });
+});
