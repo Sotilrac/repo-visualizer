@@ -1093,6 +1093,10 @@ a.repo-list-item:hover {
   font-weight: 700;
   font-size: 10px;
 }
+.commit-card .commit-byline .avatar-image {
+  background: none;
+  object-fit: cover;
+}
 
 .commit-card .stats {
   margin-top: 14px;

@@ -54,6 +54,8 @@ export default function ControlBar({
   style,
   onStyleChange,
   autoFit = true,
+  showActors = true,
+  onShowActorsChange,
   onAutoFitChange,
   onZoomIn,
   onZoomOut,
@@ -126,6 +128,19 @@ export default function ControlBar({
               <span className="toggle-switch-thumb" />
             </span>
             <span className="toggle-switch-label">Auto fit</span>
+          </button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showActors}
+            className={`toggle-switch${showActors ? ' is-on' : ''}`}
+            title="Show who made each commit, firing at the files they touched"
+            onClick={() => onShowActorsChange(!showActors)}
+          >
+            <span className="toggle-switch-track" aria-hidden="true">
+              <span className="toggle-switch-thumb" />
+            </span>
+            <span className="toggle-switch-label">People</span>
           </button>
           <div className="perf-control">
             <PerfModePicker perfMode={perfMode} onChange={onPerfModeChange} />

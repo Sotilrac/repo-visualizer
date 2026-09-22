@@ -3,6 +3,8 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { createActors } from '../engine/actors.js';
+import { createAvatarImages } from '../engine/avatarImages.js';
 import {
   applyCameraTransform,
   createCamera,
@@ -17,6 +19,7 @@ import { getDepsForPath, resolveFocusSet } from '../engine/graphState.js';
 import { createLayout } from '../engine/layout.js';
 import { drawRecordingOverlay } from '../engine/recordingOverlay.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
+import { drawActors } from './drawActors.js';
 
 export function useVisualizerCore({
   hostRef,
@@ -30,6 +33,8 @@ export function useVisualizerCore({
   onScreenDraw = null,
   onScreenOverlay = null,
   autoFit = true,
+  showActors = true,
+  resolveAuthor = null,
   selectedPath = null,
   selectedCluster = null,
   excludePatterns = [],
@@ -41,6 +46,9 @@ export function useVisualizerCore({
   const layoutRef = useRef(null);
   const cameraRef = useRef(createCamera());
   const ripplesRef = useRef([]);
+  const actorsRef = useRef(null);
+  if (!actorsRef.current) actorsRef.current = createActors();
+  const avatarsRef = useRef(createAvatarImages());
   const lastCommitIdxRef = useRef(-1);
   const stateRef = useRef(state);
   const paramsRef = useRef({
@@ -58,6 +66,7 @@ export function useVisualizerCore({
     onNodeClick,
     commitIndex,
     recordingOverlay,
+    showActors,
   });
   paramsRef.current = {
     draw,
@@ -74,6 +83,7 @@ export function useVisualizerCore({
     onNodeClick,
     commitIndex,
     recordingOverlay,
+    showActors,
   };
   stateRef.current = state;
 
@@ -265,6 +275,20 @@ export function useVisualizerCore({
         }
       }
 
+      // A beam triggers its file's ripple when it lands, so the two effects
+      // stay in step rather than both firing on the commit.
+      const landed = p.showActors ? actorsRef.current.tick(dt) : [];
+      for (const path of landed) {
+        ripplesRef.current.push({
+          path,
+          intensity: 0.6,
+          status: 'M',
+          bornAt: now,
+          ttl: 2400,
+          progress: 0,
+        });
+      }
+
       p.draw(ctx, {
         w,
         h,
@@ -285,6 +309,15 @@ export function useVisualizerCore({
         cameraScale: cam.scale,
         excludePatterns: p.excludePatterns,
       });
+
+      if (p.showActors) {
+        drawActors(ctx, {
+          actors: actorsRef.current.list(),
+          beams: actorsRef.current.beams(),
+          images: avatarsRef.current,
+          cameraScale: cam.scale,
+        });
+      }
 
       ctx.restore();
 
@@ -310,6 +343,13 @@ export function useVisualizerCore({
     };
   }, []);
 
+  // The people export arrives after the first render, so hand the resolver
+  // over whenever it changes instead of freezing the one that existed at
+  // mount. Without this every address is its own actor.
+  useEffect(() => {
+    if (resolveAuthor) actorsRef.current.setResolver(resolveAuthor);
+  }, [resolveAuthor]);
+
   useEffect(() => {
     if (!layoutRef.current || !state) return;
     layoutRef.current.sync(state, commitIndex, {
@@ -323,15 +363,27 @@ export function useVisualizerCore({
     if (paramsRef.current.selectedPath || paramsRef.current.selectedCluster) return;
     if (commitIndex >= 0 && state?.lastCommit && commitIndex > lastCommitIdxRef.current) {
       const now = performance.now();
-      for (const ch of state.lastCommit.changes) {
-        ripplesRef.current.push({
-          path: ch.path,
-          intensity: Math.min(1, ((ch.added || 0) + (ch.removed || 0)) / 80),
-          status: ch.status || 'M',
-          bornAt: now,
-          ttl: 2400,
-          progress: 0,
-        });
+      const layout = layoutRef.current;
+      if (paramsRef.current.showActors) {
+        actorsRef.current.onCommit(
+          state.lastCommit,
+          Object.fromEntries((layout?.getNodes() ?? []).map((node) => [node.path, node])),
+          now,
+        );
+      }
+      // With actors on, the ripple waits for the beam. Without them it fires
+      // straight away, which is what the visualizer did before.
+      if (!paramsRef.current.showActors) {
+        for (const ch of state.lastCommit.changes) {
+          ripplesRef.current.push({
+            path: ch.path,
+            intensity: Math.min(1, ((ch.added || 0) + (ch.removed || 0)) / 80),
+            status: ch.status || 'M',
+            bornAt: now,
+            ttl: 2400,
+            progress: 0,
+          });
+        }
       }
       const host = hostRef.current;
       if (host && paramsRef.current.autoFit) {
@@ -340,6 +392,7 @@ export function useVisualizerCore({
         cam._fitted = false;
       }
     }
+    if (commitIndex < lastCommitIdxRef.current) actorsRef.current.clear();
     lastCommitIdxRef.current = commitIndex;
   }, [commitIndex, state, hostRef]);
 

@@ -10,6 +10,7 @@ import { startRecording } from './engine/recorder.js';
 import { primaryRepoAuthor } from './engine/recordingOverlay.js';
 import { useDataset } from './engine/useDataset.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
+import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
 import { useTimeline } from './engine/useTimeline.js';
 import { countVisibleNodes } from './engine/visibility.js';
 import {
@@ -58,6 +59,12 @@ export default function App() {
   const [selectedCluster, setSelectedCluster] = useState(null);
   const wasPlayingRef = useRef(false);
   const [autoFit, setAutoFit] = useState(() => loadBool('rv-auto-fit', true));
+  const [showActors, setShowActors] = useState(() => loadBool('rv-show-actors', true));
+  const directory = usePeople();
+  const resolveAuthor = useCallback(
+    (commit) => resolveFromDirectory(directory, commit),
+    [directory],
+  );
   const [perfMode, setPerfMode] = useState('auto');
   const [useWebGL, setUseWebGL] = useState(false);
   const [webglFailed, setWebglFailed] = useState(false);
@@ -176,6 +183,8 @@ export default function App() {
     commitIndex: timeline.index,
     palette,
     autoFit,
+    showActors,
+    resolveAuthor,
     selectedPath,
     selectedCluster,
     excludePatterns,
@@ -197,6 +206,14 @@ export default function App() {
       /* ignore */
     }
   }, [autoFit]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rv-show-actors', String(showActors));
+    } catch {
+      // Private browsing, or storage refused. The toggle still works.
+    }
+  }, [showActors]);
 
   useEffect(() => {
     try {
@@ -500,6 +517,7 @@ export default function App() {
       />
       <div className="info-stack">
         <CommitCard
+          author={currentCommit ? resolveAuthor(currentCommit) : null}
           commit={currentCommit}
           collapsible={!compactLayout}
           collapsed={!compactLayout && commitCardCollapsed}
@@ -547,6 +565,8 @@ export default function App() {
         onStyleChange={setStyle}
         autoFit={autoFit}
         onAutoFitChange={setAutoFit}
+        showActors={showActors}
+        onShowActorsChange={setShowActors}
         onZoomIn={() => cameraApiRef.current?.zoomIn()}
         onZoomOut={() => cameraApiRef.current?.zoomOut()}
         onZoomReset={() => cameraApiRef.current?.reset()}

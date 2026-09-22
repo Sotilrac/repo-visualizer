@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { initialsFor } from '../shared/avatarTile.js';
 
 const CollapseIcon = () => (
   <svg
@@ -30,6 +31,7 @@ const ExpandIcon = () => (
 
 export default function CommitCard({
   commit,
+  author = null,
   collapsed = false,
   collapsible = false,
   onToggleCollapse,
@@ -87,11 +89,11 @@ export default function CommitCard({
     );
   }
 
-  const initials = (commit.author || '?')
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('');
+  // The same person the graph draws: the config's name and avatar where
+  // there is one, the commit's own author where there is not.
+  const name = author?.name ?? commit.author;
+  const initials = initialsFor(name || '?');
+  const hue = author?.hue;
 
   return (
     <div className={`commit-card ${entering ? 'entering' : ''}`}>
@@ -99,8 +101,17 @@ export default function CommitCard({
       <div className="commit-sha">{commit.shortSha}</div>
       <div className="commit-message">{commit.message}</div>
       <div className="commit-byline">
-        <span className="avatar">{initials}</span>
-        <span>{commit.author}</span>
+        {author?.avatar ? (
+          <img className="avatar avatar-image" src={author.avatar} alt="" width="22" height="22" />
+        ) : (
+          <span
+            className="avatar"
+            style={hue === undefined ? undefined : { background: `hsl(${hue} 52% 42%)` }}
+          >
+            {initials}
+          </span>
+        )}
+        <span>{name}</span>
         <span style={{ color: 'var(--fg-dim)' }}>·</span>
         <span>
           {new Date(commit.date).toLocaleDateString('en-US', {
