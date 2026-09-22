@@ -1,0 +1,442 @@
+/* The config editor. Shares the app's tokens; everything here is dev-only chrome. */
+
+/*
+ * The app is a fullscreen canvas and locks the page with overflow: hidden.
+ * This page is a long table and has to scroll. Only the editor loads this
+ * stylesheet, so the override needs no extra selector.
+ */
+html,
+body,
+#root {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.editor {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  color: var(--fg);
+}
+
+.editor-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 16px 24px;
+  margin-bottom: 20px;
+}
+
+.editor-header h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.editor-saved {
+  margin: 4px 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.editor-saved.is-visible {
+  opacity: 1;
+}
+
+.editor-path,
+.editor-counts,
+.editor-note {
+  margin: 4px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+
+.editor-counts {
+  margin-left: auto;
+}
+
+.editor-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.editor-tab {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.editor-tab.is-active {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.editor-search {
+  /* The margin lives here rather than on the input, so the clear button
+     centres on the field and not on the field plus its gap. */
+  position: relative;
+  display: block;
+  margin-bottom: 14px;
+}
+
+.editor-search input {
+  width: 100%;
+  padding: 8px 34px 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.editor-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  /* The glyph's own metrics sit it low in the circle. */
+  padding: 0 0 2px;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.editor-search-clear:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--fg);
+}
+
+.editor-error {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--accent-hot);
+  border-radius: 8px;
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.editor-empty {
+  max-width: 640px;
+  margin: 12vh auto;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.editor-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.editor-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg, #05060d);
+}
+
+.editor-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
+}
+
+.editor-table tr.is-picked td {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.editor-table tr.is-hidden-repo td {
+  opacity: 0.45;
+}
+
+.editor-number {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.editor-dates,
+.editor-emails {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.editor-table a {
+  color: var(--fg);
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(138, 180, 255, 0.35);
+}
+
+.editor-table a:hover,
+.editor-table a:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.editor-id {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+
+.editor-aka {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+
+.editor-text,
+.editor-table select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.editor-text {
+  width: 100%;
+  max-width: 220px;
+}
+
+.editor-avatar-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.editor-avatar--empty {
+  display: inline-block;
+  border: 1px dashed var(--border);
+}
+
+.editor-avatar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.editor-avatar-actions button,
+.editor-merges button,
+.editor-bar button {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.editor-avatar-actions button:hover,
+.editor-merges button:hover,
+.editor-bar button:hover {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.editor-lod {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.editor-lod-btn {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.editor-lod-btn:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.editor-lod-btn:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.editor-lod-btn.is-active {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.lod-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lod-preview--hidden {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+
+.lod-caption {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-muted);
+}
+
+.lod-caption em {
+  font-style: normal;
+  opacity: 0.6;
+}
+
+.lod-repo {
+  fill: rgba(120, 170, 255, 0.12);
+  stroke: rgba(120, 170, 255, 0.5);
+}
+
+.lod-folder {
+  fill: rgba(120, 170, 255, 0.75);
+}
+
+.lod-file {
+  fill: rgba(200, 220, 255, 0.85);
+}
+
+.editor-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.editor-merges {
+  margin-top: 28px;
+}
+
+.editor-merges h2 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.editor-merges ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editor-merges li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.editor-bar--quiet {
+  border-color: var(--border);
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.editor-sort {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.editor-sort:hover {
+  color: var(--fg);
+}
+
+.editor-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.editor-hues {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.editor-hue {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.editor-hue.is-active {
+  border-color: var(--fg);
+}
+
+.editor-text--wide {
+  max-width: 320px;
+}
