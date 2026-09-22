@@ -1,10 +1,19 @@
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildScan, parseArgs } from '../scripts/scan.mjs';
 
 const emptyStats = { commits: 0, files: 0, folders: 0, first: null, last: null, identities: [] };
 
 describe('parseArgs', () => {
+  // `make` exports whatever is in .env, and one of those is a config path,
+  // which would otherwise stand in for the argument under test.
+  beforeEach(() => {
+    vi.stubEnv('REPO_VIZ_CONFIG', '');
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('takes the root from the first positional argument', () => {
     expect(parseArgs(['/tmp/tree']).root).toBe('/tmp/tree');
   });
