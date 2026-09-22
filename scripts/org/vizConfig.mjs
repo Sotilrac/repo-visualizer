@@ -192,6 +192,7 @@ function mergeRows(doc, section, scanned, key, generated, defaults) {
  *   people?: any[],
  *   teams?: any[],
  *   window?: { since: string | null, until: string | null },
+ *   owners?: string[],
  * }} scan
  * @param {{ repropose?: boolean, merged?: string[] }} [options] repropose
  *   overwrites every person's `as`, including ones set by hand; the level of
@@ -201,6 +202,9 @@ function mergeRows(doc, section, scanned, key, generated, defaults) {
  */
 export function mergeScan(doc, scan, { repropose = false, merged = [] } = {}) {
   if (scan.window) ensureMap(doc, 'window', scan.window);
+  // Recorded so `analyze-org` filters the same way the scan did, without
+  // being told again on the command line.
+  if (scan.owners?.length) ensureMap(doc, 'owners', scan.owners);
   ensureMap(doc, 'defaults', DEFAULTS);
   ensureTeams(doc, scan.teams ?? DEFAULT_TEAMS);
 

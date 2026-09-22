@@ -64,12 +64,13 @@ export function parseArgs(argv) {
  *   since?: string | null,
  *   until?: string | null,
  *   merge?: string[][],
+ *   owners?: string[],
  * }} options
  */
 export function buildScan(
   discovered,
   stats,
-  { teams = DEFAULT_TEAMS, since = null, until = null, merge = [] } = {},
+  { teams = DEFAULT_TEAMS, since = null, until = null, merge = [], owners = [] } = {},
 ) {
   /** @type {Array<{ name: string, email: string, commits: number, repos: string[] }>} */
   const identities = [];
@@ -96,7 +97,7 @@ export function buildScan(
   }));
   const people = applyMergeList(grouped, merge);
 
-  return { repos, people, teams, window: { since, until } };
+  return { repos, people, teams, owners, window: { since, until } };
 }
 
 async function main() {
@@ -129,6 +130,7 @@ async function main() {
       since: args.since,
       until: args.until,
       merge,
+      owners: args.owners,
     },
   );
 

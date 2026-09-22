@@ -437,3 +437,21 @@ describe('the previous contents', () => {
     expect(existsSync(`${file}.bak`)).toBe(false);
   });
 });
+
+describe('the owners a scan was run for', () => {
+  it('are recorded, so later commands do not need the flag again', () => {
+    const config = round({ repos, people, owners: ['Acme'] });
+
+    expect(config.owners).toEqual(['Acme']);
+  });
+
+  it('are left alone once set, since they are a decision', () => {
+    round({ repos, people, owners: ['Acme'] });
+
+    expect(round({ repos, people, owners: ['Globex'] }).owners).toEqual(['Acme']);
+  });
+
+  it('are absent when a scan names none', () => {
+    expect(round({ repos, people }).owners).toBeUndefined();
+  });
+});
