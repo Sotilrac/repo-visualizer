@@ -18,7 +18,8 @@
     "prepare": "husky",
     "scan": "node scripts/scan.mjs",
     "edit": "vite --open /config.html",
-    "people": "node scripts/people.mjs"
+    "people": "node scripts/people.mjs",
+    "analyze-org": "node scripts/analyze-org.mjs"
   },
   "dependencies": {
     "d3-force": "^3.0.0",

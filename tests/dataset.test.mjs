@@ -199,3 +199,62 @@ describe('the manifest', () => {
     expect(dataset.shards).toEqual({});
   });
 });
+
+describe('the window', () => {
+  const walkedWith = (dates) =>
+    walked(
+      'battery',
+      dates.map((date, i) => commit(`c${i}`, date, ada, [change('a.js')])),
+    );
+
+  it('drops a commit authored before it', () => {
+    const dataset = buildDataset([walkedWith(['2015-01-01T10:00:00Z', '2021-01-01T10:00:00Z'])], {
+      window: { since: '2020-10-22', until: null },
+    });
+
+    expect(Object.keys(dataset.shards)).toEqual(['2021']);
+  });
+
+  it('drops a commit authored after it', () => {
+    const dataset = buildDataset([walkedWith(['2021-01-01T10:00:00Z', '2030-01-01T10:00:00Z'])], {
+      window: { since: null, until: '2025-01-01' },
+    });
+
+    expect(Object.keys(dataset.shards)).toEqual(['2021']);
+  });
+
+  it('keeps everything when the window is open', () => {
+    const dataset = buildDataset([walkedWith(['2015-01-01T10:00:00Z', '2021-01-01T10:00:00Z'])]);
+
+    expect(Object.keys(dataset.shards).sort()).toEqual(['2015', '2021']);
+  });
+
+  it('counts only what it kept', () => {
+    const dataset = buildDataset([walkedWith(['2015-01-01T10:00:00Z', '2021-01-01T10:00:00Z'])], {
+      window: { since: '2020-10-22', until: null },
+    });
+
+    expect(dataset.manifest.repos[0].commits).toBe(1);
+  });
+});
+
+describe('a commit that changes nothing visible', () => {
+  it('is left out, since it would draw nothing', () => {
+    const dataset = buildDataset([
+      walked('battery', [
+        commit('empty', '2021-03-04T10:00:00Z', ada, []),
+        commit('real', '2021-03-05T10:00:00Z', ada, [change('a.js')]),
+      ]),
+    ]);
+
+    expect(dataset.shards[2021].commits.map((c) => c.sha)).toEqual(['real']);
+  });
+
+  it('is not counted against its repo', () => {
+    const dataset = buildDataset([
+      walked('battery', [commit('empty', '2021-03-04T10:00:00Z', ada, [])]),
+    ]);
+
+    expect(dataset.manifest.repos[0].commits).toBe(0);
+  });
+});

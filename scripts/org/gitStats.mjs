@@ -8,6 +8,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { shouldIncludeFile } from '../includeFile.mjs';
+import { defaultBranchOf } from './defaultBranch.mjs';
 
 const RECORD = '\u001e';
 const FIELD = '\u001f';
@@ -31,7 +32,9 @@ export function readRepoStats(repoPath, { since = null, until = null } = {}) {
     '-C',
     repoPath,
     'log',
-    '--all',
+    // The default branch, matching what the dataset walks, so the counts you
+    // read while setting a level of detail describe what will be drawn.
+    defaultBranchOf(repoPath),
     '--no-renames',
     '--name-only',
     `--format=${RECORD}%H${FIELD}%aI${FIELD}%aN${FIELD}%aE`,

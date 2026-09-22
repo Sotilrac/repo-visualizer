@@ -3,7 +3,7 @@
  *
  * Six years across a hundred repos is tens of thousands of commits touching
  * hundreds of thousands of paths, and the same path string appears in every
- * commit that touched it. Written plainly that is a file too large to serve.
+ * commit that touched it. Written out in full that is too large to serve.
  * So paths and authors are interned into tables in the manifest, a commit
  * refers to them by index, and the commits are split into one file per
  * calendar year. The app loads the manifest and only the years its window
@@ -46,6 +46,13 @@ function interner(keyOf = (value) => value) {
  * @param {{ window?: { since: string | null, until: string | null } }} [options]
  */
 export function buildDataset(repos, { window = { since: null, until: null } } = {}) {
+  // `git log --since` filters on the committer date, and a commit shows its
+  // author date, so a 2015 commit rebased in 2021 gets through the git
+  // filter and then lands in a 2015 shard. Filter again on the date that is
+  // actually stored.
+  const from = window.since ? Date.parse(window.since) : Number.NEGATIVE_INFINITY;
+  const to = window.until ? Date.parse(window.until) : Number.POSITIVE_INFINITY;
+
   const paths = interner();
   const authors = interner((author) => `${author.name}\u0000${author.email}`);
 
@@ -54,8 +61,13 @@ export function buildDataset(repos, { window = { since: null, until: null } } = 
   const manifestRepos = repos.map((repo, repoId) => {
     const touched = new Set();
 
+    let kept = 0;
+
     for (const commit of repo.commits ?? []) {
-      const time = Math.floor(Date.parse(commit.date) / 1000);
+      const at = Date.parse(commit.date);
+      if (at < from || at > to) continue;
+
+      const time = Math.floor(at / 1000);
       const changes = [];
 
       for (const change of commit.changes ?? []) {
@@ -78,6 +90,11 @@ export function buildDataset(repos, { window = { since: null, until: null } } = 
         changes.push(entry);
       }
 
+      // A commit touching only excluded files has no beam target and no node
+      // to change. It would advance the clock and draw an empty frame.
+      if (changes.length === 0) continue;
+
+      kept += 1;
       merged.push({
         t: time,
         r: repoId,
@@ -92,7 +109,7 @@ export function buildDataset(repos, { window = { since: null, until: null } } = 
       name: repo.name,
       remote: repo.remote ?? null,
       ...(repo.project ? { project: repo.project } : {}),
-      commits: repo.commits?.length ?? 0,
+      commits: kept,
       files: touched.size,
     };
   });

@@ -9,7 +9,7 @@ NPM := npm
 export
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev build preview check lint typecheck test test-watch coverage fix scan edit people analyze viz demo clean distclean
+.PHONY: help install dev build preview check lint typecheck test test-watch coverage fix scan edit people analyze analyze-org all viz demo clean distclean
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -65,7 +65,18 @@ analyze: ## Analyze one repository (REPO from .env)
 	@test -n "$(REPO)" || { echo "set REPO in .env, or make analyze REPO=../some-repo"; exit 1; }
 	$(NPM) run analyze -- $(REPO) $(ARGS)
 
-viz: ## Analyze a repo, export the config's people, and open it (REPO from .env)
+analyze-org: ## Analyze every repo the config does not hide, into one dataset
+	@test -n "$(CONFIG)$(REPO_VIZ_CONFIG)" || { echo "set REPO_VIZ_CONFIG in .env"; exit 1; }
+	@test -n "$(ROOT)" || { echo "set ROOT in .env, or make analyze-org ROOT=~/src"; exit 1; }
+	$(NPM) run analyze-org -- --root=$(ROOT) $(if $(CONFIG),--config=$(CONFIG),) $(ARGS)
+
+all: ## Everything end to end: scan, export people, analyze every repo, open it
+	$(MAKE) scan
+	$(MAKE) people
+	$(MAKE) analyze-org
+	$(NPM) run dev
+
+viz: ## Analyze one repo, export the config's people, and open it (REPO from .env)
 	@test -n "$(REPO)" || { echo "set REPO in .env, or make viz REPO=~/src/thing"; exit 1; }
 	$(MAKE) analyze REPO=$(REPO)
 	$(MAKE) people $(if $(CONFIG),CONFIG=$(CONFIG),)
