@@ -4,7 +4,7 @@
   "description": "An animated, cinematic visualization of a git repository's evolution over time.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --open",
     "build": "vite build",
     "preview": "vite preview",
     "analyze": "node scripts/analyze.mjs",
@@ -15,13 +15,17 @@
     "test": "vitest",
     "test:run": "vitest run",
     "coverage": "vitest run --coverage",
-    "prepare": "husky"
+    "prepare": "husky",
+    "scan": "node scripts/scan.mjs",
+    "edit": "vite --open /config.html",
+    "people": "node scripts/people.mjs"
   },
   "dependencies": {
     "d3-force": "^3.0.0",
     "gif.js": "^0.2.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",

@@ -3,8 +3,13 @@
 
 NPM := npm
 
+# Local settings, if you have made one. See .env.example. Values already in
+# the environment win, so a one-off `make scan ROOT=...` still overrides it.
+-include .env
+export
+
 .DEFAULT_GOAL := help
-.PHONY: help install dev build preview check lint typecheck test test-watch coverage fix analyze demo clean distclean
+.PHONY: help install dev build preview check lint typecheck test test-watch coverage fix scan edit people analyze viz demo clean distclean
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -42,9 +47,29 @@ coverage: ## Run the tests with a coverage report
 fix: ## Apply formatting and safe lint fixes
 	$(NPM) run fix
 
-analyze: ## Analyze a repository: make analyze REPO=../some-repo
-	@test -n "$(REPO)" || { echo "set REPO, e.g. make analyze REPO=../some-repo"; exit 1; }
+scan: ## Refresh the config from the clone tree (ROOT, OWNERS, SINCE from .env)
+	@test -n "$(ROOT)" || { echo "set ROOT in .env, or make scan ROOT=~/src"; exit 1; }
+	@test -n "$(CONFIG)$(REPO_VIZ_CONFIG)" || { echo "set REPO_VIZ_CONFIG in .env; keep it outside this repo"; exit 1; }
+	$(NPM) run scan -- $(ROOT) $(if $(CONFIG),--config=$(CONFIG),) \
+		$(if $(OWNERS),--owners=$(OWNERS),) $(if $(SINCE),--since=$(SINCE),) $(ARGS)
+
+edit: ## Open the config editor
+	@test -n "$(CONFIG)$(REPO_VIZ_CONFIG)" || { echo "set REPO_VIZ_CONFIG in .env, or make edit CONFIG=..."; exit 1; }
+	REPO_VIZ_CONFIG=$(if $(CONFIG),$(abspath $(CONFIG)),$(REPO_VIZ_CONFIG)) $(NPM) run edit
+
+people: ## Export the config's people and avatars for the app to draw
+	@test -n "$(CONFIG)$(REPO_VIZ_CONFIG)" || { echo "set REPO_VIZ_CONFIG in .env, or make people CONFIG=..."; exit 1; }
+	$(NPM) run people -- $(if $(CONFIG),--config=$(CONFIG),)
+
+analyze: ## Analyze one repository (REPO from .env)
+	@test -n "$(REPO)" || { echo "set REPO in .env, or make analyze REPO=../some-repo"; exit 1; }
 	$(NPM) run analyze -- $(REPO) $(ARGS)
+
+viz: ## Analyze a repo, export the config's people, and open it (REPO from .env)
+	@test -n "$(REPO)" || { echo "set REPO in .env, or make viz REPO=~/src/thing"; exit 1; }
+	$(MAKE) analyze REPO=$(REPO)
+	$(MAKE) people $(if $(CONFIG),CONFIG=$(CONFIG),)
+	$(NPM) run dev
 
 demo: ## Regenerate the bundled demo dataset
 	$(NPM) run make-demo

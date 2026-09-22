@@ -5,6 +5,9 @@ dist
 .env.local
 public/data/*.json
 !public/data/demo.json
+# Copied in from a config by `make people`. Generated, and not this
+# repository's to carry: they are pictures of real people.
+public/data/avatars/
 *.log
 /.cursor
 .playwright-mcp/
@@ -15,3 +18,11 @@ repo-visualizer.png
 /_dev
 coverage
 *.tsbuildinfo
+
+# Local settings: paths to data outside this repository. See .env.example.
+.env
+
+# A scan config belongs outside this repository: it holds contributor email
+# addresses. These patterns are a safety net for one written here by mistake.
+*.viz.yaml
+viz.yaml
