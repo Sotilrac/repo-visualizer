@@ -8,15 +8,8 @@
  * the same interpolation run backwards is the burst outward.
  */
 
-import {
-  forceCenter,
-  forceCollide,
-  forceLink,
-  forceManyBody,
-  forceSimulation,
-  forceX,
-  forceY,
-} from 'd3-force';
+import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force';
+import { clusterRadii, forceContain, placeClusters } from './clusters.js';
 
 /**
  * How big to draw a body.
@@ -63,6 +56,7 @@ export function createLayout({ width, height }) {
   const clusterCenters = new Map();
   let syncCount = 0;
   let lastClusterKey = '';
+  let lastSpread = 0;
   let lastVisibleCount = 0;
   let lastLinkCount = 0;
 
@@ -70,11 +64,13 @@ export function createLayout({ width, height }) {
     .force(
       'charge',
       forceManyBody()
+        // Scaled by size: a repo bubble is five times the radius of a file
+        // and has to push five times as hard to keep the same clear space.
         .strength((d) => {
           const deg = d._degree || 1;
-          return -72 / Math.sqrt(deg);
+          return -(16 + (d.r ?? 6) * 2.6) / Math.sqrt(deg);
         })
-        .distanceMax(380),
+        .distanceMax(460),
     )
     .force(
       'link',
@@ -95,11 +91,13 @@ export function createLayout({ width, height }) {
     .force(
       'collide',
       forceCollide()
-        .radius((d) => d.r + 1.5)
-        .strength(0.72),
+        .radius((d) => d.r + 5)
+        .strength(0.95)
+        // One pass leaves a crowd overlapping; the second resolves what the
+        // first pushed into something else.
+        .iterations(2),
     )
-    .force('x', forceX((d) => clusterCenters.get(d.dir)?.x ?? width / 2).strength(0.045))
-    .force('y', forceY((d) => clusterCenters.get(d.dir)?.y ?? height / 2).strength(0.045))
+    .force('contain', forceContain({ centers: () => clusterCenters, strength: 0.3 }))
     .alpha(0.32)
     .alphaDecay(0.022)
     .alphaTarget(0)
@@ -125,24 +123,26 @@ export function createLayout({ width, height }) {
   }
 
   function rebuildClusterCenters(force = false) {
-    const clusters = [...new Set(nodes.map((n) => n.dir))].sort();
-    const key = clusters.join('\0');
-    if (!force && key === lastClusterKey) return;
-    lastClusterKey = key;
+    const radii = clusterRadii(nodes);
+    const spread = [...radii.values()].reduce((sum, r) => sum + r, 0);
+    const key = [...radii.keys()].sort().join('\0');
 
-    const cx = width / 2;
-    const cy = height / 2;
-    const radius = Math.min(width, height) * 0.32;
+    // The blobs are only laid out again when the repos on screen change or
+    // when they have grown enough to need the room. Re-placing them every
+    // sync drags the whole graph around while it is being watched.
+    const grown = spread > lastSpread * 1.12 || spread < lastSpread * 0.88;
+    if (!force && key === lastClusterKey && !grown) {
+      // The blobs stay put, but each one still tracks what it now holds.
+      for (const [dir, center] of clusterCenters) center.radius = radii.get(dir) ?? center.radius;
+      return;
+    }
+    lastClusterKey = key;
+    lastSpread = spread;
+
     clusterCenters.clear();
-    clusters.forEach((c, i) => {
-      const angle = (clusters.length > 0 ? i / clusters.length : 0) * Math.PI * 2 - Math.PI / 2;
-      clusterCenters.set(c, {
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
-        angle,
-        radius,
-      });
-    });
+    for (const [dir, center] of placeClusters(radii, { width, height })) {
+      clusterCenters.set(dir, center);
+    }
   }
 
   /**

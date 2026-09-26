@@ -81,7 +81,7 @@ function drawMinimal(ctx, frame, { palette }) {
   // -------- 2. Cluster boundary disks (very faint) --------
   for (const [, center] of clusters) {
     ctx.beginPath();
-    ctx.arc(center.x, center.y, 100, 0, Math.PI * 2);
+    ctx.arc(center.x, center.y, safeRadius(center.radius ?? 100), 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(15, 17, 22, 0.06)';
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 4]);

@@ -308,6 +308,7 @@ export function useVisualizerCore({
 
       // A beam triggers its file's ripple when it lands, so the two effects
       // stay in step rather than both firing on the commit.
+      if (p.showActors) actorsRef.current.setClusters(layout.getClusterCenters().values());
       const landed = p.showActors ? actorsRef.current.tick(dt) : [];
       for (const path of landed) {
         ripplesRef.current.push({

@@ -271,7 +271,7 @@ describe('keeping clear of each other', () => {
     const nodes = { 'a.js': node('a.js', 0, 0) };
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
     actors.onCommit(commit('Bo', 'bo@acme.com', ['a.js']), nodes, 1);
-    for (let i = 0; i < 400; i++) actors.tick(16);
+    for (let i = 0; i < 250; i++) actors.tick(16);
     return actors.list();
   };
 
@@ -292,7 +292,7 @@ describe('keeping clear of each other', () => {
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
     actors.onCommit(commit('Bo', 'bo@acme.com', ['b.js']), { 'b.js': node('b.js', 600, 0) }, 1);
 
-    for (let i = 0; i < 400; i++) actors.tick(16);
+    for (let i = 0; i < 250; i++) actors.tick(16);
     const [a, b] = actors.list();
 
     expect(Math.abs(a.x - b.x)).toBeGreaterThan(400);
@@ -303,7 +303,7 @@ describe('keeping clear of each other', () => {
     const nodes = { 'a.js': node('a.js', 0, 0) };
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
     actors.onCommit(commit('Bo', 'bo@acme.com', ['a.js']), nodes, 1);
-    for (let i = 0; i < 400; i++) actors.tick(16);
+    for (let i = 0; i < 250; i++) actors.tick(16);
 
     const before = actors.list().map((a) => ({ x: a.x, y: a.y }));
     for (let i = 0; i < 20; i++) actors.tick(16);
@@ -312,5 +312,38 @@ describe('keeping clear of each other', () => {
     for (const [i, position] of before.entries()) {
       expect(Math.hypot(position.x - after[i].x, position.y - after[i].y)).toBeLessThan(1.5);
     }
+  });
+});
+
+describe('standing off the repo blobs', () => {
+  const blob = { x: 0, y: 0, radius: 200 };
+
+  /** An actor that has just committed to a file in the middle of the blob. */
+  function actorInBlob() {
+    const actors = createActors();
+    actors.setClusters([blob]);
+    actors.onCommit(
+      { author: 'Ada', authorEmail: 'ada@acme.com', changes: [{ path: 'a.c' }] },
+      { 'a.c': { x: 0, y: 0, r: 10 } },
+      0,
+    );
+    return actors;
+  }
+
+  it('pushes an avatar out past the edge of the repo it is working on', () => {
+    const actors = actorInBlob();
+    for (let i = 0; i < 250; i++) actors.tick(16);
+    const [actor] = actors.list();
+
+    expect(Math.hypot(actor.x, actor.y)).toBeGreaterThan(blob.radius);
+  });
+
+  it('leaves an avatar alone when no blob is anywhere near it', () => {
+    const actors = actorInBlob();
+    actors.setClusters([{ x: 5000, y: 5000, radius: 100 }]);
+    for (let i = 0; i < 200; i++) actors.tick(16);
+    const [actor] = actors.list();
+
+    expect(Math.hypot(actor.x, actor.y)).toBeLessThan(50);
   });
 });

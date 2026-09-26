@@ -27,6 +27,14 @@ const DEFAULTS = {
   nodeClearance: 30,
   /** How far two actors stay apart. */
   actorClearance: 38,
+  /** How far outside a repo's blob an actor stands to fire into it. */
+  blobClearance: 26,
+  /**
+   * How hard the blob pushes back. Firmer than the rest: the spring is
+   * pulling the avatar towards the middle of the work the whole time, and a
+   * soft push settles inside the blob rather than outside it.
+   */
+  blobSeparation: 0.9,
   /** How firmly they push. Soft, so people working together stay a cluster. */
   separation: 0.35,
   /** How far from the work a new actor appears, so the approach is visible. */
@@ -76,6 +84,8 @@ export function createActors(options = {}) {
   const actors = new Map();
   /** @type {any[]} */
   let beams = [];
+  /** @type {Array<{ x: number, y: number, radius: number }>} */
+  let blobs = [];
 
   return {
     list: () => [...actors.values()],
@@ -86,6 +96,16 @@ export function createActors(options = {}) {
       resolve = next;
     },
 
+    /**
+     * The repo blobs to stay out of, so a beam is fired from outside the
+     * work rather than from the middle of it.
+     *
+     * @param {Iterable<{ x: number, y: number, radius: number }>} centers
+     */
+    setClusters(centers) {
+      blobs = [...centers];
+    },
+
     clear() {
       actors.clear();
       beams = [];
@@ -93,7 +113,7 @@ export function createActors(options = {}) {
 
     /**
      * @param {{ author?: string, authorEmail?: string, changes?: any[] }} commit
-     * @param {Record<string, { x: number, y: number }>} nodesByPath
+     * @param {Record<string, { x: number, y: number, r?: number }>} nodesByPath
      *   the current position of each file; a file with no node is off screen
      * @param {number} at a monotonic time, only used to order arrivals
      */
@@ -175,8 +195,15 @@ export function createActors(options = {}) {
           actor.y += (actor.target.y - actor.y) * pull;
         }
 
-        // Off the bubbles, so the avatar hovers over its work and does not
-        // cover it.
+        // Outside the repo it is working on. The target is in the middle of
+        // the files it touched, which is inside the blob, so without this
+        // the avatar sits on top of the bubbles it is firing at.
+        for (const blob of blobs) {
+          push(actor, blob, blob.radius + config.blobClearance, config.blobSeparation);
+        }
+
+        // And off the bubbles themselves, for a repo drawn at file level
+        // where there is no blob worth the name.
         for (const target of actor.nodes ?? []) {
           push(actor, target, config.nodeClearance + (target.r ?? 0), config.separation);
         }
