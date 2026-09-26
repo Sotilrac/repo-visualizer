@@ -86,6 +86,7 @@ export default function WebGLVisualizer({
   state,
   commitIndex,
   dataset,
+  tuning,
   palette,
   autoFit = true,
   selectedPath = null,
@@ -100,6 +101,7 @@ export default function WebGLVisualizer({
     state,
     commitIndex,
     dataset,
+    tuning,
     palette,
     autoFit,
     selectedPath,
@@ -112,6 +114,7 @@ export default function WebGLVisualizer({
     state,
     commitIndex,
     dataset,
+    tuning,
     palette,
     autoFit,
     selectedPath,
@@ -171,7 +174,12 @@ export default function WebGLVisualizer({
       return undefined;
     }
 
-    layout = createLayout({ width: host.clientWidth, height: host.clientHeight });
+    layout = createLayout({
+      width: host.clientWidth,
+      height: host.clientHeight,
+      tuning: propsRef.current.tuning,
+    });
+    let appliedTuning = propsRef.current.tuning;
     camera = createCamera();
     const transitions = createLodTransitions();
     let clock = new Map();
@@ -217,6 +225,11 @@ export default function WebGLVisualizer({
       const w = host.clientWidth;
       const h = host.clientHeight;
       const p = propsRef.current;
+
+      if (p.tuning && p.tuning !== appliedTuning) {
+        appliedTuning = p.tuning;
+        layout.setTuning(p.tuning);
+      }
 
       if (p.dataset?.commits && clockFor !== p.dataset.commits) {
         clock = buildRepoClock(p.dataset.commits);

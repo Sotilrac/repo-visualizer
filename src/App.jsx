@@ -4,10 +4,12 @@ import ControlBar from './components/ControlBar.jsx';
 import Header from './components/Header.jsx';
 import Legend from './components/Legend.jsx';
 import NodeInspector from './components/NodeInspector.jsx';
+import TuningPanel from './components/TuningPanel.jsx';
 import { isClusterExcluded } from './engine/excludes.js';
 import { clusterPalette, collectAllClusters } from './engine/graphState.js';
 import { startRecording } from './engine/recorder.js';
 import { primaryRepoAuthor } from './engine/recordingOverlay.js';
+import { DEFAULT_TUNING, loadTuning, saveTuning } from './engine/tuning.js';
 import { useDataset } from './engine/useDataset.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
 import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
@@ -64,6 +66,8 @@ export default function App() {
     (commit) => resolveFromDirectory(directory, commit),
     [directory],
   );
+  const [tuning, setTuning] = useState(() => loadTuning());
+  const [tuningOpen, setTuningOpen] = useState(false);
   const [perfMode, setPerfMode] = useState('auto');
   const [useWebGL, setUseWebGL] = useState(false);
   const [webglFailed, setWebglFailed] = useState(false);
@@ -106,6 +110,19 @@ export default function App() {
       bodyCount >= WEBGL_NODE_THRESHOLD || (useWebGL && bodyCount >= WEBGL_NODE_HYSTERESIS);
     setUseWebGL(want && isWebGLAvailable() && !webglFailed);
   }, [bodyCount, perfMode, webglFailed, useWebGL]);
+
+  const adjust = useCallback((key, value) => {
+    setTuning((previous) => {
+      const next = { ...previous, [key]: value };
+      saveTuning(next);
+      return next;
+    });
+  }, []);
+
+  const resetTuning = useCallback(() => {
+    saveTuning(DEFAULT_TUNING);
+    setTuning({ ...DEFAULT_TUNING });
+  }, []);
 
   const excludePatterns = useMemo(() => dataset?.exclude ?? [], [dataset?.exclude]);
 
@@ -182,6 +199,7 @@ export default function App() {
     state: timeline.state,
     commitIndex: timeline.index,
     dataset,
+    tuning,
     palette,
     autoFit,
     showActors,
@@ -550,6 +568,15 @@ export default function App() {
         />
       )}
 
+      {tuningOpen && (
+        <TuningPanel
+          tuning={tuning}
+          onChange={adjust}
+          onReset={resetTuning}
+          onClose={() => setTuningOpen(false)}
+        />
+      )}
+
       <ControlBar
         commits={timeline.commits}
         index={timeline.index}
@@ -572,6 +599,8 @@ export default function App() {
         onZoomIn={() => cameraApiRef.current?.zoomIn()}
         onZoomOut={() => cameraApiRef.current?.zoomOut()}
         onZoomReset={() => cameraApiRef.current?.reset()}
+        tuningOpen={tuningOpen}
+        onToggleTuning={() => setTuningOpen((open) => !open)}
         perfMode={perfMode}
         onPerfModeChange={setPerfMode}
         showPlayHint={showMobilePlayHint}

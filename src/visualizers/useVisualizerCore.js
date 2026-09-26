@@ -34,6 +34,7 @@ export function useVisualizerCore({
   state,
   commitIndex,
   dataset = null,
+  tuning = null,
   onBodyCount = null,
   draw,
   clearStrategy = 'full',
@@ -89,6 +90,7 @@ export function useVisualizerCore({
     commitIndex,
     recordingOverlay,
     showActors,
+    tuning,
   });
   paramsRef.current = {
     draw,
@@ -106,6 +108,7 @@ export function useVisualizerCore({
     commitIndex,
     recordingOverlay,
     showActors,
+    tuning,
   };
   stateRef.current = state;
 
@@ -152,7 +155,11 @@ export function useVisualizerCore({
     host.appendChild(canvas);
     canvasRef.current = canvas;
 
-    const layout = createLayout({ width: host.clientWidth, height: host.clientHeight });
+    const layout = createLayout({
+      width: host.clientWidth,
+      height: host.clientHeight,
+      tuning: paramsRef.current.tuning,
+    });
     layoutRef.current = layout;
 
     const ctx = canvas.getContext('2d', { alpha: true });
@@ -376,6 +383,12 @@ export function useVisualizerCore({
       if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
     };
   }, []);
+
+  useEffect(() => {
+    if (!tuning) return;
+    layoutRef.current?.setTuning(tuning);
+    actorsRef.current.setTuning(tuning);
+  }, [tuning]);
 
   // The people export arrives after the first render, so hand the resolver
   // over whenever it changes instead of freezing the one that existed at

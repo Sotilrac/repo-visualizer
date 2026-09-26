@@ -21,6 +21,7 @@ const SHARED = [
   'state',
   'commitIndex',
   'dataset',
+  'tuning',
   'autoFit',
   'showActors',
   'resolveAuthor',

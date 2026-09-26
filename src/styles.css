@@ -2434,3 +2434,133 @@ a.repo-list-item:hover {
     animation: none !important;
   }
 }
+
+/* ---------- Layout settings panel ---------- */
+
+.tuning-panel {
+  position: absolute;
+  top: 100px;
+  left: 28px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  width: 264px;
+  max-height: calc(var(--app-height) - 200px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 14px 16px;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-card);
+  font-size: 12px;
+}
+
+.tuning-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tuning-panel-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tuning-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tuning-panel-header-actions button {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  padding: 2px 7px;
+  cursor: pointer;
+}
+
+.tuning-panel-header-actions button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tuning-panel-header-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tuning-panel-close {
+  border: none;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.tuning-panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.tuning-group {
+  margin-bottom: 12px;
+}
+
+.tuning-group h4 {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.tuning-knob {
+  display: block;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.tuning-knob-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 11px;
+}
+
+.tuning-knob-label output {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.tuning-knob input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .tuning-panel {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    max-height: min(48vh, 360px);
+  }
+}

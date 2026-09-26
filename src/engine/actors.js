@@ -16,7 +16,7 @@ const DEFAULTS = {
   /** How long a beam takes to travel, in milliseconds. */
   beamMs: 700,
   /** How long an actor lasts once its author stops committing. */
-  idleMs: 6000,
+  idleMs: 14000,
   /** The share of that time it stays at full strength before fading. */
   holdFraction: 0.5,
   /** How hard an actor is pulled toward its work, per second. */
@@ -94,6 +94,18 @@ export function createActors(options = {}) {
     /** @param {(commit: any) => any} next */
     setResolver(next) {
       resolve = next;
+    },
+
+    /**
+     * Settings changed while the graph is running.
+     *
+     * @param {{ standoff?: number, avatarLinger?: number }} next
+     */
+    setTuning(next) {
+      if (Number.isFinite(next.standoff)) config.blobClearance = Number(next.standoff);
+      if (Number.isFinite(next.avatarLinger)) {
+        config.idleMs = Math.max(500, Number(next.avatarLinger) * 1000);
+      }
     },
 
     /**

@@ -62,6 +62,8 @@ export default function ControlBar({
   onZoomReset,
   perfMode,
   onPerfModeChange,
+  tuningOpen = false,
+  onToggleTuning,
   showPlayHint = false,
 }) {
   return (
@@ -105,6 +107,15 @@ export default function ControlBar({
               ))}
             </select>
           </div>
+          <button
+            type="button"
+            className={`btn btn-sm btn-tuning${tuningOpen ? ' is-active' : ''}`}
+            title="Adjust the layout: pull, spacing, sizes"
+            aria-pressed={tuningOpen}
+            onClick={onToggleTuning}
+          >
+            layout
+          </button>
           <div className="zoom-control" title="Canvas zoom">
             <button type="button" className="btn btn-sm" onClick={onZoomOut}>
               −

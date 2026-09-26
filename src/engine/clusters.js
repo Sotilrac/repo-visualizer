@@ -8,13 +8,9 @@
  * ring big enough that two blobs do not overlap.
  */
 
-/** Clear space kept around each bubble inside its blob. */
-const PAD = 8;
-
-/** How much wider than the bubbles themselves a blob sits. */
+/** What the knobs are worth when nobody has touched them. */
+const PAD = 5;
 const SLACK = 1.25;
-
-/** Space between neighbouring blobs, as a share of their size. */
 const GAP = 1.35;
 
 /**
@@ -23,15 +19,16 @@ const GAP = 1.35;
  * need less room than ten large ones.
  *
  * @param {Array<{ dir: string, r: number }>} nodes
+ * @param {{ pad?: number, slack?: number }} [spacing]
  * @returns {Map<string, number>}
  */
-export function clusterRadii(nodes) {
+export function clusterRadii(nodes, { pad = PAD, slack = SLACK } = {}) {
   /** @type {Map<string, { area: number, largest: number }>} */
   const totals = new Map();
 
   for (const node of nodes) {
     const entry = totals.get(node.dir) ?? { area: 0, largest: 0 };
-    const r = (node.r ?? 6) + PAD;
+    const r = (node.r ?? 6) + pad;
     entry.area += r * r;
     entry.largest = Math.max(entry.largest, r);
     totals.set(node.dir, entry);
@@ -39,7 +36,7 @@ export function clusterRadii(nodes) {
 
   const radii = new Map();
   for (const [dir, { area, largest }] of totals) {
-    radii.set(dir, Math.max(largest, Math.sqrt(area) * SLACK));
+    radii.set(dir, Math.max(largest, Math.sqrt(area) * slack));
   }
   return radii;
 }
@@ -55,10 +52,10 @@ export function clusterRadii(nodes) {
  * keeps the density even from the middle out.
  *
  * @param {Map<string, number>} radii
- * @param {{ width: number, height: number }} viewport
+ * @param {{ width: number, height: number, gap?: number }} viewport
  * @returns {Map<string, { x: number, y: number, angle: number, radius: number, ring: number }>}
  */
-export function placeClusters(radii, { width, height }) {
+export function placeClusters(radii, { width, height, gap = GAP }) {
   /** @type {Map<string, any>} */
   const centers = new Map();
   const cx = width / 2;
@@ -80,7 +77,7 @@ export function placeClusters(radii, { width, height }) {
   let covered = 0;
 
   entries.forEach(([dir, radius], i) => {
-    const area = Math.PI * (radius * GAP) ** 2;
+    const area = Math.PI * (radius * gap) ** 2;
     const ring = Math.sqrt((covered + area / 2) / Math.PI);
     covered += area;
     const angle = i * GOLDEN - Math.PI / 2;
@@ -103,7 +100,7 @@ export function placeClusters(radii, { width, height }) {
  *
  * @param {{
  *   centers: () => Map<string, { x: number, y: number, radius: number }>,
- *   strength?: number,
+ *   strength?: number | (() => number),
  * }} options
  */
 export function forceContain({ centers, strength = 0.35 }) {
@@ -113,6 +110,7 @@ export function forceContain({ centers, strength = 0.35 }) {
   /** @param {number} alpha */
   function force(alpha) {
     const byDir = centers();
+    const pull = typeof strength === 'function' ? strength() : strength;
     for (const node of nodes) {
       const home = byDir.get(node.dir);
       if (!home) continue;
@@ -125,9 +123,9 @@ export function forceContain({ centers, strength = 0.35 }) {
       const slack = Math.max(0, home.radius - (node.r ?? 0));
       if (distance <= slack || distance < 1e-6) continue;
 
-      const pull = ((distance - slack) / distance) * alpha * strength;
-      node.vx += dx * pull;
-      node.vy += dy * pull;
+      const step = ((distance - slack) / distance) * alpha * pull;
+      node.vx += dx * step;
+      node.vy += dy * step;
     }
   }
 

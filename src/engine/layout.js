@@ -10,6 +10,7 @@
 
 import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force';
 import { clusterRadii, forceContain, placeClusters } from './clusters.js';
+import { withDefaults } from './tuning.js';
 
 /**
  * How big to draw a body.
@@ -22,13 +23,16 @@ import { clusterRadii, forceContain, placeClusters } from './clusters.js';
  *
  * @param {{ kind?: string, files?: number, size?: number }} body
  * @param {number} inbound how many other bodies import this one
+ * @param {{ repoSize?: number, fileSize?: number }} [scale]
  */
-export function bodyRadius(body, inbound = 0) {
+export function bodyRadius(body, inbound = 0, scale = {}) {
   const importBoost = Math.min(5, Math.sqrt(inbound) * 0.65);
   if (body.kind && body.kind !== 'file') {
-    return Math.min(64, 8 + 14 * Math.log10(1 + (body.files ?? 0))) + importBoost;
+    const r = Math.min(64, 8 + 14 * Math.log10(1 + (body.files ?? 0)));
+    return r * (scale.repoSize ?? 1) + importBoost;
   }
-  return 6 + Math.min(22, Math.sqrt(Math.max(10, body.size ?? 0)) * 1.35) + importBoost;
+  const r = 6 + Math.min(22, Math.sqrt(Math.max(10, body.size ?? 0)) * 1.35);
+  return r * (scale.fileSize ?? 1) + importBoost;
 }
 
 function inboundCounts(edges) {
@@ -49,7 +53,8 @@ function applyDegrees(nodes, links) {
   }
 }
 
-export function createLayout({ width, height }) {
+export function createLayout({ width, height, tuning }) {
+  let tune = withDefaults(tuning);
   const nodes = [];
   const links = [];
   const nodeByPath = new Map();
@@ -68,7 +73,7 @@ export function createLayout({ width, height }) {
         // and has to push five times as hard to keep the same clear space.
         .strength((d) => {
           const deg = d._degree || 1;
-          return -(16 + (d.r ?? 6) * 2.6) / Math.sqrt(deg);
+          return (-(16 + (d.r ?? 6) * 2.6) * tune.repel) / Math.sqrt(deg);
         })
         .distanceMax(460),
     )
@@ -79,25 +84,28 @@ export function createLayout({ width, height }) {
         .distance((l) => {
           const ds = l.source._degree || 1;
           const dt = l.target._degree || 1;
-          return 52 + 18 / Math.sqrt(ds + dt);
+          return tune.linkDistance + 18 / Math.sqrt(ds + dt);
         })
         .strength((l) => {
           const ds = l.source._degree || 1;
           const dt = l.target._degree || 1;
-          return 0.14 / Math.sqrt(ds * dt);
+          return (0.14 * tune.linkPull) / Math.sqrt(ds * dt);
         }),
     )
     .force('center', forceCenter(width / 2, height / 2).strength(0.035))
     .force(
       'collide',
       forceCollide()
-        .radius((d) => d.r + 5)
+        .radius((d) => d.r + tune.spacing)
         .strength(0.95)
         // One pass leaves a crowd overlapping; the second resolves what the
         // first pushed into something else.
         .iterations(2),
     )
-    .force('contain', forceContain({ centers: () => clusterCenters, strength: 0.3 }))
+    .force(
+      'contain',
+      forceContain({ centers: () => clusterCenters, strength: () => tune.clusterPull }),
+    )
     .alpha(0.32)
     .alphaDecay(0.022)
     .alphaTarget(0)
@@ -123,7 +131,7 @@ export function createLayout({ width, height }) {
   }
 
   function rebuildClusterCenters(force = false) {
-    const radii = clusterRadii(nodes);
+    const radii = clusterRadii(nodes, { pad: tune.spacing + 3, slack: tune.clusterRoom });
     const spread = [...radii.values()].reduce((sum, r) => sum + r, 0);
     const key = [...radii.keys()].sort().join('\0');
 
@@ -140,7 +148,7 @@ export function createLayout({ width, height }) {
     lastSpread = spread;
 
     clusterCenters.clear();
-    for (const [dir, center] of placeClusters(radii, { width, height })) {
+    for (const [dir, center] of placeClusters(radii, { width, height, gap: tune.clusterGap })) {
       clusterCenters.set(dir, center);
     }
   }
@@ -162,7 +170,7 @@ export function createLayout({ width, height }) {
     for (const body of bodies) {
       const id = body.id;
       seen.add(id);
-      const targetR = bodyRadius(body, inbound.get(id) ?? 0);
+      const targetR = bodyRadius(body, inbound.get(id) ?? 0, tune);
       let node = nodeByPath.get(id);
       if (!node) {
         const center = clusterCenters.get(body.repo) || { x: width / 2, y: height / 2 };
@@ -284,6 +292,28 @@ export function createLayout({ width, height }) {
     }
   }
 
+  /**
+   * Take new settings and put them to work on the running graph, without
+   * rebuilding it: the forces read the same object every tick, and d3 only
+   * needs telling that the parameters it caches have moved.
+   *
+   * @param {Record<string, number>} next
+   */
+  function setTuning(next) {
+    tune = withDefaults(next);
+
+    sim.force('charge').strength(sim.force('charge').strength());
+    sim.force('collide').radius(sim.force('collide').radius());
+    sim.force('link').distance(sim.force('link').distance());
+    sim.force('link').strength(sim.force('link').strength());
+
+    for (const node of nodes) {
+      node._targetR = bodyRadius(node, 0, tune);
+    }
+    rebuildClusterCenters(true);
+    sim.alpha(Math.max(sim.alpha(), 0.35)).restart();
+  }
+
   function getNode(path) {
     return nodeByPath.get(path) ?? null;
   }
@@ -334,6 +364,7 @@ export function createLayout({ width, height }) {
 
   return {
     sync,
+    setTuning,
     setMotion,
     getNode,
     resize,
