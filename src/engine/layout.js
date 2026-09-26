@@ -53,12 +53,23 @@ function applyDegrees(nodes, links) {
   }
 }
 
-export function createLayout({ width, height, tuning }) {
+/**
+ * @param {{ width: number, height: number, tuning?: Record<string, number> | null }} options
+ */
+export function createLayout({ width, height, tuning = null }) {
   let tune = withDefaults(tuning);
   const nodes = [];
   const links = [];
   const nodeByPath = new Map();
+  // Where a body was when it was last on screen. A repo that goes quiet
+  // drops a level and its folders leave; when it is touched again they come
+  // back, and coming back in a random spot inside the blob scatters a repo
+  // that has not otherwise changed.
+  const remembered = new Map();
   const clusterCenters = new Map();
+  // The order the repos first appeared in, which is the order they are laid
+  // out in, so an existing repo keeps its place when a new one turns up.
+  const clusterOrder = [];
   let syncCount = 0;
   let lastClusterKey = '';
   let lastSpread = 0;
@@ -142,14 +153,56 @@ export function createLayout({ width, height, tuning }) {
     if (!force && key === lastClusterKey && !grown) {
       // The blobs stay put, but each one still tracks what it now holds.
       for (const [dir, center] of clusterCenters) center.radius = radii.get(dir) ?? center.radius;
-      return;
+      return false;
     }
     lastClusterKey = key;
     lastSpread = spread;
 
-    clusterCenters.clear();
-    for (const [dir, center] of placeClusters(radii, { width, height, gap: tune.clusterGap })) {
-      clusterCenters.set(dir, center);
+    for (const dir of radii.keys()) {
+      if (!clusterOrder.includes(dir)) clusterOrder.push(dir);
+    }
+
+    const placed = placeClusters(radii, {
+      width,
+      height,
+      gap: tune.clusterGap,
+      order: clusterOrder,
+    });
+
+    for (const [dir, center] of placed) {
+      const current = clusterCenters.get(dir);
+      // A repo that is already on screen drifts to its new place rather
+      // than jumping to it, so the bodies inside it come along instead of
+      // being left behind by a blob that teleported.
+      if (current) {
+        current.angle = center.angle;
+        current.ring = center.ring;
+        current.target = center;
+      } else {
+        clusterCenters.set(dir, { ...center, target: center });
+      }
+    }
+    for (const dir of [...clusterCenters.keys()]) {
+      if (!placed.has(dir)) clusterCenters.delete(dir);
+    }
+
+    return true;
+  }
+
+  /** Carry each blob a little further towards where it now belongs. */
+  function easeClusters() {
+    for (const center of clusterCenters.values()) {
+      const to = center.target;
+      if (!to) continue;
+      center.x += (to.x - center.x) * 0.08;
+      center.y += (to.y - center.y) * 0.08;
+      center.radius += (to.radius - center.radius) * 0.08;
+      if (Math.abs(to.x - center.x) + Math.abs(to.y - center.y) < 0.4) {
+        center.x = to.x;
+        center.y = to.y;
+        center.radius = to.radius;
+        center.target = null;
+      }
     }
   }
 
@@ -176,11 +229,12 @@ export function createLayout({ width, height, tuning }) {
         const center = clusterCenters.get(body.repo) || { x: width / 2, y: height / 2 };
         const jitter = 22 + Math.random() * 28;
         const a = Math.random() * Math.PI * 2;
+        const was = remembered.get(id);
         node = {
           path: id,
           dir: body.repo,
-          x: center.x + Math.cos(a) * jitter,
-          y: center.y + Math.sin(a) * jitter,
+          x: was ? was.x : center.x + Math.cos(a) * jitter,
+          y: was ? was.y : center.y + Math.sin(a) * jitter,
           vx: 0,
           vy: 0,
           r: targetR,
@@ -201,7 +255,14 @@ export function createLayout({ width, height, tuning }) {
     }
 
     for (const id of [...nodeByPath.keys()]) {
-      if (!seen.has(id)) nodeByPath.delete(id);
+      if (seen.has(id)) continue;
+      const node = nodeByPath.get(id);
+      remembered.set(id, { x: node.x, y: node.y });
+      nodeByPath.delete(id);
+    }
+    // Bounded, so a long timeline does not carry every folder it ever drew.
+    if (remembered.size > 4000) {
+      for (const id of [...remembered.keys()].slice(0, 2000)) remembered.delete(id);
     }
     nodes.length = 0;
     for (const node of nodeByPath.values()) nodes.push(node);
@@ -214,7 +275,7 @@ export function createLayout({ width, height, tuning }) {
     }
 
     applyDegrees(nodes, links);
-    rebuildClusterCenters();
+    const replaced = rebuildClusterCenters();
     sim.nodes(nodes);
     sim.force('link').links(links);
     scaleForSize();
@@ -229,6 +290,16 @@ export function createLayout({ width, height, tuning }) {
 
     lastVisibleCount = visibleCount;
     lastLinkCount = linkCount;
+
+    // Moving the blobs leaves every body in the wrong place, and a cold
+    // simulation will not carry them to the new one: they sit wherever they
+    // were until something else warms it up.
+    if (replaced) {
+      sim.alpha(Math.max(sim.alpha(), 0.3)).restart();
+      lastVisibleCount = visibleCount;
+      lastLinkCount = linkCount;
+      return;
+    }
 
     if (!topologyChanged) {
       return;
@@ -281,7 +352,14 @@ export function createLayout({ width, height, tuning }) {
         node.x = node._sx;
         node.y = node._sy;
       }
-      if (!node.pull) continue;
+      if (!node.pull) {
+        // Out of the transition: hand the body back to the simulation.
+        // Holding on to the position it was interpolated from pins it there
+        // for good, and the graph slowly silts up wherever bodies were born.
+        node._sx = undefined;
+        node._sy = undefined;
+        continue;
+      }
 
       node._sx = node.x;
       node._sy = node.y;
@@ -332,7 +410,12 @@ export function createLayout({ width, height, tuning }) {
   }
 
   function tick() {
+    easeClusters();
+
     if (sim.alpha() < 0.0008) {
+      if ([...clusterCenters.values()].some((center) => center.target)) {
+        sim.alpha(0.05).restart();
+      }
       sim.stop();
       for (const n of nodes) {
         if (n._targetR != null) n.r = n._targetR;

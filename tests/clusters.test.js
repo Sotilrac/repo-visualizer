@@ -58,17 +58,35 @@ describe('placeClusters', () => {
     expect(worst).toBeGreaterThan(0);
   });
 
-  it('puts the biggest repo nearest the middle', () => {
-    const centers = placeClusters(
+  it('lays the repos out in the order it is given', () => {
+    const radii = new Map([
+      ['late', 40],
+      ['early', 40],
+    ]);
+    const centers = placeClusters(radii, { ...viewport, order: ['early', 'late'] });
+
+    expect(centers.get('early').ring).toBeLessThan(centers.get('late').ring);
+  });
+
+  it('leaves a repo where it was when another one appears', () => {
+    const order = ['a', 'b'];
+    const before = placeClusters(
       new Map([
-        ['small', 40],
-        ['big', 400],
-        ['other', 40],
+        ['a', 60],
+        ['b', 60],
       ]),
-      viewport,
+      { ...viewport, order },
+    );
+    const after = placeClusters(
+      new Map([
+        ['a', 60],
+        ['b', 60],
+        ['c', 60],
+      ]),
+      { ...viewport, order: [...order, 'c'] },
     );
 
-    expect(centers.get('big').ring).toBeLessThan(centers.get('other').ring);
+    expect([after.get('a').x, after.get('a').y]).toEqual([before.get('a').x, before.get('a').y]);
   });
 
   it('fills a disc instead of a ring, so the middle is not empty', () => {

@@ -51,20 +51,23 @@ export function clusterRadii(nodes, { pad = PAD, slack = SLACK } = {}) {
  * arms, and placing each at the radius that matches the area already used
  * keeps the density even from the middle out.
  *
+ * Repos keep the order they are given, which is the order they first
+ * appeared. Reordering them as they grow moves every blob at once, and the
+ * bodies spend the rest of the run chasing a home that has moved again.
+ *
  * @param {Map<string, number>} radii
- * @param {{ width: number, height: number, gap?: number }} viewport
+ * @param {{ width: number, height: number, gap?: number, order?: string[] }} viewport
  * @returns {Map<string, { x: number, y: number, angle: number, radius: number, ring: number }>}
  */
-export function placeClusters(radii, { width, height, gap = GAP }) {
+export function placeClusters(radii, { width, height, gap = GAP, order }) {
   /** @type {Map<string, any>} */
   const centers = new Map();
   const cx = width / 2;
   const cy = height / 2;
-  // Biggest first, so the repo with the most in it holds the middle, with
-  // the name breaking ties to keep the layout the same between runs.
-  const entries = [...radii.entries()].sort(
-    ([nameA, a], [nameB, b]) => b - a || (nameA < nameB ? -1 : nameA > nameB ? 1 : 0),
-  );
+  /** @type {Array<[string, number]>} */
+  const entries = order
+    ? order.filter((dir) => radii.has(dir)).map((dir) => [dir, radii.get(dir) ?? 0])
+    : [...radii.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   if (entries.length === 0) return centers;
 
   if (entries.length === 1) {
