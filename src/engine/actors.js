@@ -28,7 +28,7 @@ const DEFAULTS = {
   /** How far two actors stay apart. */
   actorClearance: 46,
   /** How far outside a repo's blob an actor stands to fire into it. */
-  blobClearance: 26,
+  blobClearance: 64,
   /**
    * How hard the blob pushes back. Firmer than the rest: the spring is
    * pulling the avatar towards the middle of the work the whole time, and a

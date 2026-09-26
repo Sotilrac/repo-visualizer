@@ -126,9 +126,9 @@ export const KNOBS = {
     label: 'Avatar standoff',
     hint: 'How far outside a repo someone stands to fire at it',
     group: 'People',
-    value: 26,
+    value: 64,
     min: 0,
-    max: 140,
+    max: 200,
     step: 2,
   },
 };
