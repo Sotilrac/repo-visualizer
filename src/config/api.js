@@ -29,7 +29,7 @@ export function setAvatar(request) {
   });
 }
 
-/** @param {{ overwrite?: boolean }} [options] */
+/** @param {{ overwrite?: boolean, handles?: boolean }} [options] */
 export function fillAvatars(options = {}) {
   return call('/api/config/avatars', {
     method: 'POST',

@@ -125,12 +125,22 @@ export default function ConfigEditor() {
 
       {tab === 'people' && (
         <div className="editor-bar editor-bar--quiet">
-          <span>Give everyone an avatar: gravatar where there is one, initials otherwise.</span>
+          <span>
+            Give everyone an avatar: their GitHub account where their commits name one, gravatar
+            failing that, initials otherwise.
+          </span>
           <button type="button" onClick={() => run(() => fillAvatars())}>
             fill the gaps
           </button>
           <button type="button" onClick={() => run(() => fillAvatars({ overwrite: true }))}>
             refetch all
+          </button>
+          <button
+            type="button"
+            title="Also try a GitHub account named after a spelling of their name. A guess: check the faces."
+            onClick={() => run(() => fillAvatars({ handles: true }))}
+          >
+            guess handles
           </button>
         </div>
       )}

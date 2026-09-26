@@ -112,6 +112,13 @@ export default function PeopleTable({ people, teams, merge, query, version, onEd
                     <span className="editor-avatar-actions">
                       <button
                         type="button"
+                        title="Fetch the face on their GitHub account"
+                        onClick={() => onAvatar({ id: person.id, source: 'github' })}
+                      >
+                        github
+                      </button>
+                      <button
+                        type="button"
                         title="Fetch from gravatar"
                         onClick={() => onAvatar({ id: person.id, source: 'gravatar' })}
                       >

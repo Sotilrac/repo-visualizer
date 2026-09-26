@@ -10,7 +10,7 @@
 
 import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fetchGravatar, initialsSvg } from './avatars.mjs';
+import { fetchGithubAvatar, fetchGravatar, initialsSvg } from './avatars.mjs';
 import { applyEdits, loadConfig, writeConfig } from './vizConfig.mjs';
 
 /**
@@ -32,6 +32,13 @@ export function createConfigApi({ configPath, fetchImpl = fetch }) {
   const findPerson = (doc, id) => people(doc).find((item) => String(item.get('id')) === String(id));
 
   const firstEmail = (person) => String(person.get('emails')?.items?.[0]?.value ?? '');
+
+  /** The row as the avatar sources want it: plain addresses and spellings. */
+  const identityOf = (person) => ({
+    name: String(person.get('name') ?? ''),
+    emails: (person.get('emails')?.items ?? []).map((item) => String(item.value)),
+    names: (person.get('names')?.items ?? []).map((item) => String(item.value)),
+  });
 
   /** Write the generated tile for a person and point their row at it. */
   const writeTile = (person, id) => {
@@ -74,15 +81,18 @@ export function createConfigApi({ configPath, fetchImpl = fetch }) {
     },
 
     /**
-     * Give everyone an avatar: their gravatar where there is one, a generated
-     * tile otherwise. People on a hidden team are left out, since they never
+     * Give everyone an avatar: the face on their GitHub account where their
+     * commits name one, their gravatar failing that, a generated tile
+     * otherwise. People on a hidden team are left out, since they never
      * reach the visualization.
      *
-     * @param {{ overwrite?: boolean }} [options]
+     * @param {{ overwrite?: boolean, handles?: boolean }} [options] `handles`
+     *   also tries a GitHub account named after a spelling of their name,
+     *   which is a guess and can bring back a stranger's face.
      */
-    async fillAvatars({ overwrite = false } = {}) {
+    async fillAvatars({ overwrite = false, handles = false } = {}) {
       const doc = load();
-      const summary = { gravatar: 0, initials: 0, kept: 0, skipped: 0 };
+      const summary = { github: 0, gravatar: 0, initials: 0, kept: 0, skipped: 0 };
       mkdirSync(avatarDir, { recursive: true });
 
       const teamRows = /** @type {any} */ (doc.get('teams'))?.items ?? [];
@@ -104,14 +114,15 @@ export function createConfigApi({ configPath, fetchImpl = fetch }) {
         }
 
         const address = firstEmail(person);
-        const image = address ? await fetchGravatar(address, { fetchImpl }) : null;
+        const fromGithub = await fetchGithubAvatar(identityOf(person), { handles, fetchImpl });
+        const image = fromGithub ?? (address ? await fetchGravatar(address, { fetchImpl }) : null);
 
         if (image) {
           const file = `${id}.png`;
           writeFileSync(path.join(avatarDir, file), image.body);
           person.set('avatar', `file:avatars/${file}`);
           dropOtherAvatars(id, file);
-          summary.gravatar += 1;
+          summary[fromGithub ? 'github' : 'gravatar'] += 1;
         } else {
           dropOtherAvatars(id, writeTile(person, id));
           summary.initials += 1;
@@ -124,7 +135,7 @@ export function createConfigApi({ configPath, fetchImpl = fetch }) {
     /**
      * @param {{
      *   id: string,
-     *   source: 'gravatar' | 'initials' | 'file' | 'none',
+     *   source: 'github' | 'gravatar' | 'initials' | 'file' | 'none',
      *   email?: string,
      *   filePath?: string,
      * }} request
@@ -142,7 +153,12 @@ export function createConfigApi({ configPath, fetchImpl = fetch }) {
       mkdirSync(avatarDir, { recursive: true });
 
       let file;
-      if (source === 'gravatar') {
+      if (source === 'github') {
+        const image = await fetchGithubAvatar(identityOf(person), { handles: true, fetchImpl });
+        if (!image) throw new Error(`No GitHub account found for ${person.get('name') ?? id}`);
+        file = `${id}.png`;
+        writeFileSync(path.join(avatarDir, file), image.body);
+      } else if (source === 'gravatar') {
         const address = email ?? String(person.get('emails')?.items?.[0]?.value ?? '');
         const image = await fetchGravatar(address, { fetchImpl });
         if (!image) throw new Error(`No gravatar for ${address}`);

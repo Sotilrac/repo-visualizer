@@ -253,3 +253,83 @@ describe('fillAvatars', () => {
     ]);
   });
 });
+
+describe('avatars from GitHub', () => {
+  /** A config where one person commits through GitHub and one does not. */
+  const withGithub = `
+people:
+  - id: ada
+    name: Ada Lovelace
+    emails: ['7+ada@users.noreply.github.com', 'ada@acme.com']
+    names: ['Ada Lovelace']
+  - id: grace
+    name: Grace Hopper
+    emails: ['grace@acme.com']
+    names: ['ghopper']
+`;
+
+  const png = {
+    ok: true,
+    headers: { get: () => 'image/png' },
+    arrayBuffer: async () => new ArrayBuffer(8),
+  };
+
+  function apiFor(source, fetchImpl) {
+    const file = path.join(dir, `${source}.viz.yaml`);
+    writeFileSync(file, withGithub);
+    return { file, api: createConfigApi({ configPath: file, fetchImpl }) };
+  }
+
+  it('takes the face off the account the commits name', async () => {
+    const asked = [];
+    const { api } = apiFor('github', async (url) => {
+      asked.push(url);
+      return png;
+    });
+
+    const { summary } = await api.fillAvatars();
+
+    expect(summary.github).toBe(1);
+    expect(asked[0]).toBe('https://avatars.githubusercontent.com/u/7?v=4&s=256');
+  });
+
+  it('falls back to gravatar when GitHub has no face to give', async () => {
+    const { api } = apiFor('fallback', async (url) =>
+      url.includes('gravatar') ? png : { ok: false, headers: { get: () => null } },
+    );
+
+    const { summary } = await api.fillAvatars();
+
+    expect([summary.github, summary.gravatar]).toEqual([0, 2]);
+  });
+
+  it('leaves a handle alone unless asked to guess', async () => {
+    const asked = [];
+    const { api } = apiFor('handles', async (url) => {
+      asked.push(url);
+      return { ok: false, headers: { get: () => null } };
+    });
+
+    await api.fillAvatars();
+
+    expect(asked.some((url) => url.includes('github.com/ghopper.png'))).toBe(false);
+
+    await api.fillAvatars({ overwrite: true, handles: true });
+
+    expect(asked.some((url) => url.includes('github.com/ghopper.png'))).toBe(true);
+  });
+
+  it('sets an avatar from GitHub on request', async () => {
+    const { api } = apiFor('one', async () => png);
+
+    const { avatar } = await api.setAvatar({ id: 'ada', source: 'github' });
+
+    expect(avatar).toBe('file:avatars/ada.png');
+  });
+
+  it('says so when there is no account to take a face from', async () => {
+    const { api } = apiFor('none', async () => ({ ok: false, headers: { get: () => null } }));
+
+    await expect(api.setAvatar({ id: 'grace', source: 'github' })).rejects.toThrow(/GitHub/);
+  });
+});
