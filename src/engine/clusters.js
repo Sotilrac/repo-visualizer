@@ -41,56 +41,112 @@ export function clusterRadii(nodes, { pad = PAD, slack = SLACK } = {}) {
   return radii;
 }
 
+/** The golden angle, which is what keeps a spiral from growing arms. */
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+
 /**
- * Lay the blobs out over a disc, biggest first, each one placed where the
- * area already covered runs out.
+ * Lay blobs out over a disc, each placed where the area already covered
+ * runs out, turning by the golden angle between one and the next.
+ *
+ * @param {Array<[string, number]>} entries name and radius, in order
+ * @param {{ x: number, y: number, gap: number, centerFirst?: boolean }} around
+ *   `centerFirst` holds the first entry in the middle and rings the rest
+ *   around it, which is how a repo sits among the ones it pulls in.
+ */
+function spiral(entries, { x, y, gap, centerFirst = false }) {
+  /** @type {Array<{ name: string, x: number, y: number, angle: number, ring: number }>} */
+  const placed = [];
+  if (entries.length === 1) {
+    return [{ name: entries[0][0], x, y, angle: -Math.PI / 2, ring: 0 }];
+  }
+
+  let covered = 0;
+  entries.forEach(([name, radius], i) => {
+    const area = Math.PI * (radius * gap) ** 2;
+    // The first entry can be held in the middle, with the rest ringed
+    // around it: that is a repo sitting among the ones it pulls in.
+    const ring = centerFirst && i === 0 ? 0 : Math.sqrt((covered + area / 2) / Math.PI);
+    covered += area;
+    const angle = i * GOLDEN - Math.PI / 2;
+    placed.push({
+      name,
+      x: x + Math.cos(angle) * ring,
+      y: y + Math.sin(angle) * ring,
+      angle,
+      ring,
+    });
+  });
+  return placed;
+}
+
+/**
+ * Where each repo's blob goes.
  *
  * A single ring leaves the middle of the screen empty and pushes sixty
- * repos so far apart that nothing is legible at a zoom that fits them. The
- * golden angle between successive blobs is what keeps a spiral from growing
- * arms, and placing each at the radius that matches the area already used
- * keeps the density even from the middle out.
+ * repos so far apart that nothing is legible at a zoom that fits them, so
+ * the blobs fill a disc instead.
+ *
+ * Repos that belong together, a repo and the ones it pulls in as
+ * submodules, are laid out as one blob of blobs: the group takes a slot on
+ * the disc, and its members take slots inside that. Spreading them by the
+ * golden angle is what makes the disc even, and it is also what would
+ * scatter a stack of repos to opposite sides, since the turn between one
+ * slot and the next is most of a circle.
  *
  * Repos keep the order they are given, which is the order they first
  * appeared. Reordering them as they grow moves every blob at once, and the
  * bodies spend the rest of the run chasing a home that has moved again.
  *
  * @param {Map<string, number>} radii
- * @param {{ width: number, height: number, gap?: number, order?: string[] }} viewport
+ * @param {{
+ *   width: number,
+ *   height: number,
+ *   gap?: number,
+ *   order?: string[],
+ *   groups?: string[][],
+ * }} viewport
  * @returns {Map<string, { x: number, y: number, angle: number, radius: number, ring: number }>}
  */
-export function placeClusters(radii, { width, height, gap = GAP, order }) {
+export function placeClusters(radii, { width, height, gap = GAP, order, groups }) {
   /** @type {Map<string, any>} */
   const centers = new Map();
   const cx = width / 2;
   const cy = height / 2;
-  /** @type {Array<[string, number]>} */
-  const entries = order
-    ? order.filter((dir) => radii.has(dir)).map((dir) => [dir, radii.get(dir) ?? 0])
-    : [...radii.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  if (entries.length === 0) return centers;
 
-  if (entries.length === 1) {
-    const [dir, radius] = entries[0];
-    centers.set(dir, { x: cx, y: cy, angle: -Math.PI / 2, radius, ring: 0 });
-    return centers;
-  }
+  const listed = order
+    ? order.filter((dir) => radii.has(dir))
+    : [...radii.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  if (listed.length === 0) return centers;
 
-  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-  let covered = 0;
+  const known = new Set(listed);
+  const stacks = (groups ?? listed.map((dir) => [dir]))
+    .map((members) => members.filter((dir) => known.has(dir)))
+    .filter((members) => members.length > 0);
 
-  entries.forEach(([dir, radius], i) => {
-    const area = Math.PI * (radius * gap) ** 2;
-    const ring = Math.sqrt((covered + area / 2) / Math.PI);
-    covered += area;
-    const angle = i * GOLDEN - Math.PI / 2;
-    centers.set(dir, {
-      x: cx + Math.cos(angle) * ring,
-      y: cy + Math.sin(angle) * ring,
-      angle,
-      radius,
-      ring,
-    });
+  /** A group is as wide as the blobs in it, packed together. */
+  const groupRadius = (members) =>
+    Math.sqrt(members.reduce((sum, dir) => sum + (radii.get(dir) ?? 0) ** 2, 0));
+
+  const slots = spiral(
+    stacks.map((members) => [members[0], groupRadius(members)]),
+    { x: cx, y: cy, gap },
+  );
+
+  slots.forEach((slot, i) => {
+    const members = stacks[i];
+    const inside = spiral(
+      members.map((dir) => [dir, radii.get(dir) ?? 0]),
+      { x: slot.x, y: slot.y, gap, centerFirst: true },
+    );
+    for (const place of inside) {
+      centers.set(place.name, {
+        x: place.x,
+        y: place.y,
+        angle: place.angle,
+        radius: radii.get(place.name) ?? 0,
+        ring: slot.ring,
+      });
+    }
   });
 
   return centers;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildPeoplePayload } from '../scripts/org/exportPeople.mjs';
 import { DEFAULT_TEAMS, proposeTeam, teamFor } from '../scripts/org/teams.mjs';
 
 const teams = [
@@ -82,5 +83,45 @@ describe('DEFAULT_TEAMS', () => {
 
   it('shows the external team', () => {
     expect(DEFAULT_TEAMS.find((t) => t.id === 'external').shown).toBe(true);
+  });
+});
+
+describe('a team drawn as one person', () => {
+  const config = {
+    teams: [
+      { id: 'dephy', name: 'Dephy', hue: 210 },
+      { id: 'external', name: 'External', hue: 40, merged: true },
+      { id: 'bots', name: 'Bots', shown: false },
+    ],
+    people: [
+      { id: 'ada', name: 'Ada', team: 'dephy', emails: ['ada@acme.com'] },
+      { id: 'kai', name: 'Kai', team: 'external', emails: ['kai@other.com'] },
+      { id: 'nia', name: 'Nia', team: 'external', emails: ['nia@third.com', 'nia@fourth.com'] },
+      { id: 'bot', name: 'Bot', team: 'bots', emails: ['bot@acme.com'] },
+    ],
+  };
+
+  const { byEmail, people } = buildPeoplePayload(config);
+
+  it('gives the whole team one entry', () => {
+    expect(Object.keys(people).sort()).toEqual(['ada', 'team:external']);
+  });
+
+  it('points every address on it at that entry', () => {
+    expect([byEmail['kai@other.com'], byEmail['nia@third.com'], byEmail['nia@fourth.com']]).toEqual(
+      ['team:external', 'team:external', 'team:external'],
+    );
+  });
+
+  it('names the entry after the team, in the team colour', () => {
+    expect(people['team:external']).toEqual({ name: 'External', team: 'external', hue: 40 });
+  });
+
+  it('leaves everyone else as themselves', () => {
+    expect(byEmail['ada@acme.com']).toBe('ada');
+  });
+
+  it('still leaves a hidden team out', () => {
+    expect(people).not.toHaveProperty('bot');
   });
 });

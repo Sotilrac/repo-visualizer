@@ -32,6 +32,26 @@ export function buildPeoplePayload(config) {
     const team = teams.get(person.team);
     if (team?.shown === false) continue;
 
+    // A team drawn as one person: everyone on it resolves to a single
+    // actor, so a crowd of one-commit strangers is one face on the graph
+    // rather than forty.
+    if (team?.merged) {
+      const id = `team:${team.id}`;
+      if (!people[id]) {
+        people[id] = { name: team.name ?? team.id, team: team.id };
+        if (team.hue !== undefined) people[id].hue = team.hue;
+        if (typeof team.avatar === 'string' && team.avatar.startsWith('file:')) {
+          const file = team.avatar.slice('file:'.length);
+          avatarFiles.push(file);
+          people[id].avatar = `data/${file}`;
+        }
+      }
+      for (const email of person.emails ?? []) {
+        byEmail[String(email).trim().toLowerCase()] = id;
+      }
+      continue;
+    }
+
     const entry = { name: person.name ?? person.id };
     if (team?.hue !== undefined) entry.hue = team.hue;
     if (person.team) entry.team = person.team;

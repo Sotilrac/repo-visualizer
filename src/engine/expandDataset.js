@@ -34,6 +34,7 @@ export function expandDataset(manifest, shards) {
     remote: repo.remote ?? null,
     lod: repo.lod ?? 1,
     ...(repo.project ? { project: repo.project } : {}),
+    ...(repo.submodules?.length ? { submodules: repo.submodules } : {}),
   }));
 
   const commits = Object.keys(shards)

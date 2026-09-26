@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { createActors } from '../engine/actors.js';
 import { createAvatarImages } from '../engine/avatarImages.js';
-import { levelKey, projectsOf, simulatedLevels } from '../engine/bodies.js';
+import { levelKey, projectsOf, simulatedLevels, submoduleParents } from '../engine/bodies.js';
 import {
   applyCameraTransform,
   createCamera,
@@ -74,6 +74,7 @@ export function useVisualizerCore({
   const folderDepth = dataset?.folderDepth ?? 2;
   const clock = useMemo(() => buildRepoClock(dataset?.commits ?? []), [dataset?.commits]);
   const projects = useMemo(() => projectsOf(dataset), [dataset]);
+  const groups = useMemo(() => submoduleParents(dataset), [dataset]);
   const paramsRef = useRef({
     draw,
     onBeforeDraw,
@@ -409,6 +410,7 @@ export function useVisualizerCore({
         clock,
         transitions: transitionsRef.current,
         excludePatterns,
+        groups,
         at: performance.now(),
       });
       hierarchyRef.current = { targets, key: levelKey(levels), idFor };
@@ -417,7 +419,17 @@ export function useVisualizerCore({
 
     rebuildRef.current = rebuild;
     rebuild();
-  }, [state, commitIndex, excludePatterns, repos, folderDepth, projects, clock, onBodyCount]);
+  }, [
+    state,
+    commitIndex,
+    excludePatterns,
+    repos,
+    folderDepth,
+    projects,
+    groups,
+    clock,
+    onBodyCount,
+  ]);
 
   useEffect(() => {
     if (commitIndex === lastCommitIdxRef.current) return;

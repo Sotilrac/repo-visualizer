@@ -13,7 +13,7 @@ import { isClusterExcluded, isPathExcluded } from './excludes.js';
 import { isEdgeVisible } from './visibility.js';
 
 /**
- * @param {{ sync: Function }} layout
+ * @param {{ sync: Function, setGroups?: Function }} layout
  * @param {any} state
  * @param {number} commitIndex
  * @param {{
@@ -23,6 +23,7 @@ import { isEdgeVisible } from './visibility.js';
  *   clock: Map<string, { at: number[], on: number[] }>,
  *   transitions: any,
  *   excludePatterns?: string[],
+ *   groups?: Map<string, string>,
  *   at?: number,
  * }} options
  * @returns {{ targets: Record<string, number>, levels: Record<string, number>,
@@ -38,6 +39,8 @@ export function syncBodies(layout, state, commitIndex, options) {
     excludePatterns = [],
     at = 0,
   } = options;
+
+  if (options.groups) layout.setGroups?.(options.groups);
 
   const now = state.lastCommit ? new Date(state.lastCommit.date).getTime() : 0;
   const targets = levelsFor(repos, { clock, commitIndex, now });

@@ -19,6 +19,7 @@ export default function TeamsTable({ teams, people, onEdit }) {
         <tr>
           <th scope="col">Team</th>
           <th scope="col">Shown</th>
+          <th scope="col">As one</th>
           <th scope="col">Colour</th>
           <th scope="col">Domains</th>
           <th scope="col" className="editor-number">
@@ -65,6 +66,26 @@ export default function TeamsTable({ teams, people, onEdit }) {
                   }
                 />
                 <span>{team.shown === false ? 'hidden' : 'shown'}</span>
+              </label>
+            </td>
+            <td>
+              <label
+                className="editor-switch"
+                title="Draw everyone on this team as one avatar, instead of one each"
+              >
+                <input
+                  type="checkbox"
+                  checked={team.merged === true}
+                  onChange={(e) =>
+                    onEdit({
+                      section: 'teams',
+                      id: team.id,
+                      field: 'merged',
+                      value: e.target.checked,
+                    })
+                  }
+                />
+                <span>{team.merged === true ? 'one avatar' : 'each'}</span>
               </label>
             </td>
             <td>

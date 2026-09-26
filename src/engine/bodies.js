@@ -83,6 +83,25 @@ export function projectsOf(dataset) {
 }
 
 /**
+ * The repo that pulls each submodule in, for the repos that are one.
+ *
+ * @param {{ repos?: Array<{ name: string, submodules?: string[] }> } | null} dataset
+ * @returns {Map<string, string>} submodule name to the repo that carries it
+ */
+export function submoduleParents(dataset) {
+  /** @type {Map<string, string>} */
+  const parents = new Map();
+  for (const repo of dataset?.repos ?? []) {
+    for (const child of repo.submodules ?? []) {
+      // The first parent wins, so a submodule shared by two repos sits with
+      // one of them rather than flitting between the two.
+      if (child !== repo.name && !parents.has(child)) parents.set(child, repo.name);
+    }
+  }
+  return parents;
+}
+
+/**
  * @param {{ nodes: Map<string, any> }} state
  * @param {number} commitIndex
  * @param {{

@@ -17,9 +17,11 @@
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { defaultBranchOf } from './org/defaultBranch.mjs';
 import { discoverRepos } from './org/discover.mjs';
 import { readRepoStats } from './org/gitStats.mjs';
 import { applyMergeList, bucketIdentities, slugFor } from './org/identities.mjs';
+import { readGitmodules, submodulesIn } from './org/submodules.mjs';
 import { DEFAULT_TEAMS, proposeTeam } from './org/teams.mjs';
 import { loadConfig, mergeScan, writeConfig } from './org/vizConfig.mjs';
 
@@ -65,18 +67,31 @@ export function parseArgs(argv) {
  *   until?: string | null,
  *   merge?: string[][],
  *   owners?: string[],
+ *   submodulesOf?: (repo: { path: string, name: string }) => string[],
  * }} options
  */
 export function buildScan(
   discovered,
   stats,
-  { teams = DEFAULT_TEAMS, since = null, until = null, merge = [], owners = [] } = {},
+  {
+    teams = DEFAULT_TEAMS,
+    since = null,
+    until = null,
+    merge = [],
+    owners = [],
+    submodulesOf = () => [],
+  } = {},
 ) {
+  // Only submodules that are themselves being scanned: a repo nobody cloned
+  // is not a body on the graph and cannot be drawn beside its parent.
+  const known = new Set(discovered.map((repo) => repo.name));
   /** @type {Array<{ name: string, email: string, commits: number, repos: string[] }>} */
   const identities = [];
   const repos = discovered.map((repo) => {
     const s = stats(repo.path);
     for (const identity of s.identities) identities.push({ ...identity, repos: [repo.name] });
+    const submodules = submodulesOf(repo).filter((name) => known.has(name) && name !== repo.name);
+
     return {
       name: repo.name,
       remote: repo.remote,
@@ -85,6 +100,7 @@ export function buildScan(
       folders: s.folders,
       first: s.first,
       last: s.last,
+      ...(submodules.length ? { submodules } : {}),
     };
   });
 
@@ -133,6 +149,8 @@ async function main() {
       until: args.until,
       merge,
       owners: args.owners,
+      submodulesOf: (repo) =>
+        submodulesIn(readGitmodules(repo.path, { branch: defaultBranchOf(repo.path) })),
     },
   );
 

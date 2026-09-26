@@ -298,6 +298,10 @@ describe('keeping clear of each other', () => {
     expect(Math.abs(a.x - b.x)).toBeGreaterThan(400);
   });
 
+  // Holding people further apart leaves them circling their work very
+  // slowly, a few pixels a second, where the spring and the two pushes
+  // balance. What this catches is the other thing: a pair batting each
+  // other back and forth, which moves tens of pixels a frame.
   it('settles rather than jittering', () => {
     const actors = createActors({ idleMs: 60000 });
     const nodes = { 'a.js': node('a.js', 0, 0) };
@@ -310,7 +314,7 @@ describe('keeping clear of each other', () => {
     const after = actors.list().map((a) => ({ x: a.x, y: a.y }));
 
     for (const [i, position] of before.entries()) {
-      expect(Math.hypot(position.x - after[i].x, position.y - after[i].y)).toBeLessThan(1.5);
+      expect(Math.hypot(position.x - after[i].x, position.y - after[i].y)).toBeLessThan(5);
     }
   });
 });
@@ -345,5 +349,54 @@ describe('standing off the repo blobs', () => {
     const [actor] = actors.list();
 
     expect(Math.hypot(actor.x, actor.y)).toBeLessThan(50);
+  });
+});
+
+describe('avatars in a crowd', () => {
+  /** Everyone committing to the same file at once. */
+  function crowd(size) {
+    const actors = createActors();
+    for (let i = 0; i < size; i++) {
+      actors.onCommit(
+        { author: `dev${i}`, authorEmail: `dev${i}@acme.com`, changes: [{ path: 'a.c' }] },
+        { 'a.c': { x: 0, y: 0, r: 10 } },
+        i,
+      );
+    }
+    for (let i = 0; i < 120; i++) actors.tick(16);
+    return actors.list();
+  }
+
+  const closest = (people) => {
+    let worst = Infinity;
+    for (let i = 0; i < people.length; i++) {
+      for (let j = i + 1; j < people.length; j++) {
+        worst = Math.min(worst, Math.hypot(people[i].x - people[j].x, people[i].y - people[j].y));
+      }
+    }
+    return worst;
+  };
+
+  it('keeps two people who touched the same file apart', () => {
+    expect(closest(crowd(2))).toBeGreaterThan(30);
+  });
+
+  it('keeps a whole team apart', () => {
+    expect(closest(crowd(8))).toBeGreaterThan(30);
+  });
+
+  it('takes a wider spacing when it is asked for', () => {
+    const actors = createActors();
+    actors.setTuning({ avatarSpacing: 120 });
+    for (let i = 0; i < 3; i++) {
+      actors.onCommit(
+        { author: `dev${i}`, authorEmail: `dev${i}@acme.com`, changes: [{ path: 'a.c' }] },
+        { 'a.c': { x: 0, y: 0, r: 10 } },
+        i,
+      );
+    }
+    for (let i = 0; i < 200; i++) actors.tick(16);
+
+    expect(closest(actors.list())).toBeGreaterThan(90);
   });
 });

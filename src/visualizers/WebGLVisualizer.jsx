@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { levelKey, projectsOf, simulatedLevels } from '../engine/bodies.js';
+import { levelKey, projectsOf, simulatedLevels, submoduleParents } from '../engine/bodies.js';
 import {
   applyCameraTransform,
   createCamera,
@@ -244,6 +244,7 @@ export default function WebGLVisualizer({
           clock,
           transitions,
           excludePatterns: p.excludePatterns,
+          groups: submoduleParents(p.dataset),
           at: now,
         });
         levelTargets = targets;

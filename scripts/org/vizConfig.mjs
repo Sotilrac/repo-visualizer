@@ -31,7 +31,15 @@ import { isJoinableEmail } from './identities.mjs';
 import { DEFAULT_TEAMS } from './teams.mjs';
 
 /** Fields the scan owns. It writes no others, and overwrites no others. */
-const GENERATED_REPO_FIELDS = ['remote', 'commits', 'files', 'folders', 'first', 'last'];
+const GENERATED_REPO_FIELDS = [
+  'remote',
+  'commits',
+  'files',
+  'folders',
+  'first',
+  'last',
+  'submodules',
+];
 // `name` is not here on purpose. The scan proposes one when it creates a row,
 // and never touches it again, because renaming someone is the first edit
 // anybody makes.
@@ -228,7 +236,7 @@ export function mergeScan(doc, scan, { repropose = false, merged = [] } = {}) {
 const EDITABLE = {
   repos: new Set(['lod', 'project']),
   people: new Set(['name', 'team', 'role', 'avatar', 'active']),
-  teams: new Set(['name', 'hue', 'shown', 'domains']),
+  teams: new Set(['name', 'hue', 'shown', 'domains', 'merged']),
 };
 
 /**

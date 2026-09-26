@@ -26,7 +26,7 @@ const DEFAULTS = {
   /** How far an actor stays off the bubbles it is working on. */
   nodeClearance: 30,
   /** How far two actors stay apart. */
-  actorClearance: 38,
+  actorClearance: 46,
   /** How far outside a repo's blob an actor stands to fire into it. */
   blobClearance: 26,
   /**
@@ -35,8 +35,16 @@ const DEFAULTS = {
    * soft push settles inside the blob rather than outside it.
    */
   blobSeparation: 0.9,
-  /** How firmly they push. Soft, so people working together stay a cluster. */
+  /** How firmly they push off the bubbles they are working on. */
   separation: 0.35,
+  /**
+   * How firmly they push off each other. Firmer than the bubbles, since
+   * they are all held against the same blob edge and a soft push there
+   * leaves a stack of faces nobody can read. Each of a pair moves a quarter
+   * of the way, so the two together close half the gap per frame and
+   * converge instead of batting each other back and forth.
+   */
+  crowding: 0.18,
   /** How far from the work a new actor appears, so the approach is visible. */
   entryOffset: 90,
 };
@@ -99,10 +107,11 @@ export function createActors(options = {}) {
     /**
      * Settings changed while the graph is running.
      *
-     * @param {{ standoff?: number, avatarLinger?: number }} next
+     * @param {{ standoff?: number, avatarLinger?: number, avatarSpacing?: number }} next
      */
     setTuning(next) {
       if (Number.isFinite(next.standoff)) config.blobClearance = Number(next.standoff);
+      if (Number.isFinite(next.avatarSpacing)) config.actorClearance = Number(next.avatarSpacing);
       if (Number.isFinite(next.avatarLinger)) {
         config.idleMs = Math.max(500, Number(next.avatarLinger) * 1000);
       }
@@ -235,8 +244,8 @@ export function createActors(options = {}) {
         for (let j = i + 1; j < everyone.length; j++) {
           const a = everyone[i];
           const b = everyone[j];
-          push(a, b, config.actorClearance, config.separation / 2);
-          push(b, a, config.actorClearance, config.separation / 2);
+          push(a, b, config.actorClearance, config.crowding);
+          push(b, a, config.actorClearance, config.crowding);
         }
       }
 

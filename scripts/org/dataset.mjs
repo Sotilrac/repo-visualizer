@@ -18,6 +18,7 @@
  * @property {string | null} [remote]
  * @property {string} [project]
  * @property {number} [lod]  0 hidden, 1 bubble, 2 folders, 3 files
+ * @property {string[]} [submodules]  repos this one pulls in
  * @property {any[]} commits  oldest first, as the repo walk produced them
  */
 
@@ -119,6 +120,8 @@ export function buildDataset(
       // config, so they travel with the dataset.
       lod: repo.lod ?? 1,
       ...(repo.project ? { project: repo.project } : {}),
+      // The repos this one pulls in, so the layout can draw them together.
+      ...(repo.submodules?.length ? { submodules: repo.submodules } : {}),
       commits: kept,
       files: touched.size,
     };

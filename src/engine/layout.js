@@ -70,6 +70,10 @@ export function createLayout({ width, height, tuning = null }) {
   // The order the repos first appeared in, which is the order they are laid
   // out in, so an existing repo keeps its place when a new one turns up.
   const clusterOrder = [];
+  /** @type {Map<string, string>} */
+  let groupParent = new Map();
+  /** Repos grouped by the one at the top of their stack, in arrival order. */
+  const clusterGroups = new Map();
   let syncCount = 0;
   let lastClusterKey = '';
   let lastSpread = 0;
@@ -159,7 +163,7 @@ export function createLayout({ width, height, tuning = null }) {
     lastSpread = spread;
 
     for (const dir of radii.keys()) {
-      if (!clusterOrder.includes(dir)) clusterOrder.push(dir);
+      if (!clusterOrder.includes(dir)) placeInOrder(dir);
     }
 
     const placed = placeClusters(radii, {
@@ -167,6 +171,7 @@ export function createLayout({ width, height, tuning = null }) {
       height,
       gap: tune.clusterGap,
       order: clusterOrder,
+      groups: [...clusterGroups.values()],
     });
 
     for (const [dir, center] of placed) {
@@ -187,6 +192,55 @@ export function createLayout({ width, height, tuning = null }) {
     }
 
     return true;
+  }
+
+  /**
+   * Put a repo in the running order: with the repos it belongs to.
+   *
+   * A stack of repos is one thing, so they take one run of slots on the
+   * spiral. Which repo of a stack turns up first is an accident of the
+   * history, so the group is keyed by the repo at the top of it, whether or
+   * not that one has been drawn yet.
+   *
+   * @param {string} dir
+   */
+  function placeInOrder(dir) {
+    const root = rootOf(dir);
+    let group = clusterGroups.get(root);
+    if (!group) {
+      group = [];
+      clusterGroups.set(root, group);
+    }
+    // The repo at the top of the stack holds the middle of its group.
+    if (!group.includes(dir)) {
+      if (dir === root) group.unshift(dir);
+      else group.push(dir);
+    }
+
+    clusterOrder.length = 0;
+    for (const members of clusterGroups.values()) clusterOrder.push(...members);
+  }
+
+  /** The repo at the top of a stack of submodules. */
+  function rootOf(dir) {
+    const seen = new Set([dir]);
+    let root = dir;
+    let parent = groupParent.get(root);
+    while (parent && !seen.has(parent)) {
+      seen.add(parent);
+      root = parent;
+      parent = groupParent.get(root);
+    }
+    return root;
+  }
+
+  /**
+   * Which repo carries which, from the dataset.
+   *
+   * @param {Map<string, string>} parents
+   */
+  function setGroups(parents) {
+    groupParent = parents ?? new Map();
   }
 
   /** Carry each blob a little further towards where it now belongs. */
@@ -447,6 +501,7 @@ export function createLayout({ width, height, tuning = null }) {
 
   return {
     sync,
+    setGroups,
     setTuning,
     setMotion,
     getNode,

@@ -113,6 +113,15 @@ export const KNOBS = {
     max: 90,
     step: 1,
   },
+  avatarSpacing: {
+    label: 'Avatar spacing',
+    hint: 'How far two people stay apart on the graph',
+    group: 'People',
+    value: 46,
+    min: 0,
+    max: 160,
+    step: 2,
+  },
   standoff: {
     label: 'Avatar standoff',
     hint: 'How far outside a repo someone stands to fire at it',

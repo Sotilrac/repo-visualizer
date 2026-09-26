@@ -47,7 +47,9 @@ export function parseArgs(argv) {
  * The repos to walk: discovered on disk, minus the ones the config hides.
  *
  * @param {Array<{ name: string }>} discovered
- * @param {{ repos?: Array<{ name: string, lod?: number, project?: string }> }} config
+ * @param {{
+ *   repos?: Array<{ name: string, lod?: number, project?: string, submodules?: string[] }>,
+ * }} config
  */
 export function selectRepos(discovered, config) {
   const settings = new Map((config.repos ?? []).map((repo) => [repo.name, repo]));
@@ -57,6 +59,7 @@ export function selectRepos(discovered, config) {
       ...repo,
       lod: settings.get(repo.name)?.lod ?? 1,
       project: settings.get(repo.name)?.project,
+      submodules: settings.get(repo.name)?.submodules,
     }));
 }
 
@@ -106,6 +109,7 @@ async function main() {
       remote: repo.remote,
       lod: repo.lod,
       project: repo.project,
+      submodules: repo.submodules,
     };
   });
   process.stdout.write('\n');
