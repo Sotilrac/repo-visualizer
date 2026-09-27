@@ -10,7 +10,7 @@
  * comes from the config, so the same cutoffs drive the scan and the dataset.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -77,6 +77,33 @@ async function inParallel(items, limit, work) {
   return results;
 }
 
+/**
+ * Write this run's shards, and take away the ones it did not write.
+ *
+ * A narrower window than last time leaves files nothing points at. The app
+ * reads the manifest and would never load them, but they are history from
+ * repos that may since have been hidden, sitting on disk.
+ *
+ * @param {string} dir
+ * @param {Record<string, any>} shards keyed by year
+ */
+export function writeShards(dir, shards) {
+  mkdirSync(dir, { recursive: true });
+  const written = new Set();
+
+  for (const [year, shard] of Object.entries(shards)) {
+    const file = `${year}.json`;
+    written.add(file);
+    writeFileSync(path.join(dir, file), JSON.stringify(shard));
+  }
+
+  for (const file of readdirSync(dir)) {
+    if (!written.has(file)) rmSync(path.join(dir, file), { force: true });
+  }
+
+  return [...written];
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.config) {
@@ -119,11 +146,8 @@ async function main() {
     folderDepth: config.defaults?.folderDepth ?? 2,
   });
 
-  mkdirSync(path.join(args.out, 'shards'), { recursive: true });
   writeFileSync(path.join(args.out, 'manifest.json'), JSON.stringify(manifest));
-  for (const [year, shard] of Object.entries(shards)) {
-    writeFileSync(path.join(args.out, 'shards', `${year}.json`), JSON.stringify(shard));
-  }
+  writeShards(path.join(args.out, 'shards'), shards);
 
   const commits = manifest.shards.reduce((sum, s) => sum + s.commits, 0);
   console.log(

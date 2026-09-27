@@ -27,11 +27,17 @@ describe('timelineTicks', () => {
     expect(twoYears.filter((t) => t.kind === 'year').map((t) => t.label)).toEqual(['2021', '2022']);
   });
 
-  it('puts a year where its first commit falls on the track', () => {
+  it('puts a year where it falls on the calendar', () => {
     const year = twoYears.find((t) => t.label === '2021');
 
     // 47 days into a 730-day history.
     expect(year.pct).toBeCloseTo((47 / 729) * 100, 0);
+  });
+
+  it('spaces the years evenly', () => {
+    const years = twoYears.filter((t) => t.kind === 'year');
+
+    expect(years[1].pct - years[0].pct).toBeCloseTo(50, 0);
   });
 
   it('bunches the marks up where the commits are', () => {
@@ -44,29 +50,26 @@ describe('timelineTicks', () => {
   });
 
   it('drops the marks that would land on top of each other', () => {
-    // A year of nothing but a single commit, then a burst: every month of
-    // that year falls on the same pixel.
-    const lopsided = [{ date: '2021-01-01T00:00:00Z' }, ...daily('2021-12-20T00:00:00Z', 40)];
-    const ticks = timelineTicks(lopsided);
+    // Forty years: the months are a fifth of a percent apart.
+    const ticks = timelineTicks(daily('1990-01-01T00:00:00Z', 365 * 40));
     const gaps = ticks.slice(1).map((tick, i) => tick.pct - ticks[i].pct);
 
     expect(Math.min(...gaps)).toBeGreaterThan(0.24);
   });
 
-  it('names the last of a run of years that fall together', () => {
-    // Four years of one commit each, then real work.
-    const sparse = [
-      { date: '2016-06-01T00:00:00Z' },
-      { date: '2017-06-01T00:00:00Z' },
-      { date: '2018-06-01T00:00:00Z' },
-      { date: '2019-06-01T00:00:00Z' },
-      ...daily('2020-01-01T00:00:00Z', 500),
-    ];
-    const labels = timelineTicks(sparse)
+  it('names every year there is room for, and no more', () => {
+    const labels = timelineTicks(daily('1990-01-01T00:00:00Z', 365 * 40)).filter((t) => t.label);
+
+    expect(labels.length).toBeGreaterThan(10);
+    expect(labels.length).toBeLessThan(40);
+  });
+
+  it('names each year of a history short enough to show them all', () => {
+    const labels = timelineTicks(daily('2020-01-01T00:00:00Z', 365 * 4))
       .filter((t) => t.label)
       .map((t) => t.label);
 
-    expect(labels).toEqual(['2020', '2021']);
+    expect(labels).toEqual(['2021', '2022', '2023']);
   });
 
   it('has nothing to mark on an empty or single-commit history', () => {

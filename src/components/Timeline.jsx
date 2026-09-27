@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createTimeScale } from '../engine/timelineScale.js';
 import { timelineTicks } from '../engine/timelineTicks.js';
 
 /**
@@ -17,13 +18,16 @@ export default function Timeline({ commits, index, onSeek }) {
   const debounceRef = useRef(null);
 
   const ticks = useMemo(() => timelineTicks(commits), [commits]);
+  const scale = useMemo(() => createTimeScale(commits), [commits]);
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
 
   const idxFromEvent = (ev) => {
     const rect = trackRef.current?.getBoundingClientRect();
     if (!rect) return null;
     const x = ev.clientX - rect.left;
     const pct = Math.max(0, Math.min(1, x / rect.width));
-    return Math.round(pct * (commits.length - 1));
+    return scaleRef.current.indexAt(pct * 100);
   };
 
   const setPending = (idx) => {
@@ -93,7 +97,7 @@ export default function Timeline({ commits, index, onSeek }) {
   };
 
   const progress = pendingIdx ?? (index < 0 ? -1 : index);
-  const progressPct = progress < 0 ? 0 : (progress / Math.max(1, commits.length - 1)) * 100;
+  const progressPct = progress < 0 ? 0 : scale.pctOf(progress);
 
   const firstDate = commits[0]?.date && new Date(commits[0].date);
   const lastDate = commits[commits.length - 1]?.date && new Date(commits[commits.length - 1].date);
