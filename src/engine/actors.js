@@ -12,6 +12,9 @@
 
 import { tileHue } from '../shared/avatarTile.js';
 
+/** How big a face is drawn, in world units. The renderer draws to this. */
+export const AVATAR_RADIUS = 14;
+
 const DEFAULTS = {
   /** How long a beam takes to travel, in milliseconds. */
   beamMs: 700,
@@ -25,8 +28,17 @@ const DEFAULTS = {
   maxActors: 40,
   /** How far an actor stays off the bubbles it is working on. */
   nodeClearance: 30,
-  /** How far two actors stay apart. */
+  /** How far two actors prefer to stay apart. */
   actorClearance: 46,
+  /**
+   * How close two faces may ever get, centre to centre.
+   *
+   * The preference above is a push that balances against everything else
+   * pulling them together, so it is a tendency rather than a rule. Two
+   * faces drawn on top of each other are unreadable whatever the forces
+   * wanted, so this one is imposed afterwards, on the drawn position.
+   */
+  minSeparation: AVATAR_RADIUS * 2,
   /** How far outside a repo's blob an actor stands to fire into it. */
   blobClearance: 64,
   /**
@@ -89,6 +101,54 @@ function push(subject, other, clearance, strength) {
   const shift = ((clearance - distance) / distance) * strength;
   subject.x += dx * shift;
   subject.y += dy * shift;
+}
+
+/**
+ * Pull apart any pair closer than `min`, half the overlap each.
+ *
+ * Several passes, because moving one pair apart can push one of them into
+ * a third, and it stops as soon as a pass finds nothing left to do.
+ *
+ * @param {any[]} people
+ * @param {number} min
+ * @param {'x' | 'sx'} xk
+ * @param {'y' | 'sy'} yk
+ */
+function separate(people, min, xk, yk) {
+  for (let pass = 0; pass < 4; pass++) {
+    let touched = false;
+    for (let i = 0; i < people.length; i++) {
+      for (let j = i + 1; j < people.length; j++) {
+        const a = people[i];
+        const b = people[j];
+        let dx = b[xk] - a[xk];
+        let dy = b[yk] - a[yk];
+        let distance = Math.hypot(dx, dy);
+        if (distance >= min) continue;
+
+        // Exactly on top of each other has no direction to separate along,
+        // so pick one from their order, which keeps a frame reproducible.
+        if (distance < 1e-6) {
+          const angle = (i * 2.399 + j) % (Math.PI * 2);
+          dx = Math.cos(angle);
+          dy = Math.sin(angle);
+          distance = 1;
+        }
+
+        touched = true;
+        // A little more than half the overlap each: a pile resolved by
+        // exact halves converges towards the floor without reaching it, and
+        // what is left is a row of faces just touching.
+        const shift = ((min - distance) / 2 / distance) * 1.08;
+        a[xk] -= dx * shift;
+        a[yk] -= dy * shift;
+        b[xk] += dx * shift;
+        b[yk] += dy * shift;
+      }
+    }
+    // A pass that finds no overlap means the rest would find none either.
+    if (!touched) return;
+  }
 }
 
 /**
@@ -181,16 +241,21 @@ export function createActors(options = {}) {
 
       let actor = actors.get(key);
       if (!actor) {
-        // Arrive off to one side of the work, so the approach reads as motion.
+        // Arrive off to one side of the work, so the approach reads as
+        // motion. Which side comes from their name, so a crowd arriving at
+        // once comes from all around rather than from one point.
+        const bearing = (tileHue(key) / 180) * Math.PI;
+        const entryX = centre.x + Math.cos(bearing) * config.entryOffset;
+        const entryY = centre.y + Math.sin(bearing) * config.entryOffset;
         actor = {
           key,
           name: person.name,
           avatar: person.avatar,
           hue: person.hue ?? tileHue(key),
-          x: centre.x + config.entryOffset,
-          y: centre.y - config.entryOffset,
-          sx: centre.x + config.entryOffset,
-          sy: centre.y - config.entryOffset,
+          x: entryX,
+          y: entryY,
+          sx: entryX,
+          sy: entryY,
           alpha: 1,
           commits: 0,
           idleFor: 0,
@@ -290,6 +355,12 @@ export function createActors(options = {}) {
         actor.sx += (actor.x - actor.sx) * follow;
         actor.sy += (actor.y - actor.sy) * follow;
       }
+
+      // Never overlapping, whatever the forces and the filter worked out
+      // between them. Both positions: the raw one so the next frame starts
+      // from somewhere legal, the drawn one because that is what is seen.
+      separate(everyone, config.minSeparation, 'x', 'y');
+      separate(everyone, config.minSeparation, 'sx', 'sy');
 
       for (const [key, actor] of actors) {
         if (actor.idleFor >= config.idleMs) actors.delete(key);

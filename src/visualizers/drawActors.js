@@ -6,7 +6,9 @@
  * behind it is faint so a busy commit does not white out the graph.
  */
 
-export const AVATAR_RADIUS = 14;
+import { AVATAR_RADIUS } from '../engine/actors.js';
+
+export { AVATAR_RADIUS };
 
 /** Where an actor is drawn, which lags where the forces have put it. */
 const drawnAt = (actor) => ({ x: actor.sx ?? actor.x, y: actor.sy ?? actor.y });

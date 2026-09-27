@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createActors } from '../src/engine/actors.js';
+import { AVATAR_RADIUS, createActors } from '../src/engine/actors.js';
 
 const node = (path, x, y) => ({ path, x, y });
 
@@ -488,5 +488,78 @@ describe('a whole team drawn as one avatar', () => {
     const actor = teamActor(12);
 
     expect(Math.abs(actor.sx)).toBeLessThan(400);
+  });
+});
+
+describe('faces never drawn on top of each other', () => {
+  const MIN = AVATAR_RADIUS * 2;
+
+  /** Everyone piling onto one file, which is where they would overlap. */
+  function pileOn(size, options = {}) {
+    const actors = createActors({ idleMs: 60000, ...options });
+    for (let i = 0; i < size; i++) {
+      actors.onCommit(
+        commit(`dev${i}`, `dev${i}@acme.com`, ['a.js']),
+        { 'a.js': node('a.js', 0, 0) },
+        i,
+      );
+    }
+    return actors;
+  }
+
+  const closest = (people, xk = 'x', yk = 'y') => {
+    let worst = Infinity;
+    for (let i = 0; i < people.length; i++) {
+      for (let j = i + 1; j < people.length; j++) {
+        worst = Math.min(
+          worst,
+          Math.hypot(people[i][xk] - people[j][xk], people[i][yk] - people[j][yk]),
+        );
+      }
+    }
+    return worst;
+  };
+
+  it('holds a crowd a face apart from the first frame', () => {
+    const actors = pileOn(10);
+    actors.tick(16);
+
+    expect(closest(actors.list())).toBeGreaterThanOrEqual(MIN - 0.01);
+  });
+
+  it('holds them apart where they are drawn, not only where the forces put them', () => {
+    const actors = pileOn(10);
+    for (let i = 0; i < 30; i++) actors.tick(16);
+
+    expect(closest(actors.list(), 'sx', 'sy')).toBeGreaterThanOrEqual(MIN - 0.01);
+  });
+
+  it('keeps the floor even with the spacing turned all the way down', () => {
+    const actors = pileOn(8);
+    actors.setTuning({ avatarSpacing: 0 });
+    for (let i = 0; i < 30; i++) actors.tick(16);
+
+    expect(closest(actors.list(), 'sx', 'sy')).toBeGreaterThanOrEqual(MIN - 0.01);
+  });
+
+  it('lets them sit close, and no further than asked', () => {
+    const actors = pileOn(4);
+    actors.setTuning({ avatarSpacing: 0 });
+    for (let i = 0; i < 60; i++) actors.tick(16);
+
+    expect(closest(actors.list(), 'sx', 'sy')).toBeLessThan(MIN * 1.6);
+  });
+
+  it('separates two people who arrive at exactly the same spot', () => {
+    const actors = pileOn(2);
+    for (const actor of actors.list()) {
+      actor.x = 0;
+      actor.y = 0;
+      actor.sx = 0;
+      actor.sy = 0;
+    }
+    actors.tick(16);
+
+    expect(closest(actors.list(), 'sx', 'sy')).toBeGreaterThanOrEqual(MIN - 0.01);
   });
 });
