@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-
-const MAX_TICKS = 64;
+import { timelineTicks } from '../engine/timelineTicks.js';
 
 /**
- * Interactive scrubber with milestone ticks only, virtualized for large histories.
+ * Interactive scrubber, marked out in months, half years and years.
  *
  * The handle tracks the pointer immediately for instant visual feedback.
  * The actual onSeek is debounced during drag so large async rebuilds don't
@@ -17,20 +16,7 @@ export default function Timeline({ commits, index, onSeek }) {
   const draggingRef = useRef(false);
   const debounceRef = useRef(null);
 
-  const ticks = useMemo(() => {
-    if (!commits.length) return [];
-    const n = commits.length;
-    const step = Math.max(1, Math.ceil(n / MAX_TICKS));
-    const out = [];
-    for (let i = 0; i < n; i += step) {
-      const isMajor = i % 10 === 0 || i === n - 1 || i === 0;
-      out.push({ i, isMajor, pct: (i / Math.max(1, n - 1)) * 100 });
-    }
-    if (out[out.length - 1]?.i !== n - 1) {
-      out.push({ i: n - 1, isMajor: true, pct: 100 });
-    }
-    return out;
-  }, [commits.length]);
+  const ticks = useMemo(() => timelineTicks(commits), [commits]);
 
   const idxFromEvent = (ev) => {
     const rect = trackRef.current?.getBoundingClientRect();
@@ -111,10 +97,6 @@ export default function Timeline({ commits, index, onSeek }) {
 
   const firstDate = commits[0]?.date && new Date(commits[0].date);
   const lastDate = commits[commits.length - 1]?.date && new Date(commits[commits.length - 1].date);
-  const midDate =
-    commits[Math.floor(commits.length / 2)]?.date &&
-    new Date(commits[Math.floor(commits.length / 2)].date);
-
   const fmt = (d) => (d ? d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : '');
 
   return (
@@ -138,17 +120,16 @@ export default function Timeline({ commits, index, onSeek }) {
         <div className="timeline-ticks">
           {ticks.map((t) => (
             <div
-              key={t.i}
-              className={`timeline-tick${t.isMajor ? ' large' : ''}`}
-              style={{ left: `${t.pct}%`, opacity: t.isMajor ? 1 : 0.35 }}
-            />
+              key={`${t.kind}-${t.pct}`}
+              className={`timeline-tick timeline-tick--${t.kind}`}
+              style={{ left: `${t.pct}%` }}
+            >
+              {t.label && <span className="timeline-year">{t.label}</span>}
+            </div>
           ))}
         </div>
         <div className="timeline-date" style={{ left: '0%', transform: 'translateX(0)' }}>
           {fmt(firstDate)}
-        </div>
-        <div className="timeline-date" style={{ left: '50%' }}>
-          {fmt(midDate)}
         </div>
         <div className="timeline-date" style={{ left: '100%', transform: 'translateX(-100%)' }}>
           {fmt(lastDate)}
