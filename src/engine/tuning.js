@@ -104,6 +104,15 @@ export const KNOBS = {
     max: 3,
     step: 0.05,
   },
+  cameraEase: {
+    label: 'Camera easing',
+    hint: 'How long the camera takes to follow the graph while auto fit is on',
+    group: 'Camera',
+    value: 420,
+    min: 60,
+    max: 2000,
+    step: 20,
+  },
   avatarLinger: {
     label: 'Avatar linger',
     hint: 'How long someone stays on the graph after their last commit, in seconds',
@@ -141,6 +150,16 @@ export const KNOBS = {
     step: 2,
   },
 };
+
+/**
+ * The fraction of the way the camera moves in a 16ms frame, for a given
+ * time constant in milliseconds.
+ *
+ * @param {number} ms
+ */
+export function cameraSpeed(ms) {
+  return 1 - Math.exp(-16 / Math.max(16, ms));
+}
 
 /** @type {Record<string, number>} */
 export const DEFAULT_TUNING = Object.fromEntries(

@@ -67,10 +67,19 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+/** Below these the fit has not really changed, so the camera stays put. */
+const SCALE_DEADBAND = 0.02;
+const SHIFT_DEADBAND = 10;
+
 /**
- * Compute scale/translation to fit all points in viewport.
- */
-/**
+ * Point the camera at everything.
+ *
+ * Called every frame while auto-fit is on, against a graph whose bodies are
+ * always moving, so the fit it computes is never quite the same twice. Past
+ * a deadband the camera would swim for as long as the simulation runs, and
+ * chasing a target that moves a pixel a frame reads as a glitch rather than
+ * as a camera.
+ *
  * @param {number} [margin] world-space room to leave around everything, for
  *   what is drawn beside the graph rather than in it: the avatars stand off
  *   the repos they are firing at and would otherwise sit off screen.
@@ -107,9 +116,18 @@ export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING, margin =
     MAX_SCALE,
   );
 
+  const tx = w / 2 - cx * scale;
+  const ty = h / 2 - cy * scale;
+
+  const settled =
+    Math.abs(scale / cam.targetScale - 1) < SCALE_DEADBAND &&
+    Math.abs(tx - cam.targetTx) < SHIFT_DEADBAND &&
+    Math.abs(ty - cam.targetTy) < SHIFT_DEADBAND;
+  if (settled) return;
+
   cam.targetScale = scale;
-  cam.targetTx = w / 2 - cx * scale;
-  cam.targetTy = h / 2 - cy * scale;
+  cam.targetTx = tx;
+  cam.targetTy = ty;
 }
 
 /** Snap camera to fit target immediately (e.g. after resize). */
@@ -119,9 +137,14 @@ export function snapCamera(cam) {
   cam.ty = cam.targetTy;
 }
 
-/** Smooth lerp toward target (auto-fit while playing). */
+/**
+ * Ease the camera towards the fit, a fraction of the way each frame.
+ *
+ * @param {number} dt milliseconds since the last frame
+ * @param {number} [speed] the fraction covered in a 16ms frame
+ */
 export function lerpCamera(cam, dt, speed = 0.08) {
-  const t = 1 - (1 - speed) ** (dt / 16);
+  const t = 1 - (1 - Math.min(1, Math.max(0, speed))) ** (dt / 16);
   cam.scale += (cam.targetScale - cam.scale) * t;
   cam.tx += (cam.targetTx - cam.tx) * t;
   cam.ty += (cam.targetTy - cam.ty) * t;

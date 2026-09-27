@@ -23,6 +23,7 @@ import { createLodTransitions } from '../engine/lodTransitions.js';
 import { drawRecordingOverlay } from '../engine/recordingOverlay.js';
 import { buildRepoClock } from '../engine/repoClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
+import { cameraSpeed } from '../engine/tuning.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
 import { AVATAR_RADIUS, drawActors } from './drawActors.js';
 
@@ -249,7 +250,7 @@ export function useVisualizerCore({
       } else if (!hasFocus) {
         cam._focusFitKey = null;
       }
-      lerpCamera(cam, dt);
+      lerpCamera(cam, dt, cameraSpeed(p.tuning?.cameraEase ?? 420));
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (p.clearStrategy === 'trail') {
@@ -487,9 +488,10 @@ export function useVisualizerCore({
       }
       const host = hostRef.current;
       if (host && paramsRef.current.autoFit) {
-        const cam = cameraRef.current;
-        cam.userAdjusted = false;
-        cam._fitted = false;
+        // Auto-fit picks up again, but the camera eases there. Clearing
+        // `_fitted` as well made it snap to a new fit on every commit,
+        // which is the jump that reads as a glitch while playing.
+        cameraRef.current.userAdjusted = false;
       }
     }
     if (commitIndex < lastCommitIdxRef.current) actorsRef.current.clear();

@@ -18,6 +18,7 @@ import { createLayout } from '../engine/layout.js';
 import { createLodTransitions } from '../engine/lodTransitions.js';
 import { buildRepoClock } from '../engine/repoClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
+import { cameraSpeed } from '../engine/tuning.js';
 import { isNodeVisible } from '../engine/visibility.js';
 import { drawClusterLabels, drawInspectNodeLabels } from './drawHelpers.js';
 
@@ -299,7 +300,7 @@ export default function WebGLVisualizer({
       } else if (!hasFocus) {
         camera._focusFitKey = null;
       }
-      lerpCamera(camera, dt);
+      lerpCamera(camera, dt, cameraSpeed(p.tuning?.cameraEase ?? 420));
 
       const nodes = layout.getNodes().filter((n) => isNodeVisible(n, p.commitIndex));
       const focusSet = resolveFocusSet(
