@@ -24,7 +24,7 @@ import { drawRecordingOverlay } from '../engine/recordingOverlay.js';
 import { buildRepoClock } from '../engine/repoClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
-import { drawActors } from './drawActors.js';
+import { AVATAR_RADIUS, drawActors } from './drawActors.js';
 
 /** Stable empty list, so effects do not refire on a fresh literal. */
 const NO_REPOS = Object.freeze([]);
@@ -93,6 +93,9 @@ export function useVisualizerCore({
     showActors,
     tuning,
   });
+  /** Room the camera leaves for the people standing outside the repos. */
+  const actorMargin = (params) =>
+    params.showActors ? (params.tuning?.standoff ?? 0) + AVATAR_RADIUS * 2 : 0;
   paramsRef.current = {
     draw,
     onBeforeDraw,
@@ -135,7 +138,7 @@ export function useVisualizerCore({
         resetCamera(cam);
         const idx = paramsRef.current.commitIndex;
         const pts = layout.getNodes().filter((n) => isNodeVisible(n, idx));
-        fitBounds(cam, pts, w, h);
+        fitBounds(cam, pts, w, h, undefined, actorMargin(paramsRef.current));
         snapCamera(cam);
       },
     };
@@ -177,7 +180,7 @@ export function useVisualizerCore({
       if (paramsRef.current.autoFit && !cam.userAdjusted) {
         const idx = paramsRef.current.commitIndex;
         const pts = layout.getNodes().filter((n) => isNodeVisible(n, idx));
-        fitBounds(cam, pts, w, h);
+        fitBounds(cam, pts, w, h, undefined, actorMargin(paramsRef.current));
         snapCamera(cam);
       }
     }
@@ -233,7 +236,7 @@ export function useVisualizerCore({
         if (fitPts.length > 0) {
           const refit = !hasFocus || focusKey !== cam._focusFitKey;
           if (refit) {
-            fitBounds(cam, fitPts, w, h);
+            fitBounds(cam, fitPts, w, h, undefined, actorMargin(p));
             if (!hasFocus) {
               if (!cam._fitted) snapCamera(cam);
               cam._fitted = true;

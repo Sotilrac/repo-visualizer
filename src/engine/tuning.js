@@ -122,6 +122,15 @@ export const KNOBS = {
     max: 160,
     step: 2,
   },
+  avatarSmoothing: {
+    label: 'Avatar smoothing',
+    hint: 'How much the drawn position lags the forces, in milliseconds',
+    group: 'People',
+    value: 170,
+    min: 0,
+    max: 600,
+    step: 10,
+  },
   standoff: {
     label: 'Avatar standoff',
     hint: 'How far outside a repo someone stands to fire at it',

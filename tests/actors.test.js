@@ -400,3 +400,93 @@ describe('avatars in a crowd', () => {
     expect(closest(actors.list())).toBeGreaterThan(90);
   });
 });
+
+describe('the filter on the drawn position', () => {
+  /**
+   * One actor with nothing pulling on it, so what moves is the filter and
+   * only the filter.
+   */
+  function jumper(options = {}) {
+    const actors = createActors({ idleMs: 60000, ...options });
+    actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
+    for (let i = 0; i < 200; i++) actors.tick(16);
+    const [actor] = actors.list();
+    actor.target = null;
+    actor.nodes = [];
+    return actors;
+  }
+
+  it('lags the forces instead of snapping to them', () => {
+    const actors = jumper();
+    const [actor] = actors.list();
+    actor.x += 400;
+    actors.tick(16);
+
+    expect(actor.sx - (actor.x - 400)).toBeLessThan(80);
+  });
+
+  it('catches up given a few frames', () => {
+    const actors = jumper();
+    const [actor] = actors.list();
+    const from = actor.sx;
+    actor.x = from + 400;
+    for (let i = 0; i < 60; i++) actors.tick(16);
+
+    expect(Math.abs(actor.sx - actor.x)).toBeLessThan(2);
+  });
+
+  it('moves the same distance whatever the frame rate', () => {
+    const slow = jumper();
+    const fast = jumper();
+    const [a] = slow.list();
+    const [b] = fast.list();
+    a.x += 400;
+    b.x += 400;
+
+    slow.tick(48);
+    fast.tick(16);
+    fast.tick(16);
+    fast.tick(16);
+
+    expect(Math.abs(a.sx - b.sx)).toBeLessThan(2);
+  });
+
+  it('follows exactly when the filter is turned off', () => {
+    const actors = jumper({ smoothingMs: 0 });
+    const [actor] = actors.list();
+    actor.x += 400;
+    actors.tick(16);
+
+    expect(actor.sx).toBe(actor.x);
+  });
+});
+
+describe('a whole team drawn as one avatar', () => {
+  /** The team actor, committing alternately at either end of the graph. */
+  function teamActor(commits) {
+    const actors = createActors({
+      idleMs: 60000,
+      resolve: () => ({ key: 'team:external', name: 'External' }),
+    });
+    const nodes = { 'left.c': node('left.c', -500, 0), 'right.c': node('right.c', 500, 0) };
+    for (let i = 0; i < commits; i++) {
+      actors.onCommit(
+        commit('whoever', `p${i}@other.com`, [i % 2 ? 'left.c' : 'right.c']),
+        nodes,
+        i,
+      );
+      for (let f = 0; f < 6; f++) actors.tick(16);
+    }
+    return actors.list()[0];
+  }
+
+  it('is one actor however many people commit', () => {
+    expect(teamActor(10).name).toBe('External');
+  });
+
+  it('stays between the places it is working rather than swinging across', () => {
+    const actor = teamActor(12);
+
+    expect(Math.abs(actor.sx)).toBeLessThan(400);
+  });
+});

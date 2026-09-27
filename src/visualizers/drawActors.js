@@ -6,7 +6,10 @@
  * behind it is faint so a busy commit does not white out the graph.
  */
 
-const AVATAR_RADIUS = 14;
+export const AVATAR_RADIUS = 14;
+
+/** Where an actor is drawn, which lags where the forces have put it. */
+const drawnAt = (actor) => ({ x: actor.sx ?? actor.x, y: actor.sy ?? actor.y });
 const LABEL_MIN_SCALE = 0.55;
 
 /**
@@ -23,7 +26,8 @@ export function drawActors(ctx, { actors, beams, images, cameraScale }) {
 }
 
 function drawBeam(ctx, beam) {
-  const { from, to, progress } = beam;
+  const { to, progress } = beam;
+  const from = { ...beam.from, ...drawnAt(beam.from) };
   const headX = from.x + (to.x - from.x) * progress;
   const headY = from.y + (to.y - from.y) * progress;
 
@@ -56,7 +60,8 @@ function drawBeam(ctx, beam) {
 }
 
 function drawActor(ctx, actor, image, cameraScale) {
-  const { x, y, alpha, hue } = actor;
+  const { alpha, hue } = actor;
+  const { x, y } = drawnAt(actor);
   if (alpha <= 0) return;
 
   ctx.save();

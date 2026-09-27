@@ -30,6 +30,15 @@ const DEFAULTS = {
   /** How far outside a repo's blob an actor stands to fire into it. */
   blobClearance: 64,
   /**
+   * The time constant of the filter on the drawn position, in milliseconds.
+   *
+   * A spring, two repulsions and a target that moves with every commit add
+   * up to a position that twitches frame to frame. The forces stay as they
+   * are and what is drawn lags them, which is the difference between a
+   * person moving and a person flickering.
+   */
+  smoothingMs: 170,
+  /**
    * How hard the blob pushes back. Firmer than the rest: the spring is
    * pulling the avatar towards the middle of the work the whole time, and a
    * soft push settles inside the blob rather than outside it.
@@ -47,6 +56,15 @@ const DEFAULTS = {
   crowding: 0.18,
   /** How far from the work a new actor appears, so the approach is visible. */
   entryOffset: 90,
+  /**
+   * How much of the way a commit moves where someone is heading.
+   *
+   * A person usually commits to the same corner twice running and this
+   * changes nothing. A whole team drawn as one avatar is the case it is
+   * for: its commits come from everywhere, and aiming at the latest one
+   * sends it across the graph and back several times a second.
+   */
+  targetBlend: 0.3,
 };
 
 /**
@@ -107,11 +125,19 @@ export function createActors(options = {}) {
     /**
      * Settings changed while the graph is running.
      *
-     * @param {{ standoff?: number, avatarLinger?: number, avatarSpacing?: number }} next
+     * @param {{
+     *   standoff?: number,
+     *   avatarLinger?: number,
+     *   avatarSpacing?: number,
+     *   avatarSmoothing?: number,
+     * }} next
      */
     setTuning(next) {
       if (Number.isFinite(next.standoff)) config.blobClearance = Number(next.standoff);
       if (Number.isFinite(next.avatarSpacing)) config.actorClearance = Number(next.avatarSpacing);
+      if (Number.isFinite(next.avatarSmoothing)) {
+        config.smoothingMs = Math.max(0, Number(next.avatarSmoothing));
+      }
       if (Number.isFinite(next.avatarLinger)) {
         config.idleMs = Math.max(500, Number(next.avatarLinger) * 1000);
       }
@@ -163,6 +189,8 @@ export function createActors(options = {}) {
           hue: person.hue ?? tileHue(key),
           x: centre.x + config.entryOffset,
           y: centre.y - config.entryOffset,
+          sx: centre.x + config.entryOffset,
+          sy: centre.y - config.entryOffset,
           alpha: 1,
           commits: 0,
           idleFor: 0,
@@ -172,7 +200,12 @@ export function createActors(options = {}) {
 
       actor.name = person.name;
       actor.avatar = person.avatar;
-      actor.target = centre;
+      actor.target = actor.target
+        ? {
+            x: actor.target.x + (centre.x - actor.target.x) * config.targetBlend,
+            y: actor.target.y + (centre.y - actor.target.y) * config.targetBlend,
+          }
+        : centre;
       actor.nodes = targets.map((target) => target.node);
       actor.idleFor = 0;
       actor.alpha = 1;
@@ -247,6 +280,15 @@ export function createActors(options = {}) {
           push(a, b, config.actorClearance, config.crowding);
           push(b, a, config.actorClearance, config.crowding);
         }
+      }
+
+      // What is drawn follows where the forces put them, a fixed fraction
+      // of the remaining distance each frame. The fraction comes from the
+      // frame time, so the motion is the same whatever the frame rate.
+      const follow = config.smoothingMs > 0 ? 1 - Math.exp(-dt / config.smoothingMs) : 1;
+      for (const actor of everyone) {
+        actor.sx += (actor.x - actor.sx) * follow;
+        actor.sy += (actor.y - actor.sy) * follow;
       }
 
       for (const [key, actor] of actors) {

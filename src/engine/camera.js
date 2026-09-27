@@ -70,7 +70,12 @@ function clamp(v, lo, hi) {
 /**
  * Compute scale/translation to fit all points in viewport.
  */
-export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING) {
+/**
+ * @param {number} [margin] world-space room to leave around everything, for
+ *   what is drawn beside the graph rather than in it: the avatars stand off
+ *   the repos they are firing at and would otherwise sit off screen.
+ */
+export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING, margin = 0) {
   if (!points.length) {
     cam.targetScale = 1;
     cam.targetTx = 0;
@@ -84,7 +89,7 @@ export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING) {
   let maxY = -Infinity;
   for (const p of points) {
     if (p.x == null || p.y == null) continue;
-    const pad = (p.r ?? 8) + 12;
+    const pad = (p.r ?? 8) + 12 + margin;
     minX = Math.min(minX, p.x - pad);
     minY = Math.min(minY, p.y - pad);
     maxX = Math.max(maxX, p.x + pad);
