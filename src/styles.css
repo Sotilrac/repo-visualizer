@@ -1339,9 +1339,9 @@ a.repo-list-item:hover {
 }
 
 /* The first date sits above the track, in line with the year markers. */
-/* The first date is a year marker at the very start, so its label hangs
-   off the right of the mark rather than being centred on it. */
-.timeline-tick--start .timeline-year {
+/* A mark whose label would otherwise be centred over the start of the
+   track carries it to the right instead. */
+.timeline-tick--left .timeline-year {
   left: 0;
   transform: none;
 }

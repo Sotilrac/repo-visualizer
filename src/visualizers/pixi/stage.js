@@ -29,6 +29,14 @@ const TAG_PAD_X = 7;
 const TAG_PAD_Y = 3;
 const TAG_RADIUS = 4;
 
+/**
+ * How far a folder's name sits below its bubble.
+ *
+ * Clear of the ring drawn round a picked one, which is at the radius plus
+ * seven and would otherwise be struck through by the word.
+ */
+const BODY_LABEL_GAP = 18;
+
 /** Below this many screen pixels a label is unreadable, so it is left out. */
 const LABEL_MIN_RADIUS = 9;
 
@@ -697,7 +705,7 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
     if (!onScreen(frame.cam, frame.w, frame.h, n.x, n.y, n.r ?? 6)) continue;
     const name = n.path.slice(n.path.lastIndexOf('/') + 1);
     const label = labelFor(`body:${n.path}`, `${name} ${n.files}`, style.label);
-    label.position.set(px(n.x), py(n.y) + (n.r ?? 6) * scale + 10);
+    label.position.set(px(n.x), py(n.y) + (n.r ?? 6) * scale + BODY_LABEL_GAP);
     label.alpha = style.label.alpha * 0.8;
   }
 
@@ -705,9 +713,9 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
   if (isolating) {
     for (const n of nodes) {
       if (!inPicture(n)) continue;
-      // A repo already has its name on a plate; a second copy underneath is
-      // the same word twice.
-      if (n.kind === 'repo') continue;
+      // A repo has its name on a plate and a folder has one under it
+      // already; naming them again here is the same word twice.
+      if (n.kind && n.kind !== 'file') continue;
       if (!onScreen(frame.cam, frame.w, frame.h, n.x, n.y, n.r ?? 6)) continue;
       const name = n.path.slice(n.path.lastIndexOf('/') + 1);
       const label = labelFor(`pick:${n.path}`, name, style.label);

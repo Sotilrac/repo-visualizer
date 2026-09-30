@@ -3,6 +3,14 @@ import StylePicker from './StylePicker.jsx';
 import Timeline from './Timeline.jsx';
 import ToolButton from './ToolButton.jsx';
 
+/** One commit back. */
+const BackIcon = () => (
+  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M8 3 L2 8 L8 13 Z" />
+    <path d="M14 3 L8 8 L14 13 Z" />
+  </svg>
+);
+
 /** One commit forward. */
 const StepIcon = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -136,6 +144,13 @@ export default function ControlBar({
         <div className="control-row control-row--playback">
           <ToolButton onClick={onRestart} title="Back to the first commit">
             <RestartIcon />
+          </ToolButton>
+          <ToolButton
+            onClick={() => onSeek(index - 1)}
+            disabled={buildingFinal || index < 0 || !commits.length}
+            title="Previous commit"
+          >
+            <BackIcon />
           </ToolButton>
           <button
             className={`btn btn-play${showPlayHint ? ' is-cta' : ''}`}

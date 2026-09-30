@@ -17,6 +17,13 @@ import { timelineTicks } from '../engine/timelineTicks.js';
  * long as the rebuild takes and then jumps, which reads as a click that
  * missed and landed somewhere else.
  */
+/**
+ * Below this much of the track, a year label is centred on its mark right
+ * where the start date is written, and the two run together. It hangs off
+ * the right of its mark instead, the same way the start date does.
+ */
+const CROWDED_START = 6;
+
 export default function Timeline({ commits, index, seekingTo = null, msPerCommit = 1200, onSeek }) {
   const trackRef = useRef(null);
   // Visual position during drag (null = use committed index).
@@ -133,7 +140,7 @@ export default function Timeline({ commits, index, seekingTo = null, msPerCommit
           {/* The first date is marked the same way a year is, so it lines
               up with them instead of being positioned on its own terms. */}
           <div
-            className="timeline-tick timeline-tick--year timeline-tick--start"
+            className="timeline-tick timeline-tick--year timeline-tick--left"
             style={{ left: '0%' }}
           >
             <span className="timeline-year">{fmt(firstDate)}</span>
@@ -141,7 +148,9 @@ export default function Timeline({ commits, index, seekingTo = null, msPerCommit
           {ticks.map((t) => (
             <div
               key={`${t.kind}-${t.pct}`}
-              className={`timeline-tick timeline-tick--${t.kind}`}
+              className={`timeline-tick timeline-tick--${t.kind}${
+                t.label && t.pct < CROWDED_START ? ' timeline-tick--left' : ''
+              }`}
               style={{ left: `${t.pct}%` }}
             >
               {t.label && <span className="timeline-year">{t.label}</span>}
