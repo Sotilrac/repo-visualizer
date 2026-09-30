@@ -1,6 +1,7 @@
 import ExportControls, { FrameRate } from './ExportControls.jsx';
 import StylePicker from './StylePicker.jsx';
 import Timeline from './Timeline.jsx';
+import ToolButton from './ToolButton.jsx';
 
 /** One commit forward. */
 const StepIcon = () => (
@@ -30,20 +31,11 @@ const PauseIcon = () => (
   </svg>
 );
 
+/** Back to the first commit. */
 const RestartIcon = () => (
-  <svg
-    aria-hidden="true"
-    width="14"
-    height="14"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M2 8a6 6 0 1 0 1.7-4.2" />
-    <path d="M2 2v3h3" />
+  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <rect x="3" y="3" width="2" height="10" rx="0.6" />
+    <path d="M13 3 L6 8 L13 13 Z" />
   </svg>
 );
 
@@ -89,11 +81,9 @@ export default function ControlBar({
       />
       <div className="control-cluster">
         <div className="control-row control-row--playback">
-          <button className="btn" onClick={onRestart} title="Restart" type="button">
-            <span className="icon">
-              <RestartIcon />
-            </span>
-          </button>
+          <ToolButton onClick={onRestart} title="Back to the first commit">
+            <RestartIcon />
+          </ToolButton>
           <button
             className={`btn btn-play${showPlayHint ? ' is-cta' : ''}`}
             onClick={onTogglePlay}
@@ -103,27 +93,23 @@ export default function ControlBar({
           >
             {playing ? <PauseIcon /> : <PlayIcon />}
           </button>
-          <button
-            type="button"
-            className="btn"
+          <ToolButton
             onClick={() => onSeek(index + 1)}
             disabled={buildingFinal || atFinal || !commits.length}
             title="Next commit"
-            aria-label="Next commit"
           >
             <StepIcon />
-          </button>
-          <button
-            type="button"
-            className={`btn btn-final-state${atFinal ? ' is-active' : ''}`}
+          </ToolButton>
+          <ToolButton
             onClick={onGoToFinal}
+            active={atFinal}
+            busy={buildingFinal}
             disabled={buildingFinal || atFinal || !commits.length}
             title={atFinal ? 'At final state' : 'Load final state (all commits)'}
-            aria-label="Jump to the final state"
-            aria-busy={buildingFinal}
+            label="Jump to the final state"
           >
             <EndIcon />
-          </button>
+          </ToolButton>
         </div>
         <div className="control-row control-row--tools">
           <div className="speed-control">
@@ -138,15 +124,15 @@ export default function ControlBar({
           </div>
           <div className="control-sep" aria-hidden="true" />
           <div className="zoom-control" title="Canvas zoom">
-            <button type="button" className="btn btn-sm" onClick={onZoomOut}>
+            <ToolButton onClick={onZoomOut} title="Zoom out">
               −
-            </button>
-            <button type="button" className="btn btn-sm" onClick={onZoomReset} title="Reset view">
+            </ToolButton>
+            <ToolButton onClick={onZoomReset} title="Reset view">
               ◎
-            </button>
-            <button type="button" className="btn btn-sm" onClick={onZoomIn}>
+            </ToolButton>
+            <ToolButton onClick={onZoomIn} title="Zoom in">
               +
-            </button>
+            </ToolButton>
           </div>
           <button
             type="button"
@@ -161,21 +147,24 @@ export default function ControlBar({
             </span>
             <span className="toggle-switch-label">Auto fit</span>
           </button>
-          {autoFit && (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={followAction}
-              className={`toggle-switch${followAction ? ' is-on' : ''}`}
-              title="Frame what is being worked on right now instead of the whole graph"
-              onClick={() => onFollowActionChange(!followAction)}
-            >
-              <span className="toggle-switch-track" aria-hidden="true">
-                <span className="toggle-switch-thumb" />
-              </span>
-              <span className="toggle-switch-label">Follow</span>
-            </button>
-          )}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={followAction}
+            className={`toggle-switch${followAction ? ' is-on' : ''}`}
+            title={
+              autoFit
+                ? 'Frame what is being worked on right now instead of the whole graph'
+                : 'Turn auto fit on to follow the work'
+            }
+            disabled={!autoFit}
+            onClick={() => onFollowActionChange(!followAction)}
+          >
+            <span className="toggle-switch-track" aria-hidden="true">
+              <span className="toggle-switch-thumb" />
+            </span>
+            <span className="toggle-switch-label">Follow</span>
+          </button>
           <button
             type="button"
             role="switch"
@@ -190,15 +179,14 @@ export default function ControlBar({
             <span className="toggle-switch-label">People</span>
           </button>
           <div className="control-sep" aria-hidden="true" />
-          <button
-            type="button"
-            className={`btn btn-sm btn-tuning${tuningOpen ? ' is-active' : ''}`}
-            title="Adjust the layout: pull, spacing, sizes"
-            aria-pressed={tuningOpen}
+          <ToolButton
             onClick={onToggleTuning}
+            active={tuningOpen}
+            pressed={tuningOpen}
+            title="Adjust the layout: pull, spacing, sizes"
           >
-            layout
-          </button>
+            Layout
+          </ToolButton>
           <StylePicker style={style} onChange={onStyleChange} />
           {exportControls && <ExportControls {...exportControls} />}
           <div className="spacer" />

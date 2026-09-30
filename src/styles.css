@@ -178,10 +178,6 @@ button:focus-visible {
   color: var(--fg-dim);
 }
 
-.header-export-label {
-  font-family: var(--font-sans);
-}
-
 .brand {
   display: flex;
   flex-direction: column;
@@ -554,13 +550,6 @@ a.repo-list-item:hover {
   overflow: hidden;
 }
 
-.btn-sm {
-  /* biome-ignore lint/complexity/noImportantStyles: a size modifier applied on top of button variants with equal specificity */
-  padding: 4px 10px !important;
-  font-size: 14px;
-  min-width: 28px;
-}
-
 .toggle-switch {
   display: inline-flex;
   align-items: center;
@@ -588,6 +577,11 @@ a.repo-list-item:hover {
   outline-offset: 2px;
 }
 
+.toggle-switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .toggle-switch-label {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -598,7 +592,12 @@ a.repo-list-item:hover {
   transition: color 0.15s ease;
 }
 
-.toggle-switch.is-on .toggle-switch-label {
+.toggle-switch.is-on .toggle-switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toggle-switch-label {
   color: var(--fg);
 }
 
@@ -661,6 +660,11 @@ a.repo-list-item:hover {
 @media (prefers-reduced-motion: reduce) {
   .toggle-switch-thumb,
   .toggle-switch-track,
+  .toggle-switch:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
   .toggle-switch-label {
     transition: none;
   }
@@ -785,24 +789,6 @@ a.repo-list-item:hover {
   gap: 4px;
 }
 
-.header-export-btn {
-  margin-top: 8px;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 7px 14px;
-}
-
-.header-export-btn.is-active {
-  border-color: rgba(138, 180, 255, 0.45);
-  color: var(--fg);
-}
-
-.header-export-btn.is-recording {
-  border-color: rgba(255, 138, 216, 0.45);
-  color: var(--accent-hot);
-}
-
 .header-fps {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -839,15 +825,6 @@ a.repo-list-item:hover {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-}
-
-.header-export-toolbar .header-export-btn.is-recording {
-  cursor: default;
-  gap: 8px;
-}
-
-.header-export-toolbar .header-export-btn.is-recording .rec-pulse {
-  flex-shrink: 0;
 }
 
 .header-export-encoding {
@@ -991,12 +968,6 @@ a.repo-list-item:hover {
 .btn-danger:hover {
   background: rgba(255, 90, 90, 0.25);
   border-color: rgba(255, 90, 90, 0.5);
-}
-
-.app[data-style="minimal"] .header-export-btn {
-  background: rgba(15, 17, 22, 0.06);
-  border-color: var(--hairline-strong);
-  color: var(--fg);
 }
 
 .repo-name-row {
@@ -1408,13 +1379,17 @@ a.repo-list-item:hover {
   height: 36px;
   min-width: 36px;
   padding: 0 12px;
+  gap: 7px;
   border-radius: 8px;
   border: 1px solid var(--hairline);
   background: var(--bg-elevated);
   color: var(--fg);
-  font-size: 13px;
+  /* The same lettering as the switches and the style picker beside them. */
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
@@ -1485,34 +1460,10 @@ a.repo-list-item:hover {
   }
 }
 
-.btn-play:disabled,
-.btn-final-state:disabled {
+.btn-play:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
-}
-
-.btn-final-state {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--hairline);
-  background: var(--bg-elevated);
-  color: var(--fg-muted);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-final-state:hover:not(:disabled) {
-  color: var(--fg);
-  border-color: var(--accent);
-}
-
-.btn-final-state.is-active {
-  color: var(--accent);
-  border-color: rgba(255, 138, 216, 0.45);
-  box-shadow: 0 0 0 1px rgba(255, 138, 216, 0.2);
 }
 
 .final-state-loader {
@@ -1677,17 +1628,9 @@ a.repo-list-item:hover {
 .control-sep {
   flex: none;
   width: 1px;
-  height: 22px;
-  align-self: center;
-  margin: 0 4px;
-  background: var(--fg-muted);
-  opacity: 0.45;
-}
-
-.export-btn {
-  background: linear-gradient(135deg, rgba(138, 255, 211, 0.18), rgba(138, 180, 255, 0.16));
-  border-color: rgba(138, 255, 211, 0.3);
-  color: var(--accent-cool);
+  align-self: stretch;
+  margin: 0 8px;
+  background: var(--hairline);
 }
 
 /* ───────── Floating legend ───────── */
@@ -2071,7 +2014,6 @@ a.repo-list-item:hover {
   font-size: 12px;
 }
 
-/* biome-ignore lint/style/noDescendingSpecificity: the recording variant earlier in the file intentionally overrides this base */
 .rec-pulse {
   width: 10px;
   height: 10px;
@@ -2166,8 +2108,6 @@ a.repo-list-item:hover {
 
   .control-row--playback {
     flex-shrink: 0;
-    padding-right: 14px;
-    border-right: 1px solid var(--hairline);
   }
 
   .control-row--tools {
@@ -2299,13 +2239,6 @@ a.repo-list-item:hover {
   .header-export-wrap {
     margin-top: 0;
     align-items: flex-end;
-  }
-
-  .header-export-btn {
-    min-width: 36px;
-    height: 36px;
-    padding: 0 10px;
-    margin-top: 0;
   }
 
   .brand-sub {
@@ -2524,16 +2457,8 @@ a.repo-list-item:hover {
     font-size: 18px;
   }
 
-  .header-export-label,
   .mobile-chrome-label {
     display: none;
-  }
-
-  .header-export-btn {
-    width: 36px;
-    min-width: 36px;
-    padding: 0;
-    justify-content: center;
   }
 
   .mobile-chrome-btn {

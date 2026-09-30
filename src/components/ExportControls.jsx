@@ -1,4 +1,5 @@
 import ExportPanel from './ExportPanel.jsx';
+import ToolButton from './ToolButton.jsx';
 
 function ExportIcon() {
   return (
@@ -75,41 +76,32 @@ export default function ExportControls({
             </div>
           ) : recording ? (
             <>
-              <button type="button" className="btn btn-sm is-recording" disabled aria-live="polite">
+              <ToolButton disabled label={`Recording ${recPct}%`} aria-live="polite">
                 <span className="rec-pulse" aria-hidden />
-                <span className="header-export-label">Recording {recPct}%</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm"
+                Recording {recPct}%
+              </ToolButton>
+              <ToolButton
                 onClick={onPauseRecord}
                 title={recordingPlaying ? 'Pause timeline' : 'Resume timeline'}
               >
                 {recordingPlaying ? 'Pause' : 'Resume'}
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-danger"
-                onClick={onStopRecord}
-                title="Stop and download"
-              >
+              </ToolButton>
+              <ToolButton onClick={onStopRecord} danger title="Stop and download">
                 Stop
-              </button>
+              </ToolButton>
             </>
           ) : (
             onToggleExport && (
-              <button
-                type="button"
-                className={`btn btn-sm${exportOpen ? ' is-active' : ''}`}
+              <ToolButton
                 onClick={onToggleExport}
+                active={exportOpen}
+                pressed={exportOpen}
                 title="Export timeline as video or GIF"
-                aria-label="Export timeline"
+                label="Export timeline"
               >
-                <span className="icon">
-                  <ExportIcon />
-                </span>
-                <span className="header-export-label">Export</span>
-              </button>
+                <ExportIcon />
+                Export
+              </ToolButton>
             )
           )}
         </div>
