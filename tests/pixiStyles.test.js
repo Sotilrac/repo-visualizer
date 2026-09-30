@@ -19,6 +19,10 @@ describe('the looks', () => {
     if (style.link.glow > 0) expect(style.link.glowWidth).toBeGreaterThan(0.25);
     expect(style.ripple.rings).toBeGreaterThanOrEqual(1);
     expect(style.label.size).toBeGreaterThan(6);
+    // The plate behind a repo's name has to hide what is under it without
+    // becoming a solid block.
+    expect(style.label.plate).toBeGreaterThan(0.5);
+    expect(style.label.plate).toBeLessThanOrEqual(1);
   });
 
   it('falls back rather than drawing nothing', () => {

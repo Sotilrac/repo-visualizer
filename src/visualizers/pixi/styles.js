@@ -32,7 +32,7 @@
  *     glowWidth: number,
  *   },
  *   ripple: { rings: number, width: number, reach: number },
- *   label: { color: number, size: number, alpha: number },
+ *   label: { color: number, size: number, alpha: number, plate: number },
  *   beams: boolean,
  * }} Style
  */
@@ -46,7 +46,7 @@ export const STYLES = {
     body: { fill: 0.9, ring: 0.65, ringWidth: 2.4, core: 0.34 },
     link: { width: 2.4, alpha: 0.7, curve: 0.08, glow: 0.7, glowWidth: 0.4 },
     ripple: { rings: 2, width: 2.2, reach: 1 },
-    label: { color: 0xdfe6ff, size: 11, alpha: 0.9 },
+    label: { color: 0xdfe6ff, size: 11, alpha: 0.9, plate: 0.8 },
     beams: true,
   },
   neural: {
@@ -56,7 +56,7 @@ export const STYLES = {
     body: { fill: 0.95, ring: 0.7, ringWidth: 2.2, core: 0.3 },
     link: { width: 2.6, alpha: 0.7, curve: 0, glow: 0.6, glowWidth: 0.42 },
     ripple: { rings: 1, width: 2, reach: 1.1 },
-    label: { color: 0xd8f0ff, size: 11, alpha: 0.9 },
+    label: { color: 0xd8f0ff, size: 11, alpha: 0.9, plate: 0.8 },
     beams: true,
   },
   organic: {
@@ -66,7 +66,7 @@ export const STYLES = {
     body: { fill: 0.85, ring: 0.55, ringWidth: 2, core: 0.4 },
     link: { width: 2.8, alpha: 0.7, curve: 0.16, glow: 0.4, glowWidth: 0.38 },
     ripple: { rings: 3, width: 1.8, reach: 1.2 },
-    label: { color: 0xd6e8d8, size: 11, alpha: 0.85 },
+    label: { color: 0xd6e8d8, size: 11, alpha: 0.85, plate: 0.8 },
     beams: true,
   },
   minimal: {
@@ -76,7 +76,7 @@ export const STYLES = {
     body: { fill: 0.92, ring: 0.5, ringWidth: 1.5, core: 0.55 },
     link: { width: 1.6, alpha: 0.28, curve: 0, glow: 0, glowWidth: 0 },
     ripple: { rings: 3, width: 1.2, reach: 1.1 },
-    label: { color: 0x2a2f38, size: 10, alpha: 0.95 },
+    label: { color: 0x2a2f38, size: 10, alpha: 0.95, plate: 0.88 },
     beams: true,
   },
 };

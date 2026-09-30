@@ -22,7 +22,12 @@ import { blurForZoom, createBloom } from './bloom.js';
 import { onScreen, visible } from './culling.js';
 import { createFaces } from './faces.js';
 import { repoLabelSpot } from './labels.js';
-import { clusterRgb } from './palette.js';
+import { clusterRgb, rgb } from './palette.js';
+
+/** The plate behind a repo's name: padding around the word, and its corners. */
+const TAG_PAD_X = 7;
+const TAG_PAD_Y = 3;
+const TAG_RADIUS = 4;
 
 /** Below this many screen pixels a label is unreadable, so it is left out. */
 const LABEL_MIN_RADIUS = 9;
@@ -75,12 +80,18 @@ export async function createStage(host, { background }) {
   const avatarArt = new Container();
   const faces = createFaces();
   const labelArt = new Container();
+  // A repo's name goes over its own folder and file names, on a plate of
+  // the background colour, so a title reads as a title rather than as one
+  // more word among the things it names.
+  const tagArt = new Container();
+  const tagPlates = new Graphics();
+  tagArt.addChild(tagPlates);
   // Burned-in titles for a video export. Drawn with the 2D context onto a
   // canvas of its own and laid over the scene, so the one piece of the old
   // renderer that has to stay pixel for pixel does.
   const titles = new Sprite();
   titles.visible = false;
-  app.stage.addChild(clouds, sky, lit, avatarArt, labelArt, titles);
+  app.stage.addChild(clouds, sky, lit, avatarArt, labelArt, tagArt, titles);
   const titleCanvas = document.createElement('canvas');
   let titleKey = '';
 
@@ -137,8 +148,13 @@ export async function createStage(host, { background }) {
     bloom.blur = wanted;
   }
 
-  /** One reusable Text per label, so a frame allocates nothing. */
-  function labelFor(key, text, style) {
+  /**
+   * One reusable Text per label, so a frame allocates nothing.
+   *
+   * @param {Container} layer which one it belongs to, since a repo's name
+   *   is drawn over everything else rather than among it
+   */
+  function labelFor(key, text, style, layer = labelArt) {
     let label = labelPool.get(key);
     if (!label) {
       label = new Text({
@@ -152,7 +168,7 @@ export async function createStage(host, { background }) {
       });
       label.anchor.set(0.5, 0.5);
       labelPool.set(key, label);
-      labelArt.addChild(label);
+      layer.addChild(label);
     }
     if (label.text !== text) label.text = text;
     // The look can change under a pooled label, and a dark style's ink on a
@@ -224,7 +240,7 @@ export async function createStage(host, { background }) {
       drawRipples(rippleArt, frame, px, py, scale);
       drawBeams(beamArt, frame, px, py);
       drawAvatars(avatarArt, faceGlowArt, avatarPool, faces, frame, px, py, scale);
-      drawLabels(labelFor, labelPool, frame, px, py, scale);
+      drawLabels(labelFor, labelPool, tagPlates, frame, px, py, scale);
       drawTitles(frame.recording, style.background);
 
       app.render();
@@ -609,9 +625,10 @@ function hslTint(hue) {
   return made;
 }
 
-function drawLabels(labelFor, pool, frame, px, py, scale) {
-  const { nodes, actors, style, clusters, showLabels } = frame;
+function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
+  const { nodes, actors, style, clusters, showLabels, palette, styleName } = frame;
   for (const label of pool.values()) label.visible = false;
+  plates.clear();
   if (!showLabels) return;
 
   // One name per repo, and only for the repos with something on screen to
@@ -629,9 +646,22 @@ function drawLabels(labelFor, pool, frame, px, py, scale) {
     const at = repoLabelSpot(members, clusters.get(dir)?.angle ?? -Math.PI / 2);
     if (!at) continue;
     if (at.x < -120 || at.x > frame.w + 120 || at.y < -40 || at.y > frame.h + 40) continue;
-    const label = labelFor(`repo:${dir}`, dir, style.label);
+    const label = labelFor(`repo:${dir}`, dir, style.label, plates.parent);
     label.position.set(at.x, at.y);
     label.alpha = style.label.alpha;
+
+    // A plate the size of the word, in the colour of the sky behind it,
+    // edged in the repo's own colour so the tag says which repo it is.
+    const colour = clusterRgb(palette, dir, styleName);
+    const w = label.width / 2 + TAG_PAD_X;
+    const h = label.height / 2 + TAG_PAD_Y;
+    plates.roundRect(at.x - w, at.y - h, w * 2, h * 2, TAG_RADIUS);
+    plates.fill({ color: rgb(style.background).value, alpha: style.label.plate });
+    plates.stroke({
+      width: 1,
+      color: (colour.swatch ?? colour.core).value,
+      alpha: style.label.plate * 0.6,
+    });
   }
 
   // Folder names, once a folder is big enough on screen to read one.
