@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_TUNING,
+  folderDepthOf,
   KNOBS,
   knobGroups,
   loadTuning,
@@ -90,5 +91,29 @@ describe('loadTuning and saveTuning', () => {
 
     expect(loadTuning(blocked)).toEqual(DEFAULT_TUNING);
     expect(() => saveTuning(DEFAULT_TUNING, blocked)).not.toThrow();
+  });
+});
+
+describe('how deep a repo breaks into folders', () => {
+  it('follows the config while the knob is at zero', () => {
+    expect(folderDepthOf(0, 3)).toBe(3);
+  });
+
+  it('lets the knob go deeper than the config asked for', () => {
+    expect(folderDepthOf(5, 2)).toBe(5);
+  });
+
+  it('falls back to two when neither says anything', () => {
+    expect(folderDepthOf(0, undefined)).toBe(2);
+    expect(folderDepthOf(undefined, undefined)).toBe(2);
+  });
+
+  it('ignores a value that is not a number', () => {
+    expect(folderDepthOf(Number.NaN, 4)).toBe(4);
+    expect(folderDepthOf(null, null)).toBe(2);
+  });
+
+  it('gives back whole levels, since half a folder is not a thing', () => {
+    expect(folderDepthOf(2.6, 2)).toBe(3);
   });
 });

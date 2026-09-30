@@ -30,7 +30,7 @@ import { createLodTransitions } from '../engine/lodTransitions.js';
 import { buildRepoClock } from '../engine/repoClock.js';
 import { createStepClock } from '../engine/stepClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
-import { cameraSpeed, DEFAULT_TUNING } from '../engine/tuning.js';
+import { cameraSpeed, DEFAULT_TUNING, folderDepthOf } from '../engine/tuning.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
 import { starfield } from './pixi/starfield.js';
 import { styleFor } from './pixi/styles.js';
@@ -84,7 +84,9 @@ export function useGraphEngine({
   const intensityRef = useRef(new Map());
 
   const repos = dataset?.repos ?? NO_REPOS;
-  const folderDepth = dataset?.folderDepth ?? 2;
+  // The layout panel may go deeper than the config asked for, which is
+  // how more of the imports are made visible.
+  const folderDepth = folderDepthOf(tuning?.folderDepth, dataset?.folderDepth);
   const clock = useMemo(() => buildRepoClock(dataset?.commits ?? []), [dataset?.commits]);
   const projects = useMemo(() => projectsOf(dataset), [dataset]);
   const groups = useMemo(() => submoduleParents(dataset), [dataset]);

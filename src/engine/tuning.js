@@ -86,6 +86,15 @@ export const KNOBS = {
     max: 2,
     step: 0.05,
   },
+  folderDepth: {
+    label: 'Folder depth',
+    hint: 'How many folder levels a repo breaks into. Deeper shows more imports, since an import inside one bubble has nothing to draw. Zero follows the config',
+    group: 'Imports',
+    value: 0,
+    min: 0,
+    max: 6,
+    step: 1,
+  },
   linkDistance: {
     label: 'Import length',
     hint: 'How far apart an import holds the two things it connects',
@@ -168,6 +177,24 @@ export const KNOBS = {
     step: 2,
   },
 };
+
+/**
+ * How deep to break a repo into folders.
+ *
+ * An import between two files inside the same bubble has nothing to draw
+ * between, so the shallower the tree the fewer imports are visible. The
+ * knob overrides what the config asked for; zero leaves the config in
+ * charge, which is what it is set to until somebody moves it.
+ *
+ * @param {number | undefined} tuned
+ * @param {number | undefined} configured
+ */
+export function folderDepthOf(tuned, configured) {
+  const wanted = Number(tuned);
+  if (Number.isFinite(wanted) && wanted > 0) return Math.round(wanted);
+  const fromConfig = Number(configured);
+  return Number.isFinite(fromConfig) && fromConfig > 0 ? Math.round(fromConfig) : 2;
+}
 
 /**
  * The fraction of the way the camera moves in a 16ms frame, for a given
