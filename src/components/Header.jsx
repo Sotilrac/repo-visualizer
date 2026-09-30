@@ -52,6 +52,7 @@ export default function Header({
   commitCount = 0,
   currentCommit,
   exportOpen,
+  fps = null,
   onToggleExport,
   onCloseExport,
   recording,
@@ -125,6 +126,14 @@ export default function Header({
 
         <div className="header-toolbar">
           <div className="header-export-wrap">
+            {fps !== null && (
+              <div
+                className={`header-fps${fps < 24 ? ' is-slow' : fps < 45 ? ' is-fair' : ''}`}
+                title="Frames drawn per second"
+              >
+                {fps} fps
+              </div>
+            )}
             <div className="header-export-toolbar">
               {encoding ? (
                 <div className="header-export-encoding" aria-live="polite">

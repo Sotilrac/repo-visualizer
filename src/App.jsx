@@ -11,6 +11,7 @@ import { startRecording } from './engine/recorder.js';
 import { primaryRepoAuthor } from './engine/recordingOverlay.js';
 import { DEFAULT_TUNING, loadTuning, saveTuning } from './engine/tuning.js';
 import { useDataset } from './engine/useDataset.js';
+import { useFrameRate } from './engine/useFrameRate.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
 import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
 import { useTimeline } from './engine/useTimeline.js';
@@ -48,6 +49,7 @@ function waitMs(ms) {
 
 export default function App() {
   const { dataset, source, loading } = useDataset();
+  const fps = useFrameRate();
   const timeline = useTimeline(dataset);
   const [style, setStyle] = useState('galaxy');
   const [exportOpen, setExportOpen] = useState(false);
@@ -504,6 +506,7 @@ export default function App() {
         commitIndex={timeline.index}
         commitCount={timeline.commits.length}
         currentCommit={currentCommit}
+        fps={fps}
         exportOpen={exportOpen}
         onToggleExport={handleToggleExport}
         onCloseExport={() => setExportOpen(false)}

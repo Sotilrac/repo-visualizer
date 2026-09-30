@@ -770,6 +770,27 @@ a.repo-list-item:hover {
   color: var(--accent-hot);
 }
 
+.header-fps {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--fg-dim);
+  opacity: 0.75;
+  text-align: right;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.header-fps.is-fair {
+  color: var(--accent-warm);
+  opacity: 0.9;
+}
+
+.header-fps.is-slow {
+  color: var(--accent-hot);
+  opacity: 1;
+}
+
 .header-export-wrap {
   position: relative;
   margin-top: 8px;
@@ -2155,6 +2176,27 @@ a.repo-list-item:hover {
   .header-toolbar {
     align-items: flex-end;
     gap: 6px;
+  }
+
+  .header-fps {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--fg-dim);
+    opacity: 0.75;
+    text-align: right;
+    margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .header-fps.is-fair {
+    color: var(--accent-warm);
+    opacity: 0.9;
+  }
+
+  .header-fps.is-slow {
+    color: var(--accent-hot);
+    opacity: 1;
   }
 
   .header-export-wrap {
