@@ -64,7 +64,6 @@ export default function Header({
   onStartRecord,
   onStopRecord,
   onPauseRecord,
-  useWebGL = false,
   layout = 'desktop',
   mobileControlsOpen = false,
   mobileInfoOpen = false,
@@ -203,7 +202,6 @@ export default function Header({
                 open={exportOpen}
                 onClose={onCloseExport}
                 onStartRecord={onStartRecord}
-                useWebGL={useWebGL}
               />
             )}
           </div>

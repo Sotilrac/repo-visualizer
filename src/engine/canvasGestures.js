@@ -41,7 +41,7 @@ function hitTestNode(layout, camera, sx, sy, commitIndex) {
 }
 
 /**
- * @param {HTMLCanvasElement} canvas
+ * @param {HTMLElement} canvas the element the pointer events arrive on
  * @param {{
  *   getCamera: () => object,
  *   getLayout: () => object,

@@ -1,4 +1,3 @@
-import PerfModePicker from './PerfModePicker.jsx';
 import StylePicker from './StylePicker.jsx';
 import Timeline from './Timeline.jsx';
 
@@ -60,8 +59,6 @@ export default function ControlBar({
   onZoomIn,
   onZoomOut,
   onZoomReset,
-  perfMode,
-  onPerfModeChange,
   tuningOpen = false,
   onToggleTuning,
   showPlayHint = false,
@@ -153,9 +150,7 @@ export default function ControlBar({
             </span>
             <span className="toggle-switch-label">People</span>
           </button>
-          <div className="perf-control">
-            <PerfModePicker perfMode={perfMode} onChange={onPerfModeChange} />
-          </div>
+          <div className="perf-control"></div>
           <StylePicker style={style} onChange={onStyleChange} />
           <div className="spacer" />
         </div>

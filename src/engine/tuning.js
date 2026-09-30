@@ -104,15 +104,6 @@ export const KNOBS = {
     max: 3,
     step: 0.05,
   },
-  pixelBudget: {
-    label: 'Render detail',
-    hint: 'How many million pixels to draw per frame. Lower is sharper on the frame rate, higher is sharper on the screen',
-    group: 'Camera',
-    value: 2.5,
-    min: 0.8,
-    max: 9,
-    step: 0.1,
-  },
   cameraEase: {
     label: 'Camera easing',
     hint: 'How long the camera takes to follow the graph while auto fit is on',
@@ -159,27 +150,6 @@ export const KNOBS = {
     step: 2,
   },
 };
-
-/**
- * How much of a pixel to draw per screen pixel.
- *
- * The cost of a frame is mostly the number of pixels in it: the same graph
- * at 3840x2160 takes four times as long as at 1920x1080, and the additive
- * glow means every one of those pixels is touched several times. Above the
- * budget the canvas is drawn smaller and the browser scales it up, which
- * costs sharpness and buys back the frame rate.
- *
- * @param {number} width in CSS pixels
- * @param {number} height
- * @param {number} devicePixelRatio
- * @param {number} budget in millions of pixels
- */
-export function renderScale(width, height, devicePixelRatio, budget) {
-  const wanted = Math.min(2, devicePixelRatio || 1);
-  const area = Math.max(1, width * height);
-  const affordable = Math.sqrt((Math.max(0.2, budget) * 1e6) / area);
-  return Math.max(0.5, Math.min(wanted, affordable));
-}
 
 /**
  * The fraction of the way the camera moves in a 16ms frame, for a given

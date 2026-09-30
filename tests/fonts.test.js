@@ -39,11 +39,7 @@ describe('two families, loaded once', () => {
 
 describe('the canvas and the stylesheet agree', () => {
   it('no source file hardcodes a font stack of its own', () => {
-    for (const rel of [
-      'src/engine/recordingOverlay.js',
-      'src/visualizers/drawHelpers.js',
-      'src/visualizers/GalaxyVisualizer.jsx',
-    ]) {
+    for (const rel of ['src/engine/recordingOverlay.js', 'src/visualizers/pixi/stage.js']) {
       expect(read(rel), `${rel} hardcodes a font stack`).not.toMatch(/px "/);
     }
   });

@@ -15,23 +15,7 @@ import { useFrameRate } from './engine/useFrameRate.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
 import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
 import { useTimeline } from './engine/useTimeline.js';
-import {
-  isWebGLAvailable,
-  WEBGL_NODE_HYSTERESIS,
-  WEBGL_NODE_THRESHOLD,
-} from './engine/webglSupport.js';
-import GalaxyVisualizer from './visualizers/GalaxyVisualizer.jsx';
-import MinimalVisualizer from './visualizers/MinimalVisualizer.jsx';
-import NeuralVisualizer from './visualizers/NeuralVisualizer.jsx';
-import OrganicVisualizer from './visualizers/OrganicVisualizer.jsx';
-import WebGLVisualizer from './visualizers/WebGLVisualizer.jsx';
-
-const CANVAS_VISUALIZERS = {
-  galaxy: GalaxyVisualizer,
-  organic: OrganicVisualizer,
-  neural: NeuralVisualizer,
-  minimal: MinimalVisualizer,
-};
+import PixiVisualizer from './visualizers/PixiVisualizer.jsx';
 
 function loadBool(key, defaultVal) {
   try {
@@ -70,10 +54,9 @@ export default function App() {
   );
   const [tuning, setTuning] = useState(() => loadTuning());
   const [tuningOpen, setTuningOpen] = useState(false);
-  const [perfMode, setPerfMode] = useState('auto');
-  const [useWebGL, setUseWebGL] = useState(false);
-  const [webglFailed, setWebglFailed] = useState(false);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
+  // A video is a capture of the canvas, so an export asking for 2x draws
+  // the whole scene at twice the screen's pixel ratio.
+  const [exportResolution, setExportResolution] = useState(1);
   const layoutMode = useLayoutMode();
   const compactLayout = isCompactLayout(layoutMode);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
@@ -87,32 +70,7 @@ export default function App() {
   const timelineRef = useRef(timeline);
   const cameraApiRef = useRef(null);
   const recordStopRef = useRef(false);
-  const perfBeforeRecordRef = useRef(null);
-  const budgetBeforeRecordRef = useRef(null);
   timelineRef.current = timeline;
-
-  // What the layout is simulating, which is not the number of files: at one
-  // bubble per repo a hundred thousand files are seventy bodies. Switching
-  // renderers off the file count put the whole six years on the WebGL path,
-  // which has no starfield, no nebula and no people on it.
-  const [bodyCount, setBodyCount] = useState(0);
-  const handleBodyCount = useCallback((count) => {
-    setBodyCount((previous) => (previous === count ? previous : count));
-  }, []);
-
-  useEffect(() => {
-    if (perfMode === 'off') {
-      setUseWebGL(false);
-      return;
-    }
-    if (perfMode === 'on') {
-      setUseWebGL(isWebGLAvailable() && !webglFailed);
-      return;
-    }
-    const want =
-      bodyCount >= WEBGL_NODE_THRESHOLD || (useWebGL && bodyCount >= WEBGL_NODE_HYSTERESIS);
-    setUseWebGL(want && isWebGLAvailable() && !webglFailed);
-  }, [bodyCount, perfMode, webglFailed, useWebGL]);
 
   const adjust = useCallback((key, value) => {
     setTuning((previous) => {
@@ -195,9 +153,6 @@ export default function App() {
     [pauseForFocus, handleCloseInspector],
   );
 
-  const CanvasVisualizer = CANVAS_VISUALIZERS[style];
-  const showWebGL = useWebGL && style === 'galaxy';
-
   const visProps = {
     state: timeline.state,
     commitIndex: timeline.index,
@@ -211,7 +166,6 @@ export default function App() {
     selectedCluster,
     excludePatterns,
     onNodeClick: handleNodeClick,
-    onBodyCount: handleBodyCount,
     cameraApiRef,
     recordingOverlay,
   };
@@ -318,19 +272,10 @@ export default function App() {
       }
 
       recordStopRef.current = false;
-      perfBeforeRecordRef.current = perfMode;
 
-      // The video is a capture of the canvas, so its resolution is the one
-      // the canvas is drawn at. Size 2x means four times the pixels, which
-      // is sharper and slower: a live capture drops what it cannot draw.
-      budgetBeforeRecordRef.current = tuning.pixelBudget;
       if (opts.resolution !== 1) {
-        adjust('pixelBudget', tuning.pixelBudget * opts.resolution * opts.resolution);
+        setExportResolution(opts.resolution);
         await waitMs(250);
-      }
-      if (showWebGL || perfMode !== 'off') {
-        setPerfMode('off');
-        await waitMs(450);
       }
 
       const canvas = getCanvas();
@@ -363,37 +308,16 @@ export default function App() {
         setRecordingProgress(0);
         setEncodeProgress(0);
         setExportOpen(false);
-        if (perfBeforeRecordRef.current !== null) {
-          setPerfMode(perfBeforeRecordRef.current);
-          perfBeforeRecordRef.current = null;
-        }
-        if (budgetBeforeRecordRef.current !== null) {
-          adjust('pixelBudget', budgetBeforeRecordRef.current);
-          budgetBeforeRecordRef.current = null;
-        }
+        setExportResolution(1);
       }
     },
-    [
-      repoName,
-      perfMode,
-      showWebGL,
-      timeline,
-      tuning.pixelBudget,
-      adjust,
-      updateRecordingProgress,
-      handleEncodingStart,
-    ],
+    [repoName, timeline, updateRecordingProgress, handleEncodingStart],
   );
 
   const handleToggleExport = useCallback(() => {
     if (recording || encoding) return;
     setExportOpen((open) => !open);
   }, [recording, encoding]);
-
-  const handleWebGLFailed = useCallback(() => {
-    setWebglFailed(true);
-    setUseWebGL(false);
-  }, []);
 
   const handleTogglePlay = useCallback(() => {
     if (!timeline.playing) setHasStartedPlayback(true);
@@ -467,11 +391,7 @@ export default function App() {
       data-info-open={infoExpanded ? 'true' : 'false'}
     >
       <div className="stage" ref={stageRef}>
-        {showWebGL ? (
-          <WebGLVisualizer {...visProps} onInitFailed={handleWebGLFailed} />
-        ) : (
-          <CanvasVisualizer {...visProps} />
-        )}
+        <PixiVisualizer {...visProps} style={style} exportResolution={exportResolution} />
         {timeline.buildingFinal && (
           <div className="final-state-loader" role="status" aria-live="polite">
             <div className="final-state-loader-card">
@@ -514,15 +434,6 @@ export default function App() {
         </div>
       )}
 
-      {webglFailed && !bannerDismissed && (
-        <div className="notice-banner">
-          <span>High-performance renderer unavailable — using standard view.</span>
-          <button type="button" onClick={() => setBannerDismissed(true)} aria-label="Dismiss">
-            ×
-          </button>
-        </div>
-      )}
-
       <Header
         dataset={dataset}
         source={source}
@@ -542,7 +453,6 @@ export default function App() {
         onStartRecord={handleStartRecord}
         onStopRecord={handleStopRecord}
         onPauseRecord={handlePauseRecord}
-        useWebGL={showWebGL}
         layout={layoutMode}
         mobileControlsOpen={mobileControlsOpen}
         mobileInfoOpen={mobileInfoOpen}
@@ -627,8 +537,6 @@ export default function App() {
         onZoomReset={() => cameraApiRef.current?.reset()}
         tuningOpen={tuningOpen}
         onToggleTuning={() => setTuningOpen((open) => !open)}
-        perfMode={perfMode}
-        onPerfModeChange={setPerfMode}
         showPlayHint={showMobilePlayHint}
       />
     </div>

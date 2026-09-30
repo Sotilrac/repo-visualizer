@@ -1,13 +1,18 @@
 /**
- * Shared scaffolding for canvas-based visualizers.
+ * Everything the picture is made of, and nothing about how it is drawn.
+ *
+ * The layout, the people, the level of detail, the camera, the commits and
+ * the frame clock live here; the renderer is handed a plain description of
+ * one frame and nothing else. That split is what let four visualizers that
+ * each redrew the same graph their own way become one renderer with a
+ * handful of numbers between the looks.
  */
 
 import { useEffect, useMemo, useRef } from 'react';
-import { createActors } from '../engine/actors.js';
+import { AVATAR_RADIUS, createActors } from '../engine/actors.js';
 import { createAvatarImages } from '../engine/avatarImages.js';
 import { levelKey, projectsOf, simulatedLevels, submoduleParents } from '../engine/bodies.js';
 import {
-  applyCameraTransform,
   createCamera,
   fitBounds,
   lerpCamera,
@@ -20,33 +25,36 @@ import { editIntensity, FLOOR } from '../engine/editIntensity.js';
 import { getDepsForPath, resolveFocusSet } from '../engine/graphState.js';
 import { createLayout } from '../engine/layout.js';
 import { createLodTransitions } from '../engine/lodTransitions.js';
-import { drawRecordingOverlay } from '../engine/recordingOverlay.js';
 import { buildRepoClock } from '../engine/repoClock.js';
 import { createStepClock } from '../engine/stepClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
-import { cameraSpeed, DEFAULT_TUNING, renderScale } from '../engine/tuning.js';
+import { cameraSpeed } from '../engine/tuning.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
-import { AVATAR_RADIUS, drawActors } from './drawActors.js';
+import { starfield } from './pixi/starfield.js';
+import { styleFor } from './pixi/styles.js';
 
 /** Stable empty list, so effects do not refire on a fresh literal. */
 const NO_REPOS = Object.freeze([]);
 
-export function useVisualizerCore({
+/**
+ * @param {{
+ *   hostRef: { current: HTMLElement | null },
+ *   rendererRef: { current: { resize: Function, draw: Function } | null },
+ * } & Record<string, any>} options
+ */
+export function useGraphEngine({
   hostRef,
+  rendererRef,
   state,
   commitIndex,
   dataset = null,
   tuning = null,
   onBodyCount = null,
-  draw,
-  clearStrategy = 'full',
-  trailAlpha = 0.12,
-  background = '#05060d',
-  onBeforeDraw = null,
-  onScreenDraw = null,
-  onScreenOverlay = null,
+  style = 'galaxy',
+  palette,
   autoFit = true,
   showActors = true,
+  showLabels = true,
   resolveAuthor = null,
   selectedPath = null,
   selectedCluster = null,
@@ -55,7 +63,6 @@ export function useVisualizerCore({
   cameraApiRef,
   recordingOverlay = null,
 }) {
-  const canvasRef = useRef(null);
   const layoutRef = useRef(null);
   const cameraRef = useRef(createCamera());
   const ripplesRef = useRef([]);
@@ -78,14 +85,9 @@ export function useVisualizerCore({
   const clock = useMemo(() => buildRepoClock(dataset?.commits ?? []), [dataset?.commits]);
   const projects = useMemo(() => projectsOf(dataset), [dataset]);
   const groups = useMemo(() => submoduleParents(dataset), [dataset]);
-  const paramsRef = useRef({
-    draw,
-    onBeforeDraw,
-    onScreenDraw,
-    onScreenOverlay,
-    clearStrategy,
-    trailAlpha,
-    background,
+  const stars = useMemo(() => starfield(), []);
+
+  const params = {
     autoFit,
     selectedPath,
     selectedCluster,
@@ -94,38 +96,26 @@ export function useVisualizerCore({
     commitIndex,
     recordingOverlay,
     showActors,
+    showLabels,
+    style,
+    palette,
     tuning,
-  });
+  };
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+  stateRef.current = state;
+
   /**
    * Room the camera leaves for the people standing outside the repos: how
    * far off they stand, plus how far a crowd of them spreads pushing each
    * other apart.
    */
-  const actorMargin = (params) => {
-    if (!params.showActors) return 0;
-    const standoff = params.tuning?.standoff ?? 0;
-    const spread = Math.max(AVATAR_RADIUS * 2, (params.tuning?.avatarSpacing ?? 0) / 2);
+  const actorMargin = (p) => {
+    if (!p.showActors) return 0;
+    const standoff = p.tuning?.standoff ?? 0;
+    const spread = Math.max(AVATAR_RADIUS * 2, (p.tuning?.avatarSpacing ?? 0) / 2);
     return standoff + spread;
   };
-  paramsRef.current = {
-    draw,
-    onBeforeDraw,
-    onScreenDraw,
-    onScreenOverlay,
-    clearStrategy,
-    trailAlpha,
-    background,
-    autoFit,
-    selectedPath,
-    selectedCluster,
-    excludePatterns,
-    onNodeClick,
-    commitIndex,
-    recordingOverlay,
-    showActors,
-    tuning,
-  };
-  stateRef.current = state;
 
   if (cameraApiRef) {
     cameraApiRef.current = {
@@ -144,31 +134,29 @@ export function useVisualizerCore({
         const layout = layoutRef.current;
         if (!host || !layout) return;
         const cam = cameraRef.current;
-        const w = host.clientWidth;
-        const h = host.clientHeight;
         resetCamera(cam);
         const idx = paramsRef.current.commitIndex;
         const pts = layout.getNodes().filter((n) => isNodeVisible(n, idx));
-        fitBounds(cam, pts, w, h, undefined, actorMargin(paramsRef.current));
+        fitBounds(
+          cam,
+          pts,
+          host.clientWidth,
+          host.clientHeight,
+          undefined,
+          actorMargin(paramsRef.current),
+        );
         snapCamera(cam);
       },
     };
   }
 
-  // Mount-only on purpose: the canvas, layout and frame loop are created once
-  // and every live value is read through paramsRef inside the loop.
+  // Mount-only on purpose: the layout and frame loop are created once and
+  // every live value is read through paramsRef inside the loop.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     host.style.touchAction = 'none';
-    const canvas = document.createElement('canvas');
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.display = 'block';
-    canvas.style.cursor = 'grab';
-    host.appendChild(canvas);
-    canvasRef.current = canvas;
 
     const layout = createLayout({
       width: host.clientWidth,
@@ -177,16 +165,10 @@ export function useVisualizerCore({
     });
     layoutRef.current = layout;
 
-    const ctx = canvas.getContext('2d', { alpha: true });
-    let dpr = 1;
-
     function resize() {
       const w = host.clientWidth;
       const h = host.clientHeight;
-      const budget = paramsRef.current.tuning?.pixelBudget ?? DEFAULT_TUNING.pixelBudget;
-      dpr = renderScale(w, h, window.devicePixelRatio || 1, budget);
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
+      rendererRef.current?.resize(w, h);
       layout.resize(w, h);
       const cam = cameraRef.current;
       if (paramsRef.current.autoFit && !cam.userAdjusted) {
@@ -201,7 +183,7 @@ export function useVisualizerCore({
     const ro = new ResizeObserver(resize);
     ro.observe(host);
 
-    const detachGestures = attachCanvasGestures(canvas, {
+    const detachGestures = attachCanvasGestures(host, {
       getCamera: () => cameraRef.current,
       getLayout: () => layoutRef.current,
       getCommitIndex: () => paramsRef.current.commitIndex,
@@ -209,76 +191,62 @@ export function useVisualizerCore({
     });
 
     const onPointerDownCursor = () => {
-      canvas.style.cursor = 'grabbing';
+      host.style.cursor = 'grabbing';
     };
     const onPointerUpCursor = () => {
-      canvas.style.cursor = 'grab';
+      host.style.cursor = 'grab';
     };
-    canvas.addEventListener('pointerdown', onPointerDownCursor);
-    canvas.addEventListener('pointerup', onPointerUpCursor);
-    canvas.addEventListener('pointercancel', onPointerUpCursor);
+    host.addEventListener('pointerdown', onPointerDownCursor);
+    host.addEventListener('pointerup', onPointerUpCursor);
+    host.addEventListener('pointercancel', onPointerUpCursor);
 
     let raf;
     // The simulation runs at its own rate whatever the monitor does, so the
     // graph settles in the same place and at the same speed on any machine.
-    const clock = createStepClock();
+    const steps = createStepClock();
     let lastTime = performance.now();
+
     function frameLoop(now) {
       const dt = now - lastTime;
       lastTime = now;
+      raf = requestAnimationFrame(frameLoop);
+
       const w = host.clientWidth;
       const h = host.clientHeight;
       const p = paramsRef.current;
       const cam = cameraRef.current;
+      const idx = p.commitIndex;
 
       const hasFocus = !!(p.selectedPath || p.selectedCluster);
-      const focusKey = `${p.selectedPath ?? ''}|${p.selectedCluster ?? ''}|${p.commitIndex}`;
+      const focusKey = `${p.selectedPath ?? ''}|${p.selectedCluster ?? ''}|${idx}`;
 
       if (p.autoFit && !cam.userAdjusted) {
-        const allPts = layout.getNodes().filter((n) => isNodeVisible(n, p.commitIndex));
+        const allPts = layout.getNodes().filter((n) => isNodeVisible(n, idx));
         let fitPts = allPts;
         if (hasFocus && stateRef.current) {
-          const focusSet = resolveFocusSet(
+          const focused = resolveFocusSet(
             stateRef.current,
-            p.commitIndex,
+            idx,
             p.selectedPath,
             p.selectedCluster,
             p.excludePatterns,
           );
-          if (focusSet.size > 0) {
-            fitPts = allPts.filter((n) => focusSet.has(n.path));
-          }
+          if (focused.size > 0) fitPts = allPts.filter((n) => focused.has(n.path));
         }
-        if (fitPts.length > 0) {
-          const refit = !hasFocus || focusKey !== cam._focusFitKey;
-          if (refit) {
-            fitBounds(cam, fitPts, w, h, undefined, actorMargin(p));
-            if (!hasFocus) {
-              if (!cam._fitted) snapCamera(cam);
-              cam._fitted = true;
-            } else {
-              snapCamera(cam);
-              cam._focusFitKey = focusKey;
-            }
+        if (fitPts.length > 0 && (!hasFocus || focusKey !== cam._focusFitKey)) {
+          fitBounds(cam, fitPts, w, h, undefined, actorMargin(p));
+          if (hasFocus) {
+            snapCamera(cam);
+            cam._focusFitKey = focusKey;
+          } else {
+            if (!cam._fitted) snapCamera(cam);
+            cam._fitted = true;
           }
         }
       } else if (!hasFocus) {
         cam._focusFitKey = null;
       }
       lerpCamera(cam, dt, cameraSpeed(p.tuning?.cameraEase ?? 420));
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (p.clearStrategy === 'trail') {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = withAlpha(p.background, p.trailAlpha);
-        ctx.fillRect(0, 0, w, h);
-      } else {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = p.background;
-        ctx.fillRect(0, 0, w, h);
-      }
-
-      if (p.onScreenDraw) p.onScreenDraw(ctx, { w, h, dt, now });
 
       // Level of detail moves on wall-clock time, so the transitions are
       // advanced every frame. A repo crossing into a new level changes what
@@ -289,33 +257,24 @@ export function useVisualizerCore({
       if (levelKey(levels) !== hierarchyRef.current.key) rebuildRef.current?.();
       layout.setMotion((repo) => transitions.stateFor(repo));
 
-      const steps = clock.advance(dt);
+      const ticks = steps.advance(dt);
       if (!hasFocus) {
-        for (let step = 0; step < steps; step++) layout.tick();
+        for (let step = 0; step < ticks; step++) layout.tick();
       }
 
       const ripples = ripplesRef.current;
-      const nowMs = now;
       for (let i = ripples.length - 1; i >= 0; i--) {
         const r = ripples[i];
-        const age = nowMs - r.bornAt;
+        const age = now - r.bornAt;
         if (age > r.ttl) ripples.splice(i, 1);
         else r.progress = Math.max(0, Math.min(1, age / r.ttl));
       }
 
-      ctx.save();
-      applyCameraTransform(ctx, cam, dpr);
-
-      if (p.onBeforeDraw) p.onBeforeDraw(ctx, { w, h, dt, now });
-
-      const allNodes = layout.getNodes();
-      const allLinks = layout.getLinks();
-      const idx = p.commitIndex;
-      const nodes = allNodes.filter((n) => isNodeVisible(n, idx));
-      const nodeSet = new Set(nodes.map((n) => n.path));
-      const links = allLinks.filter(
-        (l) => nodeSet.has(l.source.path) && nodeSet.has(l.target.path),
-      );
+      const nodes = layout.getNodes().filter((n) => isNodeVisible(n, idx));
+      const nodeByPath = new Map(nodes.map((n) => [n.path, n]));
+      const links = layout
+        .getLinks()
+        .filter((l) => nodeByPath.has(l.source.path) && nodeByPath.has(l.target.path));
 
       const focusSet = resolveFocusSet(
         stateRef.current,
@@ -324,14 +283,14 @@ export function useVisualizerCore({
         p.selectedCluster,
         p.excludePatterns,
       );
+      const dimOthers = focusSet.size > 0;
 
-      const pathToNode = new Map(nodes.map((n) => [n.path, n]));
       const highlightLinks = [];
       if (p.selectedPath && stateRef.current) {
         const { inbound, outbound } = getDepsForPath(stateRef.current, p.selectedPath);
         for (const e of [...outbound, ...inbound]) {
-          const from = pathToNode.get(e.from);
-          const to = pathToNode.get(e.to);
+          const from = nodeByPath.get(e.from);
+          const to = nodeByPath.get(e.to);
           if (from && to) highlightLinks.push({ source: from, target: to, weight: e.weight });
         }
       }
@@ -343,10 +302,10 @@ export function useVisualizerCore({
         // Everything on screen, which is what nobody may be drawn on top of.
         actorsRef.current.setBodies(nodes);
       }
-      const landed = p.showActors ? actorsRef.current.tick(dt, steps) : [];
-      if (p.showActors) actorsRef.current.interpolate(clock.alpha());
+      const landed = p.showActors ? actorsRef.current.tick(dt, ticks) : [];
+      if (p.showActors) actorsRef.current.interpolate(steps.alpha());
       for (const path of landed) {
-        ripplesRef.current.push({
+        ripples.push({
           path,
           intensity: intensityRef.current.get(path) ?? FLOOR,
           status: 'M',
@@ -356,47 +315,43 @@ export function useVisualizerCore({
         });
       }
 
-      p.draw(ctx, {
+      rendererRef.current?.draw({
         w,
         h,
         dt,
         now,
+        cam,
+        styleName: p.style,
+        style: styleFor(p.style),
+        palette: p.palette,
+        stars,
         nodes,
         links,
         highlightLinks,
+        nodeByPath,
         clusters: layout.getClusterCenters(),
         ripples,
-        state: stateRef.current,
-        commitIndex: idx,
+        actors: p.showActors ? actorsRef.current.list() : [],
+        beams: p.showActors ? actorsRef.current.beams() : [],
+        images: avatarsRef.current,
+        showLabels: p.showLabels,
+        focused: dimOthers ? focusSet : null,
         selectedPath: p.selectedPath,
-        selectedCluster: p.selectedCluster,
-        focusSet,
         // A body mid-collapse is faded by the transition on top of the
         // ordinary fade-in.
-        nodeOpacity: (n) => nodeOpacity(n, idx) * (n.alpha ?? 1),
-        dimOthers: focusSet.size > 0,
-        cameraScale: cam.scale,
-        excludePatterns: p.excludePatterns,
+        nodeOpacity: (n) => {
+          const base = nodeOpacity(n, idx) * (n.alpha ?? 1);
+          if (!dimOthers) return base;
+          if (n.path === p.selectedPath) return 1;
+          return focusSet.has(n.path) ? Math.max(base, 0.9) : 0.08;
+        },
+        linkAlpha: (a, b) => {
+          if (!dimOthers) return 1;
+          return focusSet.has(a) && focusSet.has(b) ? 1 : 0.07;
+        },
+        showRipple: (path) => !dimOthers || focusSet.has(path),
+        recording: p.recordingOverlay,
       });
-
-      if (p.showActors) {
-        drawActors(ctx, {
-          actors: actorsRef.current.list(),
-          beams: actorsRef.current.beams(),
-          images: avatarsRef.current,
-          cameraScale: cam.scale,
-        });
-      }
-
-      ctx.restore();
-
-      if (p.onScreenOverlay) p.onScreenOverlay(ctx, { w, h, dt, now });
-
-      if (p.recordingOverlay) {
-        drawRecordingOverlay(ctx, { w, h, dpr }, p.recordingOverlay, p.background);
-      }
-
-      raf = requestAnimationFrame(frameLoop);
     }
     raf = requestAnimationFrame(frameLoop);
 
@@ -405,10 +360,9 @@ export function useVisualizerCore({
       ro.disconnect();
       layout.stop();
       detachGestures();
-      canvas.removeEventListener('pointerdown', onPointerDownCursor);
-      canvas.removeEventListener('pointerup', onPointerUpCursor);
-      canvas.removeEventListener('pointercancel', onPointerUpCursor);
-      if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+      host.removeEventListener('pointerdown', onPointerDownCursor);
+      host.removeEventListener('pointerup', onPointerUpCursor);
+      host.removeEventListener('pointercancel', onPointerUpCursor);
     };
   }, []);
 
@@ -416,8 +370,6 @@ export function useVisualizerCore({
     if (!tuning) return;
     layoutRef.current?.setTuning(tuning);
     actorsRef.current.setTuning(tuning);
-    // The canvas is sized from the budget, so changing that resizes it.
-    resizeRef.current?.();
   }, [tuning]);
 
   // The people export arrives after the first render, so hand the resolver
@@ -507,10 +459,9 @@ export function useVisualizerCore({
         for (const commit of everyone) {
           actorsRef.current.onCommit({ ...commit, changes }, nodesById, now);
         }
-      }
-      // With actors on, the ripple waits for the beam. Without them it fires
-      // straight away, which is what the visualizer did before.
-      if (!paramsRef.current.showActors) {
+      } else {
+        // With actors on, the ripple waits for the beam. Without them it
+        // fires straight away.
         for (const edit of edits.values()) {
           ripplesRef.current.push({
             path: edit.path,
@@ -522,8 +473,7 @@ export function useVisualizerCore({
           });
         }
       }
-      const host = hostRef.current;
-      if (host && paramsRef.current.autoFit) {
+      if (hostRef.current && paramsRef.current.autoFit) {
         // Auto-fit picks up again, but the camera eases there. Clearing
         // `_fitted` as well made it snap to a new fit on every commit,
         // which is the jump that reads as a glitch while playing.
@@ -534,16 +484,5 @@ export function useVisualizerCore({
     lastCommitIdxRef.current = commitIndex;
   }, [commitIndex, state, hostRef]);
 
-  return { canvasRef, layoutRef, cameraRef };
-}
-
-function withAlpha(hexOrRgb, alpha) {
-  if (hexOrRgb.startsWith('#')) {
-    const h = hexOrRgb.slice(1);
-    const r = parseInt(h.slice(0, 2), 16);
-    const g = parseInt(h.slice(2, 4), 16);
-    const b = parseInt(h.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-  return hexOrRgb;
+  return { layoutRef, cameraRef, resizeRef };
 }

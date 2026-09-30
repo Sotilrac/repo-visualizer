@@ -42,7 +42,7 @@ function ToggleRow({ label, options, value, onChange }) {
   );
 }
 
-export default function ExportPanel({ open, onClose, onStartRecord, useWebGL }) {
+export default function ExportPanel({ open, onClose, onStartRecord }) {
   const [opts, setOpts] = useState(DEFAULT_OPTS);
 
   if (!open) return null;
@@ -51,7 +51,6 @@ export default function ExportPanel({ open, onClose, onStartRecord, useWebGL }) 
 
   return (
     <div className="header-export-panel">
-      {useWebGL && <p className="export-panel-warn">Recording uses Hi-Res for full detail.</p>}
       <ToggleRow
         label="Format"
         options={FORMATS}
