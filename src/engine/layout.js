@@ -474,6 +474,20 @@ export function createLayout({ width, height, tuning = null }) {
     return sim.alpha();
   }
 
+  /**
+   * Warm the simulation because something outside it moved a body.
+   *
+   * A settled graph is not stepped at all and its velocities are cleared, so
+   * a shove from one of the people would be thrown away. A small amount of
+   * heat is enough to carry the body out of the way and to draw it back
+   * afterwards, which is what makes a repo yield without the scene drifting.
+   *
+   * @param {number} [heat]
+   */
+  function wake(heat = 0.03) {
+    if (sim.alpha() < heat) sim.alpha(heat);
+  }
+
   function tick() {
     easeClusters();
 
@@ -512,6 +526,7 @@ export function createLayout({ width, height, tuning = null }) {
 
   return {
     sync,
+    wake,
     setGroups,
     setTuning,
     setMotion,

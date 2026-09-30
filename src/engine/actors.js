@@ -36,6 +36,30 @@ const AVATAR_GAP = 8;
 /** And between a face and any bubble, so it never sits on a centre dot. */
 const BUBBLE_GAP = 4;
 
+/**
+ * How heavy a bubble is, with a face weighing one.
+ *
+ * Contact goes both ways: a person leaning on a bubble is pushed away from
+ * it and pushes it away in return, by as much less as it is heavier. Without
+ * that a bubble is a wall, and someone who ends up between two of them has
+ * nowhere to go and stays there.
+ *
+ * Weight is area, so a folder holding a hundred files takes more shifting
+ * than a single file, and a repo is heavier again because it stands for all
+ * of them. The cap is what keeps even a repo movable: a person leaning on
+ * one for a second or two shifts it, and the layout draws it back afterwards.
+ */
+const BUBBLE_WEIGHT = 5;
+const CONTAINER_WEIGHT = 3;
+const HEAVIEST = 60;
+
+/** @param {{ r?: number, kind?: string }} bubble */
+export function massOf(bubble) {
+  const area = ((bubble.r ?? 6) / AVATAR_RADIUS) ** 2;
+  const kind = bubble.kind && bubble.kind !== 'file' ? CONTAINER_WEIGHT : 1;
+  return Math.min(HEAVIEST, Math.max(1, BUBBLE_WEIGHT * kind * area));
+}
+
 /** How far out a bubble is felt before it is actually in the way. */
 const BUBBLE_REACH = 26;
 
@@ -97,6 +121,12 @@ const DEFAULTS = {
   blobSeparation: 0.05,
   /** How firmly a single bubble pushes back. */
   separation: 0.12,
+  /**
+   * How much of that a bubble feels in return, before its weight is counted.
+   *
+   * At nought the bubbles are walls, which is what they used to be.
+   */
+  shove: 1,
   /**
    * How much speed is lost each step.
    *
@@ -198,6 +228,7 @@ function project(people, world, min, xk, yk) {
 /**
  * @param {Partial<typeof DEFAULTS> & {
  *   resolve?: (commit: any) => { key: string, name: string, hue?: number, avatar?: string } | null,
+ *   wake?: () => void,
  * }} [options] `resolve` maps a commit's author to a person; returning null
  *   leaves them off the graph. Without it every address is its own actor.
  */
@@ -218,6 +249,8 @@ export function createActors(options = {}) {
   let beams = [];
   /** @type {Array<{ x: number, y: number, radius: number }>} */
   let blobs = [];
+  /** Told when a bubble has been shoved, so the graph can be woken to move it. */
+  let wake = options.wake ?? null;
   const grid = createGrid(160);
 
   /** Every bubble near a point: the ones on screen, plus this actor's own. */
@@ -275,30 +308,52 @@ export function createActors(options = {}) {
   function forceClear() {
     /** @type {any[]} */
     let nodes = [];
+    /**
+     * Push `actor` away from a point, and return how hard, so a bubble can
+     * be pushed back by the same amount over its own weight.
+     */
     const away = (actor, x, y, need, strength) => {
       const dx = actor.x - x;
       const dy = actor.y - y;
       const distance = Math.hypot(dx, dy);
-      if (distance >= need) return;
+      if (distance >= need) return 0;
       if (distance < 1e-6) {
         actor.vx += need * strength;
-        return;
+        return 0;
       }
       const shove = ((need - distance) / distance) * strength;
       actor.vx += dx * shove;
       actor.vy += dy * shove;
+      return shove;
     };
 
     const force = () => {
+      let shifted = false;
       for (const actor of nodes) {
+        // A blob is a region rather than a thing, so there is nothing there
+        // to push back.
         for (const blob of blobs) {
           away(actor, blob.x, blob.y, blob.radius + config.blobClearance, config.blobSeparation);
         }
         const reach = AVATAR_FOOTPRINT + BUBBLE_GAP + BUBBLE_REACH;
         bubblesNear(actor.x, actor.y, reach, (bubble) => {
-          away(actor, bubble.x, bubble.y, (bubble.r ?? 0) + reach, config.separation);
+          const shove = away(actor, bubble.x, bubble.y, (bubble.r ?? 0) + reach, config.separation);
+          if (!shove || bubble.vx == null) return;
+          // A body mid-collapse is being carried somewhere by the level of
+          // detail; shoving it fights the animation.
+          if (bubble.pull) return;
+
+          // The same impulse the actor took, the other way, over the
+          // bubble's weight. Equal and opposite, as contact is.
+          const yields = config.shove / massOf(bubble);
+          bubble.vx -= (actor.x - bubble.x) * shove * yields;
+          bubble.vy -= (actor.y - bubble.y) * shove * yields;
+          shifted = true;
         });
       }
+      // The graph settles and stops being stepped. Something leaning on it
+      // has to say so, or the push is integrated by nobody.
+      if (shifted) wake?.();
     };
     force.initialize = (next) => {
       nodes = next;
@@ -448,6 +503,15 @@ export function createActors(options = {}) {
     /** @param {(commit: any) => any} next */
     setResolver(next) {
       resolve = next;
+    },
+
+    /**
+     * What to call when someone leans on a bubble hard enough to move it.
+     *
+     * @param {() => void} next
+     */
+    setWake(next) {
+      wake = next;
     },
 
     /**

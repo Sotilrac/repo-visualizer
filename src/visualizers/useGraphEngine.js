@@ -164,6 +164,9 @@ export function useGraphEngine({
       tuning: paramsRef.current.tuning,
     });
     layoutRef.current = layout;
+    // Someone leaning on a bubble moves it, and a settled graph is not
+    // stepped, so the people have to be able to wake it.
+    actorsRef.current.setWake(() => layout.wake());
 
     function resize() {
       const w = host.clientWidth;
