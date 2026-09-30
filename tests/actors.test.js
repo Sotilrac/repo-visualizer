@@ -410,7 +410,7 @@ describe('the filter on the drawn position', () => {
    * only the filter.
    */
   function jumper(options = {}) {
-    const actors = createActors({ idleMs: 60000, ...options });
+    const actors = createActors({ idleMs: 60000, smoothingMs: 170, ...options });
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
     for (let i = 0; i < 200; i++) actors.tick(16);
     const [actor] = actors.list();
@@ -570,7 +570,7 @@ describe('faces never drawn on top of each other', () => {
 describe('coming to rest', () => {
   /** Two people who committed to the same file, left alone afterwards. */
   function afterTheWork(frames) {
-    const actors = createActors({ idleMs: 600000 });
+    const actors = createActors({ idleMs: 600000, blobClearance: 64, actorClearance: 46 });
     const nodes = { 'a.js': node('a.js', 0, 0) };
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
     actors.onCommit(commit('Bo', 'bo@acme.com', ['a.js']), nodes, 1);
@@ -620,8 +620,10 @@ describe('coming to rest', () => {
 
 describe('how hard they push', () => {
   /** Two people set down `apart` pixels from each other, one frame. */
+  const RANGE = 76;
+
   function oneFrame(apart) {
-    const actors = createActors({ idleMs: 600000 });
+    const actors = createActors({ idleMs: 600000, actorClearance: RANGE });
     const nodes = { 'a.js': node('a.js', 0, 0) };
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
     actors.onCommit(commit('Bo', 'bo@acme.com', ['a.js']), nodes, 1);

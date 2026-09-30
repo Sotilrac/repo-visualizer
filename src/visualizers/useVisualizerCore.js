@@ -95,9 +95,17 @@ export function useVisualizerCore({
     showActors,
     tuning,
   });
-  /** Room the camera leaves for the people standing outside the repos. */
-  const actorMargin = (params) =>
-    params.showActors ? (params.tuning?.standoff ?? 0) + AVATAR_RADIUS * 2 : 0;
+  /**
+   * Room the camera leaves for the people standing outside the repos: how
+   * far off they stand, plus how far a crowd of them spreads pushing each
+   * other apart.
+   */
+  const actorMargin = (params) => {
+    if (!params.showActors) return 0;
+    const standoff = params.tuning?.standoff ?? 0;
+    const spread = Math.max(AVATAR_RADIUS * 2, (params.tuning?.avatarSpacing ?? 0) / 2);
+    return standoff + spread;
+  };
   paramsRef.current = {
     draw,
     onBeforeDraw,

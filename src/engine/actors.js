@@ -29,7 +29,7 @@ const DEFAULTS = {
   /** How far an actor stays off the bubbles it is working on. */
   nodeClearance: 30,
   /** How far two actors prefer to stay apart. */
-  actorClearance: 76,
+  actorClearance: 242,
   /**
    * How close two faces may ever get, centre to centre.
    *
@@ -40,7 +40,7 @@ const DEFAULTS = {
    */
   minSeparation: AVATAR_RADIUS * 2,
   /** How far outside a repo's blob an actor stands to fire into it. */
-  blobClearance: 64,
+  blobClearance: 144,
   /**
    * The time constant of the filter on the drawn position, in milliseconds.
    *
@@ -49,7 +49,7 @@ const DEFAULTS = {
    * are and what is drawn lags them, which is the difference between a
    * person moving and a person flickering.
    */
-  smoothingMs: 260,
+  smoothingMs: 420,
   /**
    * Movement below this is not worth drawing. Three forces balancing each
    * other leave a face creeping around its resting place forever, and a
