@@ -100,6 +100,24 @@ export function parseCss(src) {
   return [...imports];
 }
 
+/**
+ * C and C++ includes, both spellings.
+ *
+ * `"foo.h"` looks beside the including file first and `<foo.h>` looks along
+ * the include path, but which of the two a project uses for its own headers
+ * is a matter of habit, so both are read and the resolver decides whether
+ * the name belongs to the repo or to the toolchain.
+ */
+export function parseC(src) {
+  const imports = new Set();
+  const re = /^[ \t]*#[ \t]*include[ \t]*(?:"([^"\n]+)"|<([^>\n]+)>)/gm;
+  for (const m of src.matchAll(re)) {
+    const spec = m[1] ?? m[2];
+    if (spec) imports.add(spec.trim());
+  }
+  return [...imports];
+}
+
 /** Human-readable language list (single source of truth for README + CLI). */
 export const ANALYZER_LANGUAGES = [
   {
@@ -143,6 +161,12 @@ export const ANALYZER_LANGUAGES = [
     extensions: ['.php'],
     parse: parsePhp,
     resolution: '`use`, `require`/`include`, `__DIR__` joins, dotted namespace paths',
+  },
+  {
+    name: 'C / C++',
+    extensions: ['.c', '.h', '.cc', '.cpp', '.cxx', '.hh', '.hpp', '.hxx', '.ino'],
+    parse: parseC,
+    resolution: '`#include`, beside the file or anywhere in the same repo',
   },
   {
     name: 'CSS / SCSS / Sass / Less',

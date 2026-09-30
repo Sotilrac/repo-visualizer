@@ -29,6 +29,9 @@ const FILE_EXTS = [
   '.scss',
 ];
 
+/** What a C or C++ include can land on. */
+const C_EXTS = new Set(['.h', '.hh', '.hpp', '.hxx', '.c', '.cc', '.cpp', '.cxx', '.inc', '.ino']);
+
 const INDEX_EXTS = ['/index.js', '/index.ts', '/index.tsx', '/index.jsx', '/index.mjs'];
 const PKG_MARKERS = ['/index.js', '/index.ts', '/index.tsx', '/__init__.py', '/mod.rs'];
 
@@ -197,10 +200,73 @@ export async function loadJsAliases(repoPath) {
  * @param {Set<string>} allPaths
  * @param {{ jsAliases?: Array<{pattern:string,target:string}> }} options
  */
+/**
+ * Headers by their file name, for resolving an include.
+ *
+ * An include names a header, not a path from the root: `#include "device.h"`
+ * from anywhere in a repo means the one device.h that repo has. So the index
+ * is by file name and the search narrows from there.
+ *
+ * @param {Set<string>} pathSet
+ */
+function buildIncludeIndex(pathSet) {
+  /** @type {Map<string, string[]>} */
+  const byName = new Map();
+  for (const p of pathSet) {
+    const dot = p.lastIndexOf('.');
+    if (dot < 0 || !C_EXTS.has(p.slice(dot).toLowerCase())) continue;
+    const name = p.slice(p.lastIndexOf('/') + 1);
+    const found = byName.get(name);
+    if (found) found.push(p);
+    else byName.set(name, [p]);
+  }
+  return byName;
+}
+
+/**
+ * Where an `#include` points.
+ *
+ * Beside the including file first, since that is what the quoted form
+ * means, then anywhere in the same repo. Not outside it: across a hundred
+ * repos the same header name turns up again and again, and guessing which
+ * one was meant would draw imports between repos that never import each
+ * other. A name nothing in the repo answers to is a toolchain header and
+ * has nothing to point at.
+ *
+ * @param {string} raw
+ * @param {string} from
+ * @param {Set<string>} pathSet
+ * @param {Map<string, string[]>} byName
+ */
+function resolveInclude(raw, from, pathSet, byName) {
+  const spec = raw.replace(/^\.\//, '');
+  if (!spec || spec.startsWith('/')) return null;
+
+  // Beside the file that included it, which is what "…" asks for.
+  const near = posix.normalize(posix.join(posix.dirname(from), spec));
+  if (pathSet.has(near)) return near;
+
+  const repo = `${from.split('/')[0]}/`;
+  const name = spec.slice(spec.lastIndexOf('/') + 1);
+  const tail = `/${spec}`;
+  const inRepo = (byName.get(name) ?? []).filter((p) => p.startsWith(repo));
+  if (inRepo.length === 0) return null;
+
+  // The whole path the include spelled out, where it spelled one out.
+  const spelled = inRepo.filter((p) => p === spec || p.endsWith(tail));
+  const candidates = spelled.length > 0 ? spelled : inRepo;
+  // Shallowest, then alphabetical: an include that matches several files
+  // has to pick one, and it has to pick the same one every run.
+  return [...candidates].sort(
+    (a, b) => a.split('/').length - b.split('/').length || (a < b ? -1 : 1),
+  )[0];
+}
+
 export function createImportResolver(allPaths, options = {}) {
   const pathSet = new Set([...allPaths].map(toPosix));
   const pythonModules = buildPythonIndex(pathSet);
   const javaIndex = buildJavaIndex(pathSet);
+  const includeIndex = buildIncludeIndex(pathSet);
   const jsAliases = options.jsAliases || [];
 
   function resolveAlias(spec) {
@@ -237,6 +303,10 @@ export function createImportResolver(allPaths, options = {}) {
     if (ext === '.java' || ext === '.kt') {
       const j = resolveJavaImport(raw, javaIndex);
       if (j) return j;
+    }
+
+    if (C_EXTS.has(ext)) {
+      return resolveInclude(raw, from, pathSet, includeIndex);
     }
 
     if (ext === '.go') {

@@ -80,6 +80,7 @@ The analyzer parses **imports** on changed files and resolves them to other path
 | Java / Kotlin | `.java` `.kt` | FQCN and simple class name |
 | Ruby | `.rb` | `require` / `require_relative` |
 | PHP | `.php` | `use`, `require`/`include`, `__DIR__` joins, dotted namespace paths |
+| C / C++ | `.c` `.h` `.cc` `.cpp` `.cxx` `.hh` `.hpp` `.hxx` `.ino` | `#include`, beside the file or anywhere in the same repo |
 | CSS / SCSS / Sass / Less | `.css` `.scss` `.sass` `.less` | `@import` |
 
 Any other file type appears as a **node** (sized by churn) but does not add import **edges**. 

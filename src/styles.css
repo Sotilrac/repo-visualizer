@@ -240,10 +240,17 @@ button:focus-visible {
   content: " \25b4";
 }
 
+/* As wide as the clusters card below it, so the column has one edge. */
 .repo-list {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
+  width: 260px;
+  max-width: 100%;
+}
+
+.repo-list-toggle {
+  align-self: flex-start;
 }
 
 .repo-list-items {
@@ -254,7 +261,9 @@ button:focus-visible {
   padding: 0 0 0 16px;
   list-style: disc;
   max-height: 34vh;
-  overflow-y: auto;
+  /* Down only: a long name is cut short rather than pushing the column
+     sideways. */
+  overflow: hidden auto;
 }
 
 .repo-list-items li {
@@ -262,6 +271,10 @@ button:focus-visible {
 }
 
 .repo-list-item {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--fg-muted);
   text-decoration: none;
 }
