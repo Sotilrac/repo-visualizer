@@ -17,6 +17,9 @@ import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePe
 import { useTimeline } from './engine/useTimeline.js';
 import PixiVisualizer from './visualizers/PixiVisualizer.jsx';
 
+/** Breathing room between the layout card and the topmost year marker. */
+const TIMELINE_CLEARANCE = 10;
+
 function loadBool(key, defaultVal) {
   try {
     const v = localStorage.getItem(key);
@@ -71,6 +74,30 @@ export default function App() {
   const cameraApiRef = useRef(null);
   const recordStopRef = useRef(false);
   timelineRef.current = timeline;
+
+  // The layout card is bottom aligned with the scrubber, and the control
+  // bar is sized by what is in it, so where the scrubber starts is measured
+  // rather than assumed. The year markers hang above the scrubber's own box,
+  // so they are measured too: aligning to the box alone covers them up.
+  useEffect(() => {
+    const report = () => {
+      const scrubber = document.querySelector('.timeline');
+      if (!scrubber) return;
+      const above = [scrubber, ...document.querySelectorAll('.timeline-year')];
+      const highest = Math.min(...above.map((el) => el.getBoundingClientRect().top));
+      const top = window.innerHeight - highest + TIMELINE_CLEARANCE;
+      document.documentElement.style.setProperty('--timeline-top', `${Math.round(top)}px`);
+    };
+    report();
+    const bar = document.querySelector('.control-bar');
+    const watch = bar ? new ResizeObserver(report) : null;
+    if (bar && watch) watch.observe(bar);
+    window.addEventListener('resize', report);
+    return () => {
+      watch?.disconnect();
+      window.removeEventListener('resize', report);
+    };
+  }, []);
 
   const adjust = useCallback((key, value) => {
     setTuning((previous) => {
