@@ -810,13 +810,11 @@ a.repo-list-item:hover {
   opacity: 1;
 }
 
+/* Only here to anchor the export panel; it sits in the row like a button. */
 .header-export-wrap {
   position: relative;
-  margin-top: 8px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
 }
 
 .header-export-toolbar {
@@ -1587,12 +1585,20 @@ a.repo-list-item:hover {
   color: var(--fg);
 }
 
-.style-picker .style-btn[aria-pressed="true"] {
-  background: rgba(255, 255, 255, 0.08);
+/* The picker is a tablist, so the chosen one is aria-selected. It used to
+   be styled on aria-pressed, which nothing ever sets, so neither looked
+   chosen. */
+.style-picker .style-btn[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px var(--hairline);
   color: var(--fg);
 }
 
-.app[data-style="minimal"] .style-picker .style-btn[aria-pressed="true"] {
+.style-picker .style-btn[aria-selected="false"] .style-swatch {
+  opacity: 0.35;
+}
+
+.app[data-style="minimal"] .style-picker .style-btn[aria-selected="true"] {
   background: rgba(15, 17, 22, 0.06);
 }
 
