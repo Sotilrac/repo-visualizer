@@ -23,7 +23,7 @@ import { createLodTransitions } from '../engine/lodTransitions.js';
 import { drawRecordingOverlay } from '../engine/recordingOverlay.js';
 import { buildRepoClock } from '../engine/repoClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
-import { cameraSpeed } from '../engine/tuning.js';
+import { cameraSpeed, DEFAULT_TUNING, renderScale } from '../engine/tuning.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
 import { AVATAR_RADIUS, drawActors } from './drawActors.js';
 
@@ -69,6 +69,7 @@ export function useVisualizerCore({
   // file was rolled into. The frame loop reads both.
   const hierarchyRef = useRef({ targets: {}, key: '', idFor: () => null });
   const rebuildRef = useRef(null);
+  const resizeRef = useRef(null);
   const intensityRef = useRef(new Map());
 
   const repos = dataset?.repos ?? NO_REPOS;
@@ -168,12 +169,13 @@ export function useVisualizerCore({
     layoutRef.current = layout;
 
     const ctx = canvas.getContext('2d', { alpha: true });
-    let dpr = Math.min(2, window.devicePixelRatio || 1);
+    let dpr = 1;
 
     function resize() {
       const w = host.clientWidth;
       const h = host.clientHeight;
-      dpr = Math.min(2, window.devicePixelRatio || 1);
+      const budget = paramsRef.current.tuning?.pixelBudget ?? DEFAULT_TUNING.pixelBudget;
+      dpr = renderScale(w, h, window.devicePixelRatio || 1, budget);
       canvas.width = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
       layout.resize(w, h);
@@ -185,6 +187,7 @@ export function useVisualizerCore({
         snapCamera(cam);
       }
     }
+    resizeRef.current = resize;
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(host);
@@ -393,6 +396,8 @@ export function useVisualizerCore({
     if (!tuning) return;
     layoutRef.current?.setTuning(tuning);
     actorsRef.current.setTuning(tuning);
+    // The canvas is sized from the budget, so changing that resizes it.
+    resizeRef.current?.();
   }, [tuning]);
 
   // The people export arrives after the first render, so hand the resolver

@@ -88,6 +88,7 @@ export default function App() {
   const cameraApiRef = useRef(null);
   const recordStopRef = useRef(false);
   const perfBeforeRecordRef = useRef(null);
+  const budgetBeforeRecordRef = useRef(null);
   timelineRef.current = timeline;
 
   // What the layout is simulating, which is not the number of files: at one
@@ -318,6 +319,15 @@ export default function App() {
 
       recordStopRef.current = false;
       perfBeforeRecordRef.current = perfMode;
+
+      // The video is a capture of the canvas, so its resolution is the one
+      // the canvas is drawn at. Size 2x means four times the pixels, which
+      // is sharper and slower: a live capture drops what it cannot draw.
+      budgetBeforeRecordRef.current = tuning.pixelBudget;
+      if (opts.resolution !== 1) {
+        adjust('pixelBudget', tuning.pixelBudget * opts.resolution * opts.resolution);
+        await waitMs(250);
+      }
       if (showWebGL || perfMode !== 'off') {
         setPerfMode('off');
         await waitMs(450);
@@ -357,9 +367,22 @@ export default function App() {
           setPerfMode(perfBeforeRecordRef.current);
           perfBeforeRecordRef.current = null;
         }
+        if (budgetBeforeRecordRef.current !== null) {
+          adjust('pixelBudget', budgetBeforeRecordRef.current);
+          budgetBeforeRecordRef.current = null;
+        }
       }
     },
-    [repoName, perfMode, showWebGL, timeline, updateRecordingProgress, handleEncodingStart],
+    [
+      repoName,
+      perfMode,
+      showWebGL,
+      timeline,
+      tuning.pixelBudget,
+      adjust,
+      updateRecordingProgress,
+      handleEncodingStart,
+    ],
   );
 
   const handleToggleExport = useCallback(() => {

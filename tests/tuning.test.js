@@ -4,6 +4,7 @@ import {
   KNOBS,
   knobGroups,
   loadTuning,
+  renderScale,
   saveTuning,
   withDefaults,
 } from '../src/engine/tuning.js';
@@ -90,5 +91,35 @@ describe('loadTuning and saveTuning', () => {
 
     expect(loadTuning(blocked)).toEqual(DEFAULT_TUNING);
     expect(() => saveTuning(DEFAULT_TUNING, blocked)).not.toThrow();
+  });
+});
+
+describe('renderScale', () => {
+  const budget = DEFAULT_TUNING.pixelBudget;
+
+  it('draws a small window at the screen it is on', () => {
+    expect(renderScale(800, 600, 2, budget)).toBe(2);
+  });
+
+  it('draws fewer pixels than the screen asks for on a big one', () => {
+    expect(renderScale(1920, 1080, 2, budget)).toBeLessThan(2);
+  });
+
+  it('keeps to the budget it is given', () => {
+    const scale = renderScale(1920, 1080, 2, 2.5);
+
+    expect((1920 * scale * (1080 * scale)) / 1e6).toBeCloseTo(2.5, 1);
+  });
+
+  it('draws more when the budget goes up', () => {
+    expect(renderScale(1920, 1080, 2, 9)).toBeGreaterThan(renderScale(1920, 1080, 2, 2));
+  });
+
+  it('never asks for more than the screen has', () => {
+    expect(renderScale(800, 600, 1, 9)).toBe(1);
+  });
+
+  it('stays legible however tight the budget', () => {
+    expect(renderScale(3840, 2160, 2, 0.2)).toBe(0.5);
   });
 });

@@ -49,14 +49,23 @@ function drawBeam(ctx, beam) {
   ctx.lineTo(headX, headY);
   ctx.stroke();
 
-  const gradient = ctx.createLinearGradient(tailX, tailY, headX, headY);
-  gradient.addColorStop(0, `hsla(${hue}, 90%, 62%, 0)`);
-  gradient.addColorStop(1, `hsla(${hue}, 95%, 72%, ${0.85 * fade})`);
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = 2.2;
+  // Two flat segments rather than a gradient along the tail: a gradient is
+  // built from scratch for every beam on every frame, and with a team's
+  // worth of people firing there are over a hundred of them.
+  const midX = tailX + (headX - tailX) * 0.5;
+  const midY = tailY + (headY - tailY) * 0.5;
   ctx.lineCap = 'round';
+  ctx.strokeStyle = `hsla(${hue}, 92%, 66%, ${0.35 * fade})`;
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
   ctx.moveTo(tailX, tailY);
+  ctx.lineTo(midX, midY);
+  ctx.stroke();
+
+  ctx.strokeStyle = `hsla(${hue}, 95%, 72%, ${0.85 * fade})`;
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(midX, midY);
   ctx.lineTo(headX, headY);
   ctx.stroke();
 }
