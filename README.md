@@ -27,8 +27,7 @@ A commit advances the timeline and triggers a ripple from every touched file.
 - **Canvas navigation** - scroll or pinch to zoom, drag to pan; on phones and tablets use **one finger to pan** and **pinch to zoom** on the graph. **Auto fit** (on by default) keeps the growing graph in view while playback runs
 - **File inspector** - click a node to see import dependencies (`Depends on` / `Imported in`) and recent commits that touched it
 - **Legend focus** - click a cluster in the legend to highlight that folder and dim everything else; click again or press `Esc` to clear
-- **Render quality** - **Auto-Res** switches to fast GPU rendering only when the graph is very large; **Hi-Res** / **Low-Res** force canvas or WebGL
-- **Large repos** - WebGL point renderer for Galaxy at high node counts, with automatic canvas fallback if WebGL is unavailable
+- **One GPU renderer** - the scene is drawn with PixiJS at the screen's own resolution, and the glow is a bloom pass over the whole layer rather than a halo behind every bubble, so a big graph costs no more to light than a small one
 - **Mobile layout** - speed, themes, zoom, and other options live in the expandable **Controls** panel; **Info** opens the commit card and cluster legend
 - **Timeline player**, or you can scrub through history, adjust playback speed, and **export the whole animation as a WebM video** or **GIF** for sharing.
 - **Four visual themes included**, all switchable live.
@@ -167,9 +166,9 @@ ffmpeg -i repo-visualizer-timeline.webm -c:v libx264 -crf 18 output.mp4
 
 2. **`src/engine/graphState.js`** maintains an incremental graph state: a `Map<path, node>` and a `Map<key, edge>`. Each `applyCommit` updates the state in place. Seeking backward replays from scratch up to the target.
 
-3. **`src/engine/layout.js`** wraps `d3-force` with cluster forces that pull each node toward its top-level directory's center on a ring. The simulation runs continuously and warm-restarts when nodes are added.
+3. **`src/engine/layout.js`** wraps `d3-force` with cluster forces that hold each body inside its repo's blob. **`src/engine/actors.js`** runs the people on a second `d3-force` simulation: they are pulled towards the files they are committing to, hardest while a beam is still in flight, and pushed off each other and off every bubble. Both are stepped at a fixed 60Hz by **`src/engine/stepClock.js`**, so the motion is the same on a 60Hz monitor and a 144Hz one.
 
-4. **`src/visualizers/`** contains four `<canvas>`-based renderers (plus an optional **WebGL** path for large graphs) that share a common `useVisualizerCore` hook for canvas setup, RAF loop, and ripple tracking. Each canvas visualizer provides a `draw(ctx, frame)` function.
+4. **`src/visualizers/useGraphEngine.js`** owns the layout, the people, the camera and the frame clock, and hands the renderer a plain description of one frame. **`src/visualizers/pixi/`** draws it. Geometry is built in screen space every frame rather than inside a scaled container, which is what keeps a line one pixel wide and a label the size it asked for at any zoom. A look is a descriptor in `pixi/styles.js`, not a renderer of its own.
 
 5. **`src/engine/recorder.js`** records the active canvas to WebM via `canvas.captureStream()` + `MediaRecorder`, or to GIF via gif.js.
 
@@ -192,16 +191,21 @@ repo-visualizer/
 │   │   ├── useTimeline.js  # Playback + final-state rebuild
 │   │   ├── useDataset.js   # Loads history.json or demo
 │   │   ├── excludes.js     # Path / cluster exclude matching
+│   │   ├── actors.js       # The people, as a force simulation
+│   │   ├── stepClock.js    # Fixed-rate stepping from a variable frame rate
 │   │   ├── canvasGestures.js  # Pan, pinch-zoom, tap on graph canvas
 │   │   ├── colors.js       # Per-style color palettes
 │   │   ├── recordingOverlay.js  # Titles drawn on export recordings
 │   │   └── recorder.js     # Canvas → WebM / GIF
 │   ├── visualizers/
-│   │   ├── useVisualizerCore.js  # Shared canvas + RAF + ripple plumbing
-│   │   ├── GalaxyVisualizer.jsx
-│   │   ├── OrganicVisualizer.jsx
-│   │   ├── NeuralVisualizer.jsx
-│   │   └── MinimalVisualizer.jsx
+│   │   ├── useGraphEngine.js     # Layout, people, camera, frame clock
+│   │   ├── PixiVisualizer.jsx    # The renderer, as a component
+│   │   └── pixi/
+│   │       ├── stage.js          # Layers, bloom, every draw call
+│   │       ├── styles.js         # What each look differs by
+│   │       ├── palette.js        # Cluster colours as numbers
+│   │       ├── culling.js        # What is actually in the frame
+│   │       └── faces.js          # Avatars cropped to circles
 │   └── data/
 │       └── bundledDemo.js  # Out-of-the-box demo dataset
 ├── public/

@@ -112,7 +112,9 @@ export async function createStage(host, { background }) {
     if (key === bloomKey) return;
     bloomKey = key;
     if (!spec) {
-      lit.filters = [];
+      // Not an empty list: a container with a filter list still renders
+      // through a texture, and a look without a glow should not pay for one.
+      lit.filters = null;
       bloom = null;
       return;
     }
