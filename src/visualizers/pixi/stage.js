@@ -16,6 +16,7 @@
 
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import { AVATAR_FOOTPRINT, AVATAR_RADIUS } from '../../engine/actors.js';
+import { budgetFor, shortened, showsCount } from '../../engine/labelBudget.js';
 import { drawRecordingOverlay } from '../../engine/recordingOverlay.js';
 import { FONT_MONO } from '../../shared/fonts.js';
 import { blurForZoom, createBloom } from './bloom.js';
@@ -645,6 +646,9 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
   // isolating a bubble is to read it without the other two hundred names
   // over the top of it.
   const { isolating, inFocus: inPicture } = frame;
+  // How much of a name there is room to read, and whether a folder is drawn
+  // big enough to hang its file count off.
+  const budget = budgetFor(frame.labels.length, scale);
 
   // One name per repo, and only for the repos with something on screen to
   // name. Where it goes depends on whether the repo is one bubble or a
@@ -662,7 +666,7 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
     if (named && !named.has(dir)) continue;
     // The word is laid out first, because how far out it goes depends on
     // how wide it is.
-    const label = labelFor(`repo:${dir}`, dir, style.label, plates.parent);
+    const label = labelFor(`repo:${dir}`, shortened(dir, budget), style.label, plates.parent);
     const angle = clusters.get(dir)?.angle ?? -Math.PI / 2;
     const at = repoLabelSpot(members, angle, {
       width: label.width + TAG_PAD_X * 2,
@@ -696,8 +700,11 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
     if (!inPicture(n)) continue;
     if ((n.r ?? 6) * scale < LABEL_MIN_RADIUS) continue;
     if (!onScreen(frame.cam, frame.w, frame.h, n.x, n.y, n.r ?? 6)) continue;
-    const name = n.path.slice(n.path.lastIndexOf('/') + 1);
-    const label = labelFor(`body:${n.path}`, `${name} ${n.files}`, style.label);
+    const name = shortened(n.path.slice(n.path.lastIndexOf('/') + 1), budget);
+    const counted = showsCount((n.r ?? 6) * scale, frame.labels.countFrom)
+      ? `${name} ${n.files}`
+      : name;
+    const label = labelFor(`body:${n.path}`, counted, style.label);
     label.position.set(px(n.x), py(n.y) + (n.r ?? 6) * scale + BODY_LABEL_GAP);
     label.alpha = style.label.alpha * 0.8;
   }
@@ -710,7 +717,7 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
       // already; naming them again here is the same word twice.
       if (n.kind && n.kind !== 'file') continue;
       if (!onScreen(frame.cam, frame.w, frame.h, n.x, n.y, n.r ?? 6)) continue;
-      const name = n.path.slice(n.path.lastIndexOf('/') + 1);
+      const name = shortened(n.path.slice(n.path.lastIndexOf('/') + 1), budget);
       const label = labelFor(`pick:${n.path}`, name, style.label);
       label.position.set(px(n.x), py(n.y) - (n.r ?? 6) * scale - 9);
       label.alpha = 1;
@@ -721,7 +728,7 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
   // part of.
   for (const actor of actors) {
     if (actor.alpha <= 0.05) continue;
-    const label = labelFor(`who:${actor.key}`, actor.name, style.label);
+    const label = labelFor(`who:${actor.key}`, shortened(actor.name, budget), style.label);
     label.position.set(
       px(actor.sx ?? actor.x),
       py(actor.sy ?? actor.y) + AVATAR_FOOTPRINT * scale + 9,

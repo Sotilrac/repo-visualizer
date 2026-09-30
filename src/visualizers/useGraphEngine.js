@@ -30,7 +30,7 @@ import { createLodTransitions } from '../engine/lodTransitions.js';
 import { buildRepoClock } from '../engine/repoClock.js';
 import { createStepClock } from '../engine/stepClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
-import { cameraSpeed } from '../engine/tuning.js';
+import { cameraSpeed, DEFAULT_TUNING } from '../engine/tuning.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
 import { starfield } from './pixi/starfield.js';
 import { styleFor } from './pixi/styles.js';
@@ -357,6 +357,10 @@ export function useGraphEngine({
         beams: isolating ? flying.filter((beam) => keys.has(beam.key)) : flying,
         images: avatarsRef.current,
         showLabels: p.showLabels,
+        labels: {
+          length: p.tuning?.labelLength ?? DEFAULT_TUNING.labelLength,
+          countFrom: p.tuning?.countFrom ?? DEFAULT_TUNING.countFrom,
+        },
         isolating,
         inFocus,
         selectedPath: p.selectedPath,
