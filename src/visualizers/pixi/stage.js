@@ -15,10 +15,10 @@
  */
 
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
-import { AdvancedBloomFilter } from 'pixi-filters';
 import { AVATAR_FOOTPRINT, AVATAR_RADIUS } from '../../engine/actors.js';
 import { drawRecordingOverlay } from '../../engine/recordingOverlay.js';
 import { FONT_MONO } from '../../shared/fonts.js';
+import { blurForZoom, createBloom } from './bloom.js';
 import { onScreen, visible } from './culling.js';
 import { createFaces } from './faces.js';
 import { clusterRgb } from './palette.js';
@@ -83,9 +83,9 @@ export async function createStage(host, { background }) {
   const titleCanvas = document.createElement('canvas');
   let titleKey = '';
 
-  /** @type {AdvancedBloomFilter | null} */
   let bloom = null;
   let bloomKey = '';
+  let bloomBlur = 0;
 
   /** @type {Map<string, Sprite>} */
   const avatarPool = new Map();
@@ -106,7 +106,7 @@ export async function createStage(host, { background }) {
   /** Turn the bloom on, off, or on to different settings. */
   function setBloom(spec) {
     const key = spec
-      ? `${spec.threshold}|${spec.scale}|${spec.blur}|${spec.quality}|${spec.step}`
+      ? `${spec.threshold}|${spec.scale}|${spec.blur}|${spec.quality}|${spec.downscale}`
       : '';
     if (key === bloomKey) return;
     bloomKey = key;
@@ -117,25 +117,23 @@ export async function createStage(host, { background }) {
       bloom = null;
       return;
     }
-    bloom = new AdvancedBloomFilter({
-      threshold: spec.threshold,
-      bloomScale: spec.scale,
-      brightness: 1,
-      blur: spec.blur,
-      quality: spec.quality,
-      // How far apart the blur samples. Above one it skips pixels, which
-      // is cheaper and lays a diagonal moiré over everything the glow
-      // touches. Dropping the filter's resolution instead would be cheaper
-      // still and worse: the layer is drawn into that same target, so
-      // every bubble and line would be drawn at half size and blown back
-      // up, which is exactly what a bloom pass must not cost.
-      pixelSize: spec.step,
-    });
-    // A filter renders its target itself, and its own antialiasing setting
-    // is off whatever the renderer was asked for. Everything that glows
-    // comes out stepped without this.
-    bloom.antialias = 'inherit';
+    bloom = createBloom(spec);
+    bloomBlur = bloom.blur;
     lit.filters = [bloom];
+  }
+
+  /**
+   * Track the zoom with the width of the glow.
+   *
+   * Quantised because setting it rebuilds the blur's kernels, and the
+   * camera moves by a fraction of a pixel most frames.
+   */
+  function aimBloom(spec, scale) {
+    if (!bloom || !spec) return;
+    const wanted = blurForZoom(spec.blur, scale) * spec.downscale;
+    if (Math.abs(wanted - bloomBlur) < 0.25) return;
+    bloomBlur = wanted;
+    bloom.blur = wanted;
   }
 
   /** One reusable Text per label, so a frame allocates nothing. */
@@ -211,6 +209,7 @@ export async function createStage(host, { background }) {
       const { cam, style, w, h } = frame;
       if (w !== width || h !== height) resize(w, h);
       setBloom(style.bloom);
+      aimBloom(style.bloom, cam.scale);
       app.renderer.background.color = style.background;
 
       const scale = cam.scale;

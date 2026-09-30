@@ -21,7 +21,7 @@
  *     scale: number,
  *     blur: number,
  *     quality: number,
- *     step: number,
+ *     downscale: number,
  *   } | null,
  *   body: { fill: number, ring: number, ringWidth: number, core: number },
  *   link: {
@@ -42,7 +42,7 @@ export const STYLES = {
   galaxy: {
     background: '#03040a',
     sky: 'stars',
-    bloom: { threshold: 0.22, scale: 2.1, blur: 14, quality: 5, step: 1 },
+    bloom: { threshold: 0.22, scale: 2.1, blur: 14, quality: 5, downscale: 0.5 },
     body: { fill: 0.9, ring: 0.65, ringWidth: 2.4, core: 0.34 },
     link: { width: 2.4, alpha: 0.7, curve: 0.08, glow: 0.7, glowWidth: 0.4 },
     ripple: { rings: 2, width: 2.2, reach: 1 },
@@ -52,7 +52,7 @@ export const STYLES = {
   neural: {
     background: '#05060d',
     sky: 'none',
-    bloom: { threshold: 0.28, scale: 2.3, blur: 16, quality: 5, step: 1 },
+    bloom: { threshold: 0.28, scale: 2.3, blur: 16, quality: 5, downscale: 0.5 },
     body: { fill: 0.95, ring: 0.7, ringWidth: 2.2, core: 0.3 },
     link: { width: 2.6, alpha: 0.7, curve: 0, glow: 0.6, glowWidth: 0.42 },
     ripple: { rings: 1, width: 2, reach: 1.1 },
@@ -62,7 +62,7 @@ export const STYLES = {
   organic: {
     background: '#0a0d0b',
     sky: 'none',
-    bloom: { threshold: 0.38, scale: 1.4, blur: 11, quality: 4, step: 1 },
+    bloom: { threshold: 0.38, scale: 1.4, blur: 11, quality: 4, downscale: 0.5 },
     body: { fill: 0.85, ring: 0.55, ringWidth: 2, core: 0.4 },
     link: { width: 2.8, alpha: 0.7, curve: 0.16, glow: 0.4, glowWidth: 0.38 },
     ripple: { rings: 3, width: 1.8, reach: 1.2 },
