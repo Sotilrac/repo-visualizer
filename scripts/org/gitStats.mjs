@@ -8,6 +8,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { shouldIncludeFile } from '../includeFile.mjs';
+import { personFrom } from './coAuthors.mjs';
 import { defaultBranchOf } from './defaultBranch.mjs';
 
 const RECORD = '\u001e';
@@ -39,7 +40,9 @@ export function readRepoStats(repoPath, { since = null, until = null, folderDept
     defaultBranchOf(repoPath),
     '--no-renames',
     '--name-only',
-    `--format=${RECORD}%H${FIELD}%aI${FIELD}%aN${FIELD}%aE`,
+    // The co-authors go on the header line, separated the same way, so the
+    // lines after it are still nothing but file paths.
+    `--format=${RECORD}%H${FIELD}%aI${FIELD}%aN${FIELD}%aE${FIELD}%(trailers:key=Co-authored-by,valueonly,separator=${FIELD})`,
   ];
   if (since) args.push(`--since=${since}`);
   if (until) args.push(`--until=${until}`);
@@ -66,7 +69,7 @@ export function readRepoStats(repoPath, { since = null, until = null, folderDept
   for (const record of raw.split(RECORD)) {
     if (!record.trim()) continue;
     const [header, ...pathLines] = record.split('\n');
-    const [, date, name, email] = header.split(FIELD);
+    const [, date, name, email, ...trailers] = header.split(FIELD);
     if (!date) continue;
 
     commits += 1;
@@ -74,10 +77,20 @@ export function readRepoStats(repoPath, { since = null, until = null, folderDept
     if (!first || day < first) first = day;
     if (!last || day > last) last = day;
 
-    const key = `${name}\u0000${email}`;
-    const seen = identities.get(key);
-    if (seen) seen.commits += 1;
-    else identities.set(key, { name, email, commits: 1 });
+    // The author, and everyone the message names beside them: a squashed
+    // pull request is one commit and two people's work.
+    const people = [{ name, email }];
+    for (const trailer of trailers) {
+      const person = personFrom(trailer);
+      if (person && person.email !== email.toLowerCase()) people.push(person);
+    }
+
+    for (const person of people) {
+      const key = `${person.name}\u0000${person.email}`;
+      const seen = identities.get(key);
+      if (seen) seen.commits += 1;
+      else identities.set(key, { ...person, commits: 1 });
+    }
 
     for (const line of pathLines) {
       const file = line.trim();

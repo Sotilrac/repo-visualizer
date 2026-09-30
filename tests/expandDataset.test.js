@@ -172,3 +172,40 @@ describe('the drawing settings', () => {
     expect(dataset.repos[0].lod).toBe(1);
   });
 });
+
+describe('the people a commit names beside its author', () => {
+  const manifest = {
+    paths: ['battery/cell.c'],
+    authors: [
+      { name: 'Ada Lovelace', email: 'ada@acme.com' },
+      { name: 'Grace Hopper', email: 'grace@acme.com' },
+      { name: 'Alan Turing', email: 'alan@acme.com' },
+    ],
+    repos: [{ name: 'battery' }],
+  };
+  const shards = {
+    2021: {
+      commits: [
+        { t: 1609459200, r: 0, a: 0, co: [1, 2], sha: 'aaa', m: 'paired', c: [[0, 3, 1, 0]] },
+        { t: 1609545600, r: 0, a: 0, sha: 'bbb', m: 'alone', c: [[0, 1, 0, 0]] },
+      ],
+    },
+  };
+
+  const { commits } = expandDataset(manifest, shards);
+
+  it('hands the app everyone the commit named', () => {
+    expect(commits[0].coAuthors).toEqual([
+      { name: 'Grace Hopper', email: 'grace@acme.com' },
+      { name: 'Alan Turing', email: 'alan@acme.com' },
+    ]);
+  });
+
+  it('leaves an ordinary commit with nobody beside its author', () => {
+    expect(commits[1].coAuthors).toEqual([]);
+  });
+
+  it('still reports the git author as the author', () => {
+    expect(commits[0].author).toBe('Ada Lovelace');
+  });
+});

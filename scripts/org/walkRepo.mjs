@@ -13,6 +13,7 @@ import { toBrowseUrl } from '../../src/shared/remoteUrl.js';
 import { PARSERS } from '../importParsers.mjs';
 import { createImportResolver, loadJsAliases, resolveChangeImports } from '../importResolve.mjs';
 import { shouldIncludeFile } from '../includeFile.mjs';
+import { coAuthorsIn } from './coAuthors.mjs';
 import { defaultBranchOf } from './defaultBranch.mjs';
 
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
@@ -175,6 +176,9 @@ export async function walkRepo(
       author: commit.author_name,
       authorEmail: commit.author_email,
       message: commit.message.split('\n')[0].slice(0, 200),
+      // From the trailers in the body: a squashed pull request has one git
+      // author and names the rest here.
+      coAuthors: coAuthorsIn(`${commit.message}\n${commit.body ?? ''}`),
       stats: {
         filesChanged: changes.length,
         insertions: changes.reduce((a, c) => a + c.added, 0),

@@ -471,11 +471,22 @@ export function useVisualizerCore({
       }
 
       if (paramsRef.current.showActors) {
-        actorsRef.current.onCommit(
-          { ...state.lastCommit, changes: [...edits.values()] },
-          nodesById,
-          now,
-        );
+        const changes = [...edits.values()];
+        // A squashed pull request has one git author and names the rest in
+        // the message. Everyone on the commit fires at everything it
+        // touched: the work was the pair's, not the person who pressed the
+        // button.
+        const everyone = [
+          state.lastCommit,
+          ...(state.lastCommit.coAuthors ?? []).map((person) => ({
+            ...state.lastCommit,
+            author: person.name,
+            authorEmail: person.email,
+          })),
+        ];
+        for (const commit of everyone) {
+          actorsRef.current.onCommit({ ...commit, changes }, nodesById, now);
+        }
       }
       // With actors on, the ripple waits for the beam. Without them it fires
       // straight away, which is what the visualizer did before.

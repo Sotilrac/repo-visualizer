@@ -103,10 +103,17 @@ export function buildDataset(
       if (changes.length === 0) continue;
 
       kept += 1;
+      // The people the message names beside the author, interned in the
+      // same table: on the graph they are authors like any other.
+      const also = (commit.coAuthors ?? [])
+        .map((person) => authors.idFor({ name: person.name ?? '', email: person.email ?? '' }))
+        .filter((id, i, all) => all.indexOf(id) === i);
+
       merged.push({
         t: time,
         r: repoId,
         a: authors.idFor({ name: commit.author ?? '', email: commit.authorEmail ?? '' }),
+        ...(also.length ? { co: also } : {}),
         sha: commit.shortSha ?? String(commit.sha ?? '').slice(0, 7),
         m: commit.message ?? '',
         c: changes,

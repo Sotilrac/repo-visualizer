@@ -58,6 +58,8 @@ export function expandDataset(manifest, shards) {
         date: new Date(commit.t * 1000).toISOString(),
         author: author.name,
         authorEmail: author.email,
+        // Everyone else the commit names. They fire at the same files.
+        coAuthors: (commit.co ?? []).map((id) => authors[id]).filter(Boolean),
         message: commit.m,
         repo: repos[commit.r]?.name,
         // Derived rather than stored: the numbers are a sum of the changes,
