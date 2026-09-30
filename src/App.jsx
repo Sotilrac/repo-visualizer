@@ -49,6 +49,9 @@ export default function App() {
   const [selectedCluster, setSelectedCluster] = useState(null);
   const wasPlayingRef = useRef(false);
   const [autoFit, setAutoFit] = useState(() => loadBool('rv-auto-fit', true));
+  // Auto fit frames the whole graph; following the action frames only what
+  // is being worked on right now.
+  const [followAction, setFollowAction] = useState(() => loadBool('rv-follow-action', false));
   const [showActors, setShowActors] = useState(() => loadBool('rv-show-actors', true));
   const directory = usePeople();
   const resolveAuthor = useCallback(
@@ -187,6 +190,7 @@ export default function App() {
     tuning,
     palette,
     autoFit,
+    followAction,
     showActors,
     resolveAuthor,
     selectedPath,
@@ -210,6 +214,14 @@ export default function App() {
       /* ignore */
     }
   }, [autoFit]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rv-follow-action', String(followAction));
+    } catch {
+      /* ignore */
+    }
+  }, [followAction]);
 
   useEffect(() => {
     try {
@@ -557,6 +569,8 @@ export default function App() {
         style={style}
         onStyleChange={setStyle}
         autoFit={autoFit}
+        followAction={followAction}
+        onFollowActionChange={setFollowAction}
         onAutoFitChange={setAutoFit}
         showActors={showActors}
         onShowActorsChange={setShowActors}

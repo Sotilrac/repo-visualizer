@@ -54,6 +54,8 @@ export default function ControlBar({
   style,
   onStyleChange,
   autoFit = true,
+  followAction = false,
+  onFollowActionChange,
   showActors = true,
   onShowActorsChange,
   onAutoFitChange,
@@ -138,6 +140,21 @@ export default function ControlBar({
             </span>
             <span className="toggle-switch-label">Auto fit</span>
           </button>
+          {autoFit && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={followAction}
+              className={`toggle-switch${followAction ? ' is-on' : ''}`}
+              title="Frame what is being worked on right now instead of the whole graph"
+              onClick={() => onFollowActionChange(!followAction)}
+            >
+              <span className="toggle-switch-track" aria-hidden="true">
+                <span className="toggle-switch-thumb" />
+              </span>
+              <span className="toggle-switch-label">Follow</span>
+            </button>
+          )}
           <button
             type="button"
             role="switch"

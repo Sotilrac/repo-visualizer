@@ -22,6 +22,7 @@ import {
 } from '../engine/camera.js';
 import { attachCanvasGestures } from '../engine/canvasGestures.js';
 import { editIntensity, FLOOR } from '../engine/editIntensity.js';
+import { activePoints } from '../engine/followAction.js';
 import { getDepsForPath, resolveFocusSet } from '../engine/graphState.js';
 import { createLayout } from '../engine/layout.js';
 import { createLodTransitions } from '../engine/lodTransitions.js';
@@ -53,6 +54,7 @@ export function useGraphEngine({
   style = 'galaxy',
   palette,
   autoFit = true,
+  followAction = false,
   showActors = true,
   showLabels = true,
   resolveAuthor = null,
@@ -89,6 +91,7 @@ export function useGraphEngine({
 
   const params = {
     autoFit,
+    followAction,
     selectedPath,
     selectedCluster,
     excludePatterns,
@@ -223,34 +226,6 @@ export function useGraphEngine({
       const hasFocus = !!(p.selectedPath || p.selectedCluster);
       const focusKey = `${p.selectedPath ?? ''}|${p.selectedCluster ?? ''}|${idx}`;
 
-      if (p.autoFit && !cam.userAdjusted) {
-        const allPts = layout.getNodes().filter((n) => isNodeVisible(n, idx));
-        let fitPts = allPts;
-        if (hasFocus && stateRef.current) {
-          const focused = resolveFocusSet(
-            stateRef.current,
-            idx,
-            p.selectedPath,
-            p.selectedCluster,
-            p.excludePatterns,
-          );
-          if (focused.size > 0) fitPts = allPts.filter((n) => focused.has(n.path));
-        }
-        if (fitPts.length > 0 && (!hasFocus || focusKey !== cam._focusFitKey)) {
-          fitBounds(cam, fitPts, w, h, undefined, actorMargin(p));
-          if (hasFocus) {
-            snapCamera(cam);
-            cam._focusFitKey = focusKey;
-          } else {
-            if (!cam._fitted) snapCamera(cam);
-            cam._fitted = true;
-          }
-        }
-      } else if (!hasFocus) {
-        cam._focusFitKey = null;
-      }
-      lerpCamera(cam, dt, cameraSpeed(p.tuning?.cameraEase ?? 420));
-
       // Level of detail moves on wall-clock time, so the transitions are
       // advanced every frame. A repo crossing into a new level changes what
       // there is to simulate, which is the only reason to rebuild here.
@@ -305,6 +280,7 @@ export function useGraphEngine({
         // Everything on screen, which is what nobody may be drawn on top of.
         actorsRef.current.setBodies(nodes);
       }
+      const crowd = p.showActors ? actorsRef.current.list() : [];
       const landed = p.showActors ? actorsRef.current.tick(dt, ticks) : [];
       if (p.showActors) actorsRef.current.interpolate(steps.alpha());
       for (const path of landed) {
@@ -317,6 +293,34 @@ export function useGraphEngine({
           progress: 0,
         });
       }
+
+      // Framed last, because following the action means framing what the
+      // people are doing and that is not known until they have moved.
+      if (p.autoFit && !cam.userAdjusted) {
+        const everything = nodes;
+        const following = p.followAction
+          ? activePoints({ ripples, actors: crowd, nodeByPath })
+          : [];
+        let fitPts = following.length ? following : everything;
+        let margin = following.length ? AVATAR_RADIUS * 3 : actorMargin(p);
+        if (hasFocus && focusSet.size > 0) {
+          fitPts = everything.filter((n) => focusSet.has(n.path));
+          margin = actorMargin(p);
+        }
+        if (fitPts.length > 0 && (!hasFocus || focusKey !== cam._focusFitKey)) {
+          fitBounds(cam, fitPts, w, h, undefined, margin);
+          if (hasFocus) {
+            snapCamera(cam);
+            cam._focusFitKey = focusKey;
+          } else {
+            if (!cam._fitted) snapCamera(cam);
+            cam._fitted = true;
+          }
+        }
+      } else if (!hasFocus) {
+        cam._focusFitKey = null;
+      }
+      lerpCamera(cam, dt, cameraSpeed(p.tuning?.cameraEase ?? 420));
 
       rendererRef.current?.draw({
         w,
@@ -334,7 +338,7 @@ export function useGraphEngine({
         nodeByPath,
         clusters: layout.getClusterCenters(),
         ripples,
-        actors: p.showActors ? actorsRef.current.list() : [],
+        actors: crowd,
         beams: p.showActors ? actorsRef.current.beams() : [],
         images: avatarsRef.current,
         showLabels: p.showLabels,
