@@ -4,7 +4,15 @@
 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 8;
-const DEFAULT_PADDING = 80;
+const DEFAULT_PADDING = 120;
+
+/**
+ * How much of what is left over the graph is fitted into.
+ *
+ * Framing it edge to edge leaves nothing between the outermost bubble and
+ * the side of the window, and the people stand outside the bubbles.
+ */
+const FILL = 0.88;
 
 export function createCamera() {
   return {
@@ -79,7 +87,7 @@ const SHIFT_DEADBAND = 10;
  * where everything slides a little every frame is harder to read than one
  * framed slightly loose.
  */
-const SLACK = 0.4;
+const SLACK = 0.5;
 
 /**
  * Point the camera at everything.
@@ -121,7 +129,7 @@ export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING, margin =
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   const scale = clamp(
-    Math.min((w - padding * 2) / bw, (h - padding * 2) / bh),
+    Math.min((w - padding * 2) / bw, (h - padding * 2) / bh) * FILL,
     MIN_SCALE,
     MAX_SCALE,
   );

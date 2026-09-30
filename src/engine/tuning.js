@@ -117,9 +117,9 @@ export const KNOBS = {
     label: 'Camera easing',
     hint: 'How long the camera takes to follow the graph while auto fit is on',
     group: 'Camera',
-    value: 420,
+    value: 1100,
     min: 60,
-    max: 2000,
+    max: 4000,
     step: 20,
   },
   avatarLinger: {
