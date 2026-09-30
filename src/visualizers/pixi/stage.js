@@ -304,16 +304,39 @@ function drawSky(g, frame, w, h) {
   }
 }
 
+/**
+ * Lay one import's path, straight or bowed.
+ *
+ * Kept separate because the same curve is walked twice: once wide and dim
+ * for the body of the line, once thin and hot for the filament inside it.
+ */
+function layLink(g, ax, ay, bx, by, curve) {
+  g.moveTo(ax, ay);
+  if (!curve) {
+    g.lineTo(bx, by);
+    return;
+  }
+  const dx = bx - ax;
+  const dy = by - ay;
+  const norm = Math.hypot(dx, dy) || 1;
+  const off = norm * curve;
+  g.quadraticCurveTo((ax + bx) / 2 - (dy / norm) * off, (ay + by) / 2 + (dx / norm) * off, bx, by);
+}
+
 function drawLinks(g, frame, px, py) {
   const { links, style, palette, linkAlpha } = frame;
   g.clear();
+  // Where the lines cross they add up, which is what makes a bundle of
+  // imports read as one brighter strand.
+  g.blendMode = style.bloom ? 'add' : 'normal';
   if (!links.length) return;
 
   for (const link of links) {
     const a = link.source;
     const b = link.target;
     if (!a || !b) continue;
-    const alpha = linkAlpha(a.path, b.path) * style.link.alpha;
+    const focus = linkAlpha(a.path, b.path);
+    const alpha = focus * style.link.alpha;
     if (alpha < 0.02) continue;
 
     const ax = px(a.x);
@@ -325,33 +348,39 @@ function drawLinks(g, frame, px, py) {
     if (Math.max(ax, bx) < 0 || Math.min(ax, bx) > frame.w) continue;
     if (Math.max(ay, by) < 0 || Math.min(ay, by) > frame.h) continue;
 
-    g.moveTo(ax, ay);
-    if (style.link.curve) {
-      const dx = bx - ax;
-      const dy = by - ay;
-      const norm = Math.hypot(dx, dy) || 1;
-      const off = norm * style.link.curve;
-      g.quadraticCurveTo(
-        (ax + bx) / 2 - (dy / norm) * off,
-        (ay + by) / 2 + (dx / norm) * off,
-        bx,
-        by,
-      );
-    } else {
-      g.lineTo(bx, by);
+    const color = clusterRgb(palette, a.dir, frame.styleName);
+    const width = style.link.width + Math.min(1.6, link.weight * 0.4);
+
+    layLink(g, ax, ay, bx, by, style.link.curve);
+    g.stroke({ width, color: color.edge.value, alpha: alpha * color.edge.alpha });
+
+    // A hot filament down the middle, the same trick the bubbles use: the
+    // wide stroke is too faint to pass the bloom's threshold, so the thing
+    // that glows is a thin bright line inside it.
+    if (style.link.glow > 0) {
+      layLink(g, ax, ay, bx, by, style.link.curve);
+      g.stroke({
+        width: Math.max(0.75, width * style.link.glowWidth),
+        // Bright enough to pass the threshold, but still the cluster's own
+        // colour: the near-white the bubbles use for their centres turns
+        // every import into the same white thread.
+        color: (color.ripple ?? color.core).value,
+        alpha: focus * style.link.glow,
+      });
     }
-    const color = clusterRgb(palette, a.dir, frame.styleName).edge;
-    g.stroke({
-      width: style.link.width + Math.min(1.6, link.weight * 0.4),
-      color: color.value,
-      alpha: alpha * color.alpha,
-    });
   }
 
   // What the inspector is pointed at, over the top and much brighter.
   for (const link of frame.highlightLinks) {
     const color = clusterRgb(palette, link.source.dir, frame.styleName);
-    g.moveTo(px(link.source.x), py(link.source.y)).lineTo(px(link.target.x), py(link.target.y));
+    layLink(
+      g,
+      px(link.source.x),
+      py(link.source.y),
+      px(link.target.x),
+      py(link.target.y),
+      style.link.curve,
+    );
     g.stroke({ width: 3, color: (color.swatch ?? color.core).value, alpha: 0.95 });
   }
 }
