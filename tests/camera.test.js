@@ -103,3 +103,40 @@ describe('lerpCamera', () => {
     expect(brisk.tx).toBeGreaterThan(calm.tx);
   });
 });
+
+describe('holding the frame steady', () => {
+  /** A camera pointed at a graph that then shifts a little. */
+  const wobble = (dx) => [dot(0, 0), dot(400 + dx, 200 + dx)];
+
+  it('leaves the camera alone while everything is still in view', () => {
+    const cam = pointedAt(wobble(0));
+    const was = { ...cam };
+    fitBounds(cam, wobble(6), ...viewport);
+
+    expect([cam.targetScale, cam.targetTx]).toEqual([was.targetScale, was.targetTx]);
+  });
+
+  it('pulls back when the graph grows out of the frame', () => {
+    const cam = pointedAt(wobble(0));
+    const was = cam.targetScale;
+    fitBounds(cam, [dot(-3000, -2000), dot(3000, 2000)], ...viewport);
+
+    expect(cam.targetScale).toBeLessThan(was);
+  });
+
+  it('closes in when the graph has shrunk to a corner of the frame', () => {
+    const cam = pointedAt([dot(0, 0), dot(1200, 800)]);
+    const was = cam.targetScale;
+    fitBounds(cam, [dot(0, 0), dot(80, 60)], ...viewport);
+
+    expect(cam.targetScale).toBeGreaterThan(was);
+  });
+
+  it('follows a graph that has moved off to one side', () => {
+    const cam = pointedAt(wobble(0));
+    const was = cam.targetTx;
+    fitBounds(cam, [dot(4000, 0), dot(4400, 200)], ...viewport);
+
+    expect(cam.targetTx).not.toBe(was);
+  });
+});

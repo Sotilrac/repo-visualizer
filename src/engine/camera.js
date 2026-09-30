@@ -72,6 +72,16 @@ const SCALE_DEADBAND = 0.02;
 const SHIFT_DEADBAND = 10;
 
 /**
+ * How much of the viewport may go unused before the camera pulls in.
+ *
+ * Between this and the edges of the frame the camera does nothing at all.
+ * Following the exact fit means moving whenever a bubble does, and a scene
+ * where everything slides a little every frame is harder to read than one
+ * framed slightly loose.
+ */
+const SLACK = 0.4;
+
+/**
  * Point the camera at everything.
  *
  * Called every frame while auto-fit is on, against a graph whose bodies are
@@ -116,6 +126,9 @@ export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING, margin =
     MAX_SCALE,
   );
 
+  // Already showing all of it, without too much room to spare: leave it.
+  if (framedWell(cam, minX, minY, maxX, maxY, w, h)) return;
+
   const tx = w / 2 - cx * scale;
   const ty = h / 2 - cy * scale;
 
@@ -128,6 +141,25 @@ export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING, margin =
   cam.targetScale = scale;
   cam.targetTx = tx;
   cam.targetTy = ty;
+}
+
+/**
+ * Whether what the camera is already pointed at shows the whole graph with
+ * a sensible amount of room around it.
+ */
+function framedWell(cam, minX, minY, maxX, maxY, w, h) {
+  const scale = cam.targetScale;
+  if (!scale) return false;
+
+  const left = -cam.targetTx / scale;
+  const top = -cam.targetTy / scale;
+  const right = (w - cam.targetTx) / scale;
+  const bottom = (h - cam.targetTy) / scale;
+  const inside = minX >= left && maxX <= right && minY >= top && maxY <= bottom;
+  if (!inside) return false;
+
+  const used = Math.max((maxX - minX) / (right - left), (maxY - minY) / (bottom - top));
+  return used > 1 - SLACK;
 }
 
 /** Snap camera to fit target immediately (e.g. after resize). */

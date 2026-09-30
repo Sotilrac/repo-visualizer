@@ -144,7 +144,7 @@ export const KNOBS = {
     label: 'Avatar smoothing',
     hint: 'How much the drawn position lags the forces, in milliseconds',
     group: 'People',
-    value: 170,
+    value: 260,
     min: 0,
     max: 600,
     step: 10,

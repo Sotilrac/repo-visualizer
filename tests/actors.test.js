@@ -430,7 +430,7 @@ describe('the filter on the drawn position', () => {
     const [actor] = actors.list();
     const from = actor.sx;
     actor.x = from + 400;
-    for (let i = 0; i < 60; i++) actors.tick(16);
+    for (let i = 0; i < 120; i++) actors.tick(16);
 
     expect(Math.abs(actor.sx - actor.x)).toBeLessThan(2);
   });
@@ -561,5 +561,56 @@ describe('faces never drawn on top of each other', () => {
     actors.tick(16);
 
     expect(closest(actors.list(), 'sx', 'sy')).toBeGreaterThanOrEqual(MIN - 0.01);
+  });
+});
+
+describe('coming to rest', () => {
+  /** Two people who committed to the same file, left alone afterwards. */
+  function afterTheWork(frames) {
+    const actors = createActors({ idleMs: 600000 });
+    const nodes = { 'a.js': node('a.js', 0, 0) };
+    actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
+    actors.onCommit(commit('Bo', 'bo@acme.com', ['a.js']), nodes, 1);
+    actors.setClusters([{ x: 0, y: 0, radius: 120 }]);
+    for (let i = 0; i < frames; i++) actors.tick(16);
+    return actors;
+  }
+
+  const positions = (actors) => actors.list().map((a) => ({ x: a.sx, y: a.sy }));
+
+  it('stops moving once the work stops', () => {
+    const actors = afterTheWork(200);
+    const before = positions(actors);
+    for (let i = 0; i < 120; i++) actors.tick(16);
+
+    for (const [i, was] of before.entries()) {
+      expect(Math.hypot(was.x - positions(actors)[i].x, was.y - positions(actors)[i].y)).toBe(0);
+    }
+  });
+
+  it('has arrived at its work before it stops', () => {
+    const actors = afterTheWork(400);
+    const [actor] = actors.list();
+
+    // Outside the blob it is firing into, but not far outside it.
+    const distance = Math.hypot(actor.x, actor.y);
+    expect(distance).toBeGreaterThan(120);
+    expect(distance).toBeLessThan(260);
+  });
+
+  it('sets off again when the person commits again', () => {
+    const actors = afterTheWork(300);
+    const was = positions(actors)[0];
+    actors.onCommit(commit('Ada', 'ada@acme.com', ['b.js']), { 'b.js': node('b.js', 900, 0) }, 2);
+    for (let i = 0; i < 60; i++) actors.tick(16);
+
+    expect(positions(actors)[0].x).toBeGreaterThan(was.x + 20);
+  });
+
+  it('keeps the faces apart even after they have come to rest', () => {
+    const actors = afterTheWork(300);
+    const [a, b] = actors.list();
+
+    expect(Math.hypot(a.sx - b.sx, a.sy - b.sy)).toBeGreaterThanOrEqual(AVATAR_RADIUS * 2 - 0.01);
   });
 });

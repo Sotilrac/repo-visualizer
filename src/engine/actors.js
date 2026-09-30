@@ -49,7 +49,23 @@ const DEFAULTS = {
    * are and what is drawn lags them, which is the difference between a
    * person moving and a person flickering.
    */
-  smoothingMs: 170,
+  smoothingMs: 260,
+  /**
+   * Movement below this is not worth drawing. Three forces balancing each
+   * other leave a face creeping around its resting place forever, and a
+   * picture that never quite stops is what reads as unstable.
+   */
+  stillness: 0.35,
+  /**
+   * How long after their last commit someone stops being moved about.
+   *
+   * The spring towards their work and the pushes off the bubbles and off
+   * each other balance at a point they circle rather than reach, so an
+   * avatar with nothing to do drifts for as long as it is on screen. Long
+   * enough to reach their work first, and then they stop; a new commit
+   * sets them going again.
+   */
+  restAfterMs: 1500,
   /**
    * How hard the blob pushes back. Firmer than the rest: the spring is
    * pulling the avatar towards the middle of the work the whole time, and a
@@ -308,6 +324,15 @@ export function createActors(options = {}) {
       const everyone = [...actors.values()];
 
       for (const actor of everyone) {
+        // Nothing to move towards and nothing pushing: they have arrived.
+        if (actor.idleFor > config.restAfterMs) {
+          actor.idleFor += dt;
+          const hold = config.idleMs * config.holdFraction;
+          const fading = Math.max(0, actor.idleFor - hold) / Math.max(1, config.idleMs - hold);
+          actor.alpha = Math.max(0, 1 - fading);
+          continue;
+        }
+
         if (actor.target) {
           const pull = Math.min(1, config.spring * seconds);
           actor.x += (actor.target.x - actor.x) * pull;
@@ -337,13 +362,13 @@ export function createActors(options = {}) {
       }
 
       // And off each other. Soft on purpose: people working on the same files
-      // should still read as a group.
-      for (let i = 0; i < everyone.length; i++) {
-        for (let j = i + 1; j < everyone.length; j++) {
-          const a = everyone[i];
-          const b = everyone[j];
+      // should still read as a group. Only those still in motion: pushing a
+      // pair that has come to rest starts them moving again.
+      const moving = everyone.filter((actor) => actor.idleFor <= config.restAfterMs);
+      for (const a of moving) {
+        for (const b of everyone) {
+          if (a === b) continue;
           push(a, b, config.actorClearance, config.crowding);
-          push(b, a, config.actorClearance, config.crowding);
         }
       }
 
@@ -352,8 +377,11 @@ export function createActors(options = {}) {
       // frame time, so the motion is the same whatever the frame rate.
       const follow = config.smoothingMs > 0 ? 1 - Math.exp(-dt / config.smoothingMs) : 1;
       for (const actor of everyone) {
-        actor.sx += (actor.x - actor.sx) * follow;
-        actor.sy += (actor.y - actor.sy) * follow;
+        const dx = actor.x - actor.sx;
+        const dy = actor.y - actor.sy;
+        if (Math.hypot(dx, dy) < config.stillness) continue;
+        actor.sx += dx * follow;
+        actor.sy += dy * follow;
       }
 
       // Never overlapping, whatever the forces and the filter worked out
