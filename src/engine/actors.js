@@ -29,7 +29,7 @@ const DEFAULTS = {
   /** How far an actor stays off the bubbles it is working on. */
   nodeClearance: 30,
   /** How far two actors prefer to stay apart. */
-  actorClearance: 46,
+  actorClearance: 76,
   /**
    * How close two faces may ever get, centre to centre.
    *
@@ -75,13 +75,23 @@ const DEFAULTS = {
   /** How firmly they push off the bubbles they are working on. */
   separation: 0.35,
   /**
-   * How firmly they push off each other. Firmer than the bubbles, since
-   * they are all held against the same blob edge and a soft push there
-   * leaves a stack of faces nobody can read. Each of a pair moves a quarter
-   * of the way, so the two together close half the gap per frame and
-   * converge instead of batting each other back and forth.
+   * How hard they push off each other when they are nearly touching.
+   *
+   * The push falls away steeply with distance (see `crowdFalloff`), so this
+   * is the strength at the point where they would overlap, not an amount
+   * applied across the whole range.
    */
-  crowding: 0.18,
+  crowding: 0.9,
+  /**
+   * How steeply that push falls off with distance.
+   *
+   * A push that is the same at arm's length as at contact either shoves
+   * people apart who are only near each other, or lets faces pile up. Cubed
+   * means it is almost nothing across the room and immovable up close.
+   */
+  crowdFalloff: 3,
+  /** The most one push may move someone in a frame, so it cannot overshoot. */
+  crowdCap: 6,
   /** How far from the work a new actor appears, so the approach is visible. */
   entryOffset: 90,
   /**
@@ -115,6 +125,33 @@ function push(subject, other, clearance, strength) {
   if (distance >= clearance) return;
 
   const shift = ((clearance - distance) / distance) * strength;
+  subject.x += dx * shift;
+  subject.y += dy * shift;
+}
+
+/**
+ * Move `subject` away from `other`, hard when they are close and barely at
+ * all when they are not.
+ *
+ * @param {any} subject
+ * @param {any} other
+ * @param {{ range: number, floor: number, strength: number, falloff: number, cap: number }} how
+ */
+function repel(subject, other, { range, floor, strength, falloff, cap }) {
+  let dx = subject.x - other.x;
+  let dy = subject.y - other.y;
+  let distance = Math.hypot(dx, dy);
+  if (distance >= range) return;
+
+  if (distance < 1e-6) {
+    dx = 1;
+    dy = 0;
+    distance = 1e-6;
+  }
+
+  // 0 at the far edge of the range, 1 where they would touch.
+  const closeness = Math.min(1, (range - distance) / Math.max(1, range - floor));
+  const shift = Math.min(cap, strength * closeness ** falloff * (range - distance)) / distance;
   subject.x += dx * shift;
   subject.y += dy * shift;
 }
@@ -365,10 +402,17 @@ export function createActors(options = {}) {
       // should still read as a group. Only those still in motion: pushing a
       // pair that has come to rest starts them moving again.
       const moving = everyone.filter((actor) => actor.idleFor <= config.restAfterMs);
+      const how = {
+        range: config.actorClearance,
+        floor: config.minSeparation,
+        strength: config.crowding,
+        falloff: config.crowdFalloff,
+        cap: config.crowdCap,
+      };
       for (const a of moving) {
         for (const b of everyone) {
           if (a === b) continue;
-          push(a, b, config.actorClearance, config.crowding);
+          repel(a, b, how);
         }
       }
 

@@ -385,19 +385,22 @@ describe('avatars in a crowd', () => {
     expect(closest(crowd(8))).toBeGreaterThan(30);
   });
 
-  it('takes a wider spacing when it is asked for', () => {
-    const actors = createActors();
-    actors.setTuning({ avatarSpacing: 120 });
-    for (let i = 0; i < 3; i++) {
-      actors.onCommit(
-        { author: `dev${i}`, authorEmail: `dev${i}@acme.com`, changes: [{ path: 'a.c' }] },
-        { 'a.c': { x: 0, y: 0, r: 10 } },
-        i,
-      );
-    }
-    for (let i = 0; i < 200; i++) actors.tick(16);
+  it('holds a crowd further apart when it is asked to', () => {
+    const spread = (spacing) => {
+      const actors = createActors({ idleMs: 600000 });
+      actors.setTuning({ avatarSpacing: spacing });
+      for (let i = 0; i < 6; i++) {
+        actors.onCommit(
+          commit(`dev${i}`, `dev${i}@acme.com`, ['a.js']),
+          { 'a.js': node('a.js', 0, 0) },
+          i,
+        );
+      }
+      for (let i = 0; i < 200; i++) actors.tick(16);
+      return closest(actors.list());
+    };
 
-    expect(closest(actors.list())).toBeGreaterThan(90);
+    expect(spread(140)).toBeGreaterThan(spread(50) * 1.5);
   });
 });
 
@@ -612,5 +615,43 @@ describe('coming to rest', () => {
     const [a, b] = actors.list();
 
     expect(Math.hypot(a.sx - b.sx, a.sy - b.sy)).toBeGreaterThanOrEqual(AVATAR_RADIUS * 2 - 0.01);
+  });
+});
+
+describe('how hard they push', () => {
+  /** Two people set down `apart` pixels from each other, one frame. */
+  function oneFrame(apart) {
+    const actors = createActors({ idleMs: 600000 });
+    const nodes = { 'a.js': node('a.js', 0, 0) };
+    actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
+    actors.onCommit(commit('Bo', 'bo@acme.com', ['a.js']), nodes, 1);
+    const [a, b] = actors.list();
+    a.x = 0;
+    a.y = 0;
+    b.x = apart;
+    b.y = 0;
+    a.target = null;
+    b.target = null;
+    a.nodes = [];
+    b.nodes = [];
+    const was = b.x - a.x;
+    actors.tick(16);
+    return b.x - a.x - was;
+  }
+
+  it('pushes hard when they are nearly touching', () => {
+    expect(oneFrame(34)).toBeGreaterThan(4);
+  });
+
+  it('pushes gently at a distance', () => {
+    expect(oneFrame(70)).toBeLessThan(1);
+  });
+
+  it('pushes many times harder up close than at a distance', () => {
+    expect(oneFrame(34)).toBeGreaterThan(oneFrame(64) * 8);
+  });
+
+  it('does not push at all beyond the spacing', () => {
+    expect(oneFrame(200)).toBe(0);
   });
 });

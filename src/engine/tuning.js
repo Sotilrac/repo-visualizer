@@ -133,11 +133,11 @@ export const KNOBS = {
   },
   avatarSpacing: {
     label: 'Avatar spacing',
-    hint: 'How far two people stay apart on the graph',
+    hint: 'How far apart two people push each other, hard up close and gently at a distance',
     group: 'People',
-    value: 46,
-    min: 0,
-    max: 160,
+    value: 76,
+    min: 28,
+    max: 260,
     step: 2,
   },
   avatarSmoothing: {
