@@ -516,6 +516,7 @@ export default function App() {
       <ControlBar
         commits={timeline.commits}
         index={timeline.index}
+        seekingTo={timeline.seekingTo}
         playing={timeline.playing}
         speed={timeline.speed}
         speeds={timeline.speeds}

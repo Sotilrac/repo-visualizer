@@ -40,6 +40,7 @@ const FinalStateIcon = () => (
 export default function ControlBar({
   commits,
   index,
+  seekingTo = null,
   playing,
   speed,
   speeds,
@@ -65,7 +66,7 @@ export default function ControlBar({
 }) {
   return (
     <div className="control-bar">
-      <Timeline commits={commits} index={index} onSeek={onSeek} />
+      <Timeline commits={commits} index={index} seekingTo={seekingTo} onSeek={onSeek} />
       <div className="control-cluster">
         <div className="control-row control-row--playback">
           <button className="btn" onClick={onRestart} title="Restart" type="button">

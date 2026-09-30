@@ -8,8 +8,15 @@ import { timelineTicks } from '../engine/timelineTicks.js';
  * The handle tracks the pointer immediately for instant visual feedback.
  * The actual onSeek is debounced during drag so large async rebuilds don't
  * pile up on every mouse-move frame; it always fires immediately on release.
+ *
+ * Three positions feed the handle, in order of precedence: where the pointer
+ * is while dragging, where the timeline is still rebuilding towards, and
+ * where it actually is. Without the middle one the handle drops back to the
+ * commit it came from the instant the pointer is released, sits there for as
+ * long as the rebuild takes and then jumps, which reads as a click that
+ * missed and landed somewhere else.
  */
-export default function Timeline({ commits, index, onSeek }) {
+export default function Timeline({ commits, index, seekingTo = null, onSeek }) {
   const trackRef = useRef(null);
   // Visual position during drag (null = use committed index).
   const [pendingIdx, setPendingIdx] = useState(null);
@@ -96,7 +103,7 @@ export default function Timeline({ commits, index, onSeek }) {
     ev.preventDefault();
   };
 
-  const progress = pendingIdx ?? (index < 0 ? -1 : index);
+  const progress = pendingIdx ?? seekingTo ?? (index < 0 ? -1 : index);
   const progressPct = progress < 0 ? 0 : scale.pctOf(progress);
 
   const firstDate = commits[0]?.date && new Date(commits[0].date);
@@ -117,7 +124,7 @@ export default function Timeline({ commits, index, onSeek }) {
         aria-label="Commit timeline"
         aria-valuemin={0}
         aria-valuemax={commits.length - 1}
-        aria-valuenow={Math.max(0, index)}
+        aria-valuenow={Math.max(0, progress)}
       >
         <div className="timeline-progress" style={{ width: `${progressPct}%` }} />
         <div className="timeline-handle" style={{ left: `${progressPct}%` }} />

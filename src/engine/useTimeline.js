@@ -56,6 +56,15 @@ export function useTimeline(dataset) {
   const [buildProgress, setBuildProgress] = useState(0);
   const [seeking, setSeeking] = useState(false);
   const [seekProgress, setSeekProgress] = useState(0);
+  /**
+   * Where a seek is headed while it is still working it out.
+   *
+   * Rebuilding the graph at a distant commit takes a moment, and `index`
+   * only moves once it lands. Without somewhere to record the destination
+   * the scrubber would snap back to where it came from for the length of
+   * the rebuild and then jump, which reads as the click having missed.
+   */
+  const [seekingTo, setSeekingTo] = useState(null);
   const stateRef = useRef(emptyState());
   const lastAdvanceRef = useRef(0);
   const onAdvanceListeners = useRef(new Set());
@@ -147,6 +156,9 @@ export function useTimeline(dataset) {
 
       const gen = ++seekGenRef.current; // invalidates any prior async seek
       cancelBuild(); // cancels any goToFinal in progress
+      // Set before anything awaits, so the scrubber has the destination in
+      // the same render that the pointer let go of it.
+      setSeekingTo(clamped);
 
       const delta = clamped - current;
 
@@ -162,6 +174,7 @@ export function useTimeline(dataset) {
         }
         stateRef.current.lastCommit = clamped >= 0 ? list[clamped] : null;
         setIndex(clamped);
+        setSeekingTo(null);
         bumpState();
         onAdvanceListeners.current.forEach((cb) => {
           cb(clamped, stateRef.current);
@@ -173,6 +186,7 @@ export function useTimeline(dataset) {
         }
         stateRef.current.lastCommit = clamped >= 0 ? list[clamped] : null;
         setIndex(clamped);
+        setSeekingTo(null);
         bumpState();
         onAdvanceListeners.current.forEach((cb) => {
           cb(clamped, stateRef.current);
@@ -217,7 +231,12 @@ export function useTimeline(dataset) {
             snapshotCache.current.set(clamped, cloneStateForCache(built));
           }
         } finally {
-          if (seekGenRef.current === gen) setSeeking(false);
+          // A newer seek has already recorded its own destination, so only
+          // the one still in charge clears it.
+          if (seekGenRef.current === gen) {
+            setSeeking(false);
+            setSeekingTo(null);
+          }
         }
       }
     },
@@ -231,6 +250,7 @@ export function useTimeline(dataset) {
     setIndex(-1);
     setPlaying(false);
     setSeeking(false);
+    setSeekingTo(null);
     bumpState();
   }, [bumpState, cancelBuild]);
 
@@ -246,6 +266,7 @@ export function useTimeline(dataset) {
     buildCancelRef.current = false;
     setPlaying(false);
     setBuildingFinal(true);
+    setSeekingTo(target);
     setBuildProgress(index < 0 ? 0 : (index + 1) / list.length);
 
     try {
@@ -271,6 +292,7 @@ export function useTimeline(dataset) {
       }
     } finally {
       setBuildingFinal(false);
+      setSeekingTo(null);
     }
   }, [index, buildingFinal, bumpState, cancelBuild]);
 
@@ -311,6 +333,7 @@ export function useTimeline(dataset) {
       buildProgress,
       seeking,
       seekProgress,
+      seekingTo,
       atFinal,
       play,
       pause,
@@ -333,6 +356,7 @@ export function useTimeline(dataset) {
       buildProgress,
       seeking,
       seekProgress,
+      seekingTo,
       atFinal,
       play,
       pause,
