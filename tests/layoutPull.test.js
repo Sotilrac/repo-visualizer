@@ -88,3 +88,54 @@ describe('a body that leaves and comes back', () => {
     expect(Math.hypot(node.x - home.x, node.y - home.y)).toBeLessThan(home.radius + 50);
   });
 });
+
+describe('a body appearing', () => {
+  const repo = (id, name) => ({ ...body(id, name), kind: 'repo', parent: null });
+
+  /** Where the whole set sits, which is what a centring force moves. */
+  const centre = (layout) => {
+    const nodes = layout.getNodes();
+    return {
+      x: nodes.reduce((sum, n) => sum + n.x, 0) / nodes.length,
+      y: nodes.reduce((sum, n) => sum + n.y, 0) / nodes.length,
+    };
+  };
+
+  it('does not slide the rest of the graph along with it', () => {
+    const layout = createLayout({ width: 1200, height: 800 });
+    const start = ['a', 'b', 'c', 'd'].map((name) => repo(name, name));
+    layout.sync(start, []);
+    for (let i = 0; i < 400; i++) layout.tick();
+
+    const before = layout.getNodes().map((n) => ({ path: n.path, x: n.x, y: n.y }));
+    layout.sync([...start, repo('e', 'e')], []);
+    for (let i = 0; i < 20; i++) layout.tick();
+
+    // The average of how far each body that was already there moved: local
+    // settling cancels out, a scene sliding does not.
+    const now = new Map(layout.getNodes().map((n) => [n.path, n]));
+    let dx = 0;
+    let dy = 0;
+    for (const was of before) {
+      const node = now.get(was.path);
+      dx += node.x - was.x;
+      dy += node.y - was.y;
+    }
+
+    expect(Math.hypot(dx / before.length, dy / before.length)).toBeLessThan(12);
+  });
+
+  it('keeps the graph where it was put over a long run', () => {
+    const layout = createLayout({ width: 1200, height: 800 });
+    layout.sync(
+      ['a', 'b', 'c'].map((name) => repo(name, name)),
+      [],
+    );
+    for (let i = 0; i < 100; i++) layout.tick();
+    const before = centre(layout);
+    for (let i = 0; i < 600; i++) layout.tick();
+
+    const after = centre(layout);
+    expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(30);
+  });
+});

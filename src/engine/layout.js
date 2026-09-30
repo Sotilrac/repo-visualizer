@@ -1,6 +1,12 @@
 /**
  * Force-directed layout engine.
  *
+ * There is no centring force. The blobs are placed around the middle of
+ * the viewport and each body is held inside its own, so nothing needs
+ * pulling back to the centre. A centring force also translates every body
+ * at once whenever the average of their positions moves, which a single
+ * new bubble is enough to do: the whole scene lurches on a commit.
+ *
  * What it simulates is a list of bodies, not a list of files: at one level
  * of detail a body is a file, at another it is the folder or the repo the
  * files were rolled up into. A body mid-transition is drawn part of the way
@@ -8,7 +14,7 @@
  * the same interpolation run backwards is the burst outward.
  */
 
-import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force';
+import { forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force';
 import { clusterRadii, forceContain, placeClusters } from './clusters.js';
 import { withDefaults } from './tuning.js';
 
@@ -107,7 +113,6 @@ export function createLayout({ width, height, tuning = null }) {
           return (0.14 * tune.linkPull) / Math.sqrt(ds * dt);
         }),
     )
-    .force('center', forceCenter(width / 2, height / 2).strength(0.035))
     .force(
       'collide',
       forceCollide()
@@ -140,7 +145,6 @@ export function createLayout({ width, height, tuning = null }) {
   function resize(w, h) {
     width = w;
     height = h;
-    sim.force('center', forceCenter(w / 2, h / 2).strength(0.035));
     rebuildClusterCenters(true);
     sim.alpha(0.22).restart();
   }
@@ -248,9 +252,11 @@ export function createLayout({ width, height, tuning = null }) {
     for (const center of clusterCenters.values()) {
       const to = center.target;
       if (!to) continue;
-      center.x += (to.x - center.x) * 0.08;
-      center.y += (to.y - center.y) * 0.08;
-      center.radius += (to.radius - center.radius) * 0.08;
+      // Slowly: a repo relocating takes a second, and everything inside it
+      // travels with it, so a quick move reads as the scene lurching.
+      center.x += (to.x - center.x) * 0.035;
+      center.y += (to.y - center.y) * 0.035;
+      center.radius += (to.radius - center.radius) * 0.035;
       if (Math.abs(to.x - center.x) + Math.abs(to.y - center.y) < 0.4) {
         center.x = to.x;
         center.y = to.y;
