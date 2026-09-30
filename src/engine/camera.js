@@ -102,7 +102,7 @@ const SLACK = 0.5;
  *   what is drawn beside the graph rather than in it: the avatars stand off
  *   the repos they are firing at and would otherwise sit off screen.
  */
-export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING, margin = 0) {
+export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING, margin = 0, tight = false) {
   if (!points.length) {
     cam.targetScale = 1;
     cam.targetTx = 0;
@@ -135,15 +135,18 @@ export function fitBounds(cam, points, w, h, padding = DEFAULT_PADDING, margin =
   );
 
   // Already showing all of it, without too much room to spare: leave it.
-  if (framedWell(cam, minX, minY, maxX, maxY, w, h)) return;
+  // Following the action asks the opposite, to close in on what is being
+  // worked on, so the slack that keeps an ordinary fit steady is skipped.
+  if (!tight && framedWell(cam, minX, minY, maxX, maxY, w, h)) return;
 
   const tx = w / 2 - cx * scale;
   const ty = h / 2 - cy * scale;
 
+  const slop = tight ? 0.25 : 1;
   const settled =
-    Math.abs(scale / cam.targetScale - 1) < SCALE_DEADBAND &&
-    Math.abs(tx - cam.targetTx) < SHIFT_DEADBAND &&
-    Math.abs(ty - cam.targetTy) < SHIFT_DEADBAND;
+    Math.abs(scale / cam.targetScale - 1) < SCALE_DEADBAND * slop &&
+    Math.abs(tx - cam.targetTx) < SHIFT_DEADBAND * slop &&
+    Math.abs(ty - cam.targetTy) < SHIFT_DEADBAND * slop;
   if (settled) return;
 
   cam.targetScale = scale;

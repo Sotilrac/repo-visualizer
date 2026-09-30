@@ -1,4 +1,3 @@
-import ExportPanel from './ExportPanel.jsx';
 import MobileChrome from './MobileChrome.jsx';
 import RepoList from './RepoList.jsx';
 
@@ -19,51 +18,9 @@ function GitHubIcon() {
   );
 }
 
-function ExportIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M8 11V2" />
-      <path d="M4 6l4-4 4 4" />
-      <rect x="2" y="11" width="12" height="3" rx="1" />
-    </svg>
-  );
-}
-
-function formatTimelinePosition(index, total) {
-  const cur = index < 0 ? '00' : String(index + 1).padStart(2, '0');
-  const max = String(total).padStart(2, '0');
-  return { cur, max };
-}
-
 export default function Header({
   dataset,
-  source,
-  commitIndex = -1,
-  commitCount = 0,
-  currentCommit = null,
-  exportOpen = false,
-  fps = null,
-  onToggleExport,
-  onCloseExport,
-  recording = false,
-  recordingProgress = 0,
-  encoding = false,
-  encodeProgress = 0,
-  encodeFormat = 'webm',
-  recordingPlaying = false,
-  onStartRecord,
-  onStopRecord,
-  onPauseRecord,
+  aside = null,
   layout = 'desktop',
   mobileControlsOpen = false,
   mobileInfoOpen = false,
@@ -71,14 +28,6 @@ export default function Header({
   onToggleMobileInfo,
 }) {
   if (!dataset) return null;
-  const ts = currentCommit ? new Date(currentCommit.date) : null;
-  const { cur, max } = formatTimelinePosition(
-    commitIndex,
-    commitCount || dataset.commits?.length || 0,
-  );
-  const recPct = Math.round(Math.min(1, Math.max(0, recordingProgress)) * 100);
-  const encPct = Math.round(Math.min(1, Math.max(0, encodeProgress)) * 100);
-  const encodeLabel = encodeFormat === 'gif' ? 'GIF' : 'video';
 
   return (
     <header className="header">
@@ -104,108 +53,11 @@ export default function Header({
         <div className="header-repo-mobile">
           <div className="repo-name">{dataset.repo}</div>
         </div>
+        {aside}
       </div>
 
       <div className="header-right">
-        <div className="repo-meta">
-          <div className="repo-name-row">
-            <div className="repo-name">{dataset.repo}</div>
-          </div>
-          <div className="repo-meta-detail repo-meta-timeline" aria-live="polite">
-            <span>{cur}</span>
-            <span className="repo-meta-dim"> / {max}</span>
-            {source === 'demo' && <span className="repo-meta-dim"> · demo</span>}
-          </div>
-          {ts && (
-            <div className="repo-meta-detail">
-              {ts.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-            </div>
-          )}
-        </div>
-
         <div className="header-toolbar">
-          <div className="header-export-wrap">
-            {fps !== null && (
-              <div
-                className={`header-fps${fps < 24 ? ' is-slow' : fps < 45 ? ' is-fair' : ''}`}
-                title="Frames drawn per second"
-              >
-                {fps} fps
-              </div>
-            )}
-            <div className="header-export-toolbar">
-              {encoding ? (
-                <div className="header-export-encoding" aria-live="polite">
-                  <span className="header-export-encoding-label">
-                    Creating {encodeLabel}… {encPct}%
-                  </span>
-                  <div
-                    className="header-export-encoding-bar"
-                    role="progressbar"
-                    aria-valuenow={encPct}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <div
-                      className="header-export-encoding-bar-fill"
-                      style={{ width: `${encPct}%` }}
-                    />
-                  </div>
-                </div>
-              ) : recording ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn export-btn header-export-btn is-recording"
-                    disabled
-                    aria-live="polite"
-                  >
-                    <span className="rec-pulse" aria-hidden />
-                    <span className="header-export-label">Recording {recPct}%</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn header-export-btn"
-                    onClick={onPauseRecord}
-                    title={recordingPlaying ? 'Pause timeline' : 'Resume timeline'}
-                  >
-                    {recordingPlaying ? 'Pause' : 'Resume'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn header-export-btn btn-danger"
-                    onClick={onStopRecord}
-                    title="Stop and download"
-                  >
-                    Stop
-                  </button>
-                </>
-              ) : (
-                onToggleExport && (
-                  <button
-                    type="button"
-                    className={`btn export-btn header-export-btn${exportOpen ? ' is-active' : ''}`}
-                    onClick={onToggleExport}
-                    title="Export timeline as video or GIF"
-                    aria-label="Export timeline"
-                  >
-                    <span className="icon">
-                      <ExportIcon />
-                    </span>
-                    <span className="header-export-label">Export</span>
-                  </button>
-                )
-              )}
-            </div>
-            {!recording && !encoding && (
-              <ExportPanel
-                open={exportOpen}
-                onClose={onCloseExport}
-                onStartRecord={onStartRecord}
-              />
-            )}
-          </div>
-
           <MobileChrome
             layout={layout}
             controlsOpen={mobileControlsOpen}

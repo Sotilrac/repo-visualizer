@@ -33,6 +33,8 @@ export default function CommitCard({
   commit,
   author = null,
   collapsed = false,
+  commitIndex = -1,
+  commitCount = 0,
   collapsible = false,
   onToggleCollapse = () => {},
 }) {
@@ -74,20 +76,9 @@ export default function CommitCard({
     </button>
   ) : null;
 
-  if (!commit) {
-    return (
-      <div className="commit-card">
-        {collapseBtn}
-        <div className="commit-sha">·</div>
-        <div className="commit-message" style={{ color: 'var(--fg-muted)' }}>
-          Press play to begin the journey
-        </div>
-        <div className="commit-byline">
-          The timeline will trace the codebase from its first line to its latest state.
-        </div>
-      </div>
-    );
-  }
+  // Nothing has been played yet. An empty card explaining that is one more
+  // thing between the reader and the graph.
+  if (!commit) return null;
 
   // The same person the graph draws: the config's name and avatar where
   // there is one, the commit's own author where there is not.
@@ -102,8 +93,15 @@ export default function CommitCard({
   return (
     <div className={`commit-card ${entering ? 'entering' : ''}`}>
       {collapseBtn}
-      <div className="commit-sha">{commit.shortSha}</div>
-      <div className="commit-message">{commit.message}</div>
+      <div className="commit-head">
+        <span className="commit-sha">{commit.shortSha}</span>
+        {commitCount > 0 && (
+          <span className="commit-position" aria-live="polite">
+            {String(commitIndex + 1).padStart(2, '0')}
+            <span className="commit-position-dim"> / {commitCount}</span>
+          </span>
+        )}
+      </div>
       <div className="commit-byline">
         {author?.avatar ? (
           <img className="avatar avatar-image" src={author.avatar} alt="" width="22" height="22" />
@@ -125,6 +123,7 @@ export default function CommitCard({
           })}
         </span>
       </div>
+      <div className="commit-message">{commit.message}</div>
       <div className="stats">
         <span>
           {stats.filesChanged} file{stats.filesChanged === 1 ? '' : 's'}

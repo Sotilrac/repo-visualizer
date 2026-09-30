@@ -308,7 +308,7 @@ export function useGraphEngine({
           margin = actorMargin(p);
         }
         if (fitPts.length > 0 && (!hasFocus || focusKey !== cam._focusFitKey)) {
-          fitBounds(cam, fitPts, w, h, undefined, margin);
+          fitBounds(cam, fitPts, w, h, undefined, margin, following.length > 0);
           if (hasFocus) {
             snapCamera(cam);
             cam._focusFitKey = focusKey;

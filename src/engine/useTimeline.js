@@ -334,6 +334,7 @@ export function useTimeline(dataset) {
       seeking,
       seekProgress,
       seekingTo,
+      msPerCommit: SPEEDS[speed] ?? 1200,
       atFinal,
       play,
       pause,

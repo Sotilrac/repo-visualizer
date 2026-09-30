@@ -515,6 +515,8 @@ function drawBeams(g, frame, px, py) {
   if (!style.beams || !beams.length) return;
 
   for (const beam of beams) {
+    // Still leaning in: the shot has not left yet.
+    if (beam.progress <= 0) continue;
     const from = beam.from;
     const fx = px(from.sx ?? from.x);
     const fy = py(from.sy ?? from.y);

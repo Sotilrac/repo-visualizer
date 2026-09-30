@@ -74,6 +74,15 @@ const PROJECT_PASSES = 16;
 const DEFAULTS = {
   /** How long a beam takes to travel, in milliseconds. */
   beamMs: 700,
+  /**
+   * How long someone leans towards their work before firing at it.
+   *
+   * The pull towards a file and the beam at it used to start together, so
+   * the shot came from a standing start. Holding the beam back for a moment
+   * means the move begins first and the beam leaves someone already on
+   * their way, which is what reads as aiming.
+   */
+  beamLeadMs: 260,
   /** How long an actor lasts once its author stops committing. */
   idleMs: 14000,
   /** The share of that time it stays at full strength before fading. */
@@ -685,7 +694,9 @@ export function createActors(options = {}) {
       const still = [];
       for (const beam of beams) {
         beam.age += dt;
-        beam.progress = Math.min(1, beam.age / config.beamMs);
+        // Negative while the lead-in runs, which is how the renderer knows
+        // there is nothing to draw yet.
+        beam.progress = Math.min(1, (beam.age - config.beamLeadMs) / config.beamMs);
         if (beam.progress >= 1) {
           landed.push(beam.path);
           const aim = beam.from.aims?.get(beam.path);

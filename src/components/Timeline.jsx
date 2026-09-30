@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { playbackTime } from '../engine/playbackClock.js';
 import { createTimeScale } from '../engine/timelineScale.js';
 import { timelineTicks } from '../engine/timelineTicks.js';
 
@@ -16,7 +17,7 @@ import { timelineTicks } from '../engine/timelineTicks.js';
  * long as the rebuild takes and then jumps, which reads as a click that
  * missed and landed somewhere else.
  */
-export default function Timeline({ commits, index, seekingTo = null, onSeek }) {
+export default function Timeline({ commits, index, seekingTo = null, msPerCommit = 1200, onSeek }) {
   const trackRef = useRef(null);
   // Visual position during drag (null = use committed index).
   const [pendingIdx, setPendingIdx] = useState(null);
@@ -107,8 +108,8 @@ export default function Timeline({ commits, index, seekingTo = null, onSeek }) {
   const progressPct = progress < 0 ? 0 : scale.pctOf(progress);
 
   const firstDate = commits[0]?.date && new Date(commits[0].date);
-  const lastDate = commits[commits.length - 1]?.date && new Date(commits[commits.length - 1].date);
   const fmt = (d) => (d ? d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : '');
+  const clock = playbackTime(index, commits.length, msPerCommit);
 
   return (
     <div className="timeline">
@@ -139,11 +140,10 @@ export default function Timeline({ commits, index, seekingTo = null, onSeek }) {
             </div>
           ))}
         </div>
-        <div className="timeline-date" style={{ left: '0%', transform: 'translateX(0)' }}>
-          {fmt(firstDate)}
-        </div>
-        <div className="timeline-date" style={{ left: '100%', transform: 'translateX(-100%)' }}>
-          {fmt(lastDate)}
+        <div className="timeline-start">{fmt(firstDate)}</div>
+        <div className="timeline-clock" aria-live="off">
+          {clock.at}
+          <span className="timeline-clock-dim"> / {clock.of}</span>
         </div>
       </div>
     </div>

@@ -59,11 +59,13 @@ describe('buildPeoplePayload', () => {
     expect(buildPeoplePayload(config).people.ada.hue).toBe(210);
   });
 
-  it('leaves out anyone on a hidden team', () => {
+  it('draws nobody for anyone on a hidden team', () => {
     const { people, byEmail } = buildPeoplePayload(config);
 
+    // The address is recorded and points at nobody, which is what tells
+    // the app to leave them off rather than invent an actor for them.
     expect(people.ci).toBeUndefined();
-    expect(byEmail['1+ci@users.noreply.github.com']).toBeUndefined();
+    expect(people[byEmail['1+ci@users.noreply.github.com']]).toBeUndefined();
   });
 
   it('lists the avatar files to copy, so the exporter knows what to take', () => {
@@ -75,15 +77,15 @@ describe('buildPeoplePayload', () => {
   });
 });
 
-describe('a team kept out of the legend but drawn as one person', () => {
+describe('a team drawn as one person', () => {
   /**
    * External contributors: too many to name and not worth a colour each, so
-   * the team is hidden from the legend and drawn as a single face.
+   * the team is drawn as a single face.
    */
   const config = {
     teams: [
       { id: 'acme', name: 'Acme', hue: 210, shown: true },
-      { id: 'external', name: 'External', hue: 20, shown: false, merged: true },
+      { id: 'external', name: 'External', hue: 20, shown: true, merged: true },
       { id: 'bots', name: 'Bots', shown: false },
     ],
     people: [
@@ -108,11 +110,35 @@ describe('a team kept out of the legend but drawn as one person', () => {
     expect(byEmail['pat@other.com']).toBe('team:external');
     expect(byEmail['sam@other.org']).toBe('team:external');
   });
+});
 
-  it('still leaves a hidden team with nobody to merge into off the graph', () => {
-    const { people, byEmail } = buildPeoplePayload(config);
+describe('a team the config hides', () => {
+  const hidden = (teamOptions) => ({
+    teams: [{ id: 'ghosts', name: 'Ghosts', shown: false, ...teamOptions }],
+    people: [{ id: 'ci', name: 'CI', team: 'ghosts', emails: ['ci@acme.com'] }],
+  });
+
+  it('writes nobody for them', () => {
+    const { people } = buildPeoplePayload(hidden());
 
     expect(people.ci).toBeUndefined();
-    expect(byEmail['ci@acme.com']).toBeUndefined();
+    expect(people['team:ghosts']).toBeUndefined();
+  });
+
+  it('still records the address, so it resolves to nobody', () => {
+    // An address that maps to a person who is not there is hidden. One the
+    // config has never seen falls back to the raw git author instead, and
+    // would turn back into an actor of its own.
+    const { byEmail, people } = buildPeoplePayload(hidden());
+
+    expect(byEmail['ci@acme.com']).toBe('ci');
+    expect(people[byEmail['ci@acme.com']]).toBeUndefined();
+  });
+
+  it('stays hidden even when the team is also drawn as one', () => {
+    const { people, byEmail } = buildPeoplePayload(hidden({ merged: true }));
+
+    expect(people['team:ghosts']).toBeUndefined();
+    expect(people[byEmail['ci@acme.com']]).toBeUndefined();
   });
 });

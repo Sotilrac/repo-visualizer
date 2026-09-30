@@ -475,23 +475,18 @@ export default function App() {
 
       <Header
         dataset={dataset}
-        source={source}
-        commitIndex={timeline.index}
-        commitCount={timeline.commits.length}
-        currentCommit={currentCommit}
-        fps={fps}
-        exportOpen={exportOpen}
-        onToggleExport={handleToggleExport}
-        onCloseExport={() => setExportOpen(false)}
-        recording={recording}
-        recordingProgress={recordingProgress}
-        encoding={encoding}
-        encodeProgress={encodeProgress}
-        encodeFormat={encodeFormat}
-        recordingPlaying={timeline.playing}
-        onStartRecord={handleStartRecord}
-        onStopRecord={handleStopRecord}
-        onPauseRecord={handlePauseRecord}
+        aside={
+          <Legend
+            state={timeline.state}
+            palette={palette}
+            style={style}
+            commitIndex={timeline.index}
+            excludePatterns={excludePatterns}
+            selectedCluster={selectedCluster}
+            onClusterSelect={handleClusterSelect}
+            onSelectPath={handleNodeClick}
+          />
+        }
         layout={layoutMode}
         mobileControlsOpen={mobileControlsOpen}
         mobileInfoOpen={mobileInfoOpen}
@@ -510,25 +505,15 @@ export default function App() {
           });
         }}
       />
-      <div className="info-stack">
-        <CommitCard
-          author={currentCommit ? resolveAuthor(currentCommit) : null}
-          commit={currentCommit}
-          collapsible={!compactLayout}
-          collapsed={!compactLayout && commitCardCollapsed}
-          onToggleCollapse={toggleCommitCardCollapsed}
-        />
-        <Legend
-          state={timeline.state}
-          palette={palette}
-          style={style}
-          commitIndex={timeline.index}
-          excludePatterns={excludePatterns}
-          selectedCluster={selectedCluster}
-          onClusterSelect={handleClusterSelect}
-          onSelectPath={handleNodeClick}
-        />
-      </div>
+      <CommitCard
+        author={currentCommit ? resolveAuthor(currentCommit) : null}
+        commit={currentCommit}
+        commitIndex={timeline.index}
+        commitCount={timeline.commits.length}
+        collapsible={!compactLayout}
+        collapsed={!compactLayout && commitCardCollapsed}
+        onToggleCollapse={toggleCommitCardCollapsed}
+      />
 
       {selectedPath && (
         <NodeInspector
@@ -556,6 +541,7 @@ export default function App() {
         commits={timeline.commits}
         index={timeline.index}
         seekingTo={timeline.seekingTo}
+        msPerCommit={timeline.msPerCommit}
         playing={timeline.playing}
         speed={timeline.speed}
         speeds={timeline.speeds}
@@ -580,6 +566,21 @@ export default function App() {
         tuningOpen={tuningOpen}
         onToggleTuning={() => setTuningOpen((open) => !open)}
         showPlayHint={showMobilePlayHint}
+        exportControls={{
+          fps,
+          exportOpen,
+          onToggleExport: handleToggleExport,
+          onCloseExport: () => setExportOpen(false),
+          recording,
+          recordingProgress,
+          encoding,
+          encodeProgress,
+          encodeFormat,
+          recordingPlaying: timeline.playing,
+          onStartRecord: handleStartRecord,
+          onStopRecord: handleStopRecord,
+          onPauseRecord: handlePauseRecord,
+        }}
       />
     </div>
   );

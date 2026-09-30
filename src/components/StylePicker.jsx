@@ -1,7 +1,5 @@
 const STYLES = [
   { id: 'galaxy', label: 'Galaxy' },
-  { id: 'organic', label: 'Organic' },
-  { id: 'neural', label: 'Neural' },
   { id: 'minimal', label: 'Minimal' },
 ];
 

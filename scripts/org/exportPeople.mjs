@@ -7,12 +7,12 @@
  * behind it. So the export writes a small payload next to the dataset, and
  * copies the avatars in with it.
  *
- * People on a hidden team are left out entirely, which is how bots stay off
- * the graph. A hidden team that is also drawn as one person is the other
- * case: the external contributors are too many to name and not worth a
- * colour each in the legend, but they are still on the graph, as one face.
- * So being drawn as one is decided first, and hiding only applies to what
- * is left.
+ * A hidden team's addresses are still written down, pointing at a person
+ * that is not there. That is the difference between an address the config
+ * hides and one it has never seen: the first resolves to nobody and is not
+ * drawn, the second falls back to the raw git author so a new contributor
+ * is never silently absent. Leaving the addresses out entirely made every
+ * hidden person reappear as a stranger.
  */
 
 /**
@@ -35,6 +35,15 @@ export function buildPeoplePayload(config) {
   for (const person of config.people ?? []) {
     const team = teams.get(person.team);
 
+    // Hidden wins over everything: the addresses are recorded so they
+    // resolve to nobody, and no person is written for them.
+    if (team?.shown === false) {
+      for (const email of person.emails ?? []) {
+        byEmail[String(email).trim().toLowerCase()] = person.id;
+      }
+      continue;
+    }
+
     // A team drawn as one person: everyone on it resolves to a single
     // actor, so a crowd of one-commit strangers is one face on the graph
     // rather than forty.
@@ -54,8 +63,6 @@ export function buildPeoplePayload(config) {
       }
       continue;
     }
-
-    if (team?.shown === false) continue;
 
     const entry = { name: person.name ?? person.id };
     if (team?.hue !== undefined) entry.hue = team.hue;

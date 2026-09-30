@@ -68,10 +68,10 @@ export default function Legend({
       className={`legend${collapsed ? ' is-collapsed' : ''}`}
       onClick={handleBackdropClick}
       role="group"
-      aria-label="Feature clusters"
+      aria-label="Clusters"
     >
       <div className="legend-header">
-        <h4>Feature clusters</h4>
+        <h4>Clusters</h4>
         <button
           type="button"
           className="legend-collapse-btn"

@@ -5,7 +5,8 @@ import { useState } from 'react';
 
 /**
  * The repositories this dataset was built from. One renders inline; several
- * collapse behind a count so the header stays one line at any repo count.
+ * collapse behind a count so the header stays one line at any repo count,
+ * and open into a list you can read down.
  *
  * @param {{ repos?: Repo[] }} props
  */
@@ -26,11 +27,13 @@ export default function RepoList({ repos = [] }) {
         {repos.length} repos
       </button>
       {open && (
-        <span className="repo-list-items">
+        <ul className="repo-list-items">
           {repos.map((repo) => (
-            <RepoLink key={repo.name} repo={repo} />
+            <li key={repo.name}>
+              <RepoLink repo={repo} />
+            </li>
           ))}
-        </span>
+        </ul>
       )}
     </span>
   );

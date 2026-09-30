@@ -64,7 +64,7 @@ describe('beams', () => {
   });
 
   it('starts at nothing and reaches its target', () => {
-    const actors = createActors({ beamMs: 1000 });
+    const actors = createActors({ beamMs: 1000, beamLeadMs: 0 });
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
 
     expect(actors.beams()[0].progress).toBe(0);
@@ -73,7 +73,7 @@ describe('beams', () => {
   });
 
   it('is gone once it has landed', () => {
-    const actors = createActors({ beamMs: 1000 });
+    const actors = createActors({ beamMs: 1000, beamLeadMs: 0 });
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
 
     actors.tick(1200);
@@ -82,7 +82,7 @@ describe('beams', () => {
   });
 
   it('reports the files it landed on, so the ripple fires on arrival', () => {
-    const actors = createActors({ beamMs: 1000 });
+    const actors = createActors({ beamMs: 1000, beamLeadMs: 0 });
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
 
     expect(actors.tick(400)).toEqual([]);
@@ -649,5 +649,55 @@ describe('how hard they push', () => {
 
   it('does not push at all beyond the spacing', () => {
     expect(oneFrame(200)).toBe(0);
+  });
+});
+
+describe('leaning in before firing', () => {
+  const nodes = { 'a.js': node('a.js', 400, 0) };
+
+  /** The beam a commit fires, after `ms` of ticking. */
+  function afterMs(ms, options = {}) {
+    const actors = createActors({ idleMs: 600000, ...options });
+    actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
+    for (let i = 0; i < Math.round(ms / 16); i++) actors.tick(16);
+    return actors;
+  }
+
+  it('holds the beam back for a moment', () => {
+    const [beam] = afterMs(100).beams();
+
+    expect(beam.progress).toBeLessThanOrEqual(0);
+  });
+
+  it('starts moving during that moment', () => {
+    const actors = createActors({ idleMs: 600000 });
+    actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
+    const [ada] = actors.list();
+    const before = Math.hypot(ada.x - 400, ada.y);
+    for (let i = 0; i < 6; i++) actors.tick(16);
+
+    // Already closing on the file it is about to fire at.
+    expect(Math.hypot(ada.x - 400, ada.y)).toBeLessThan(before);
+  });
+
+  it('fires once the lead-in is over', () => {
+    const [beam] = afterMs(500).beams();
+
+    expect(beam.progress).toBeGreaterThan(0);
+  });
+
+  it('still lands, and only once', () => {
+    const actors = createActors({ idleMs: 600000 });
+    actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), nodes, 0);
+    let landed = 0;
+    for (let i = 0; i < 200; i++) landed += actors.tick(16).length;
+
+    expect(landed).toBe(1);
+  });
+
+  it('fires straight away when the lead-in is turned off', () => {
+    const [beam] = afterMs(100, { beamLeadMs: 0 }).beams();
+
+    expect(beam.progress).toBeGreaterThan(0);
   });
 });

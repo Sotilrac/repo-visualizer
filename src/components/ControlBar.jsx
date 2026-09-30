@@ -1,5 +1,21 @@
+import ExportControls, { FrameRate } from './ExportControls.jsx';
 import StylePicker from './StylePicker.jsx';
 import Timeline from './Timeline.jsx';
+
+/** One commit forward. */
+const StepIcon = () => (
+  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M5 3 L12 8 L5 13 Z" />
+  </svg>
+);
+
+/** Straight to the end of the history. */
+const EndIcon = () => (
+  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M3 3 L10 8 L3 13 Z" />
+    <rect x="11" y="3" width="2" height="10" rx="0.6" />
+  </svg>
+);
 
 const PlayIcon = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -31,16 +47,11 @@ const RestartIcon = () => (
   </svg>
 );
 
-const FinalStateIcon = () => (
-  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M3 3h2v10H3V3zm4 0h2v10H7V3zm4 0h5v2h-3v2h3v2h-3v4H9V3z" />
-  </svg>
-);
-
 export default function ControlBar({
   commits,
   index,
   seekingTo = null,
+  msPerCommit = 1200,
   playing,
   speed,
   speeds,
@@ -65,10 +76,17 @@ export default function ControlBar({
   tuningOpen = false,
   onToggleTuning,
   showPlayHint = false,
+  exportControls = null,
 }) {
   return (
     <div className="control-bar">
-      <Timeline commits={commits} index={index} seekingTo={seekingTo} onSeek={onSeek} />
+      <Timeline
+        commits={commits}
+        index={index}
+        seekingTo={seekingTo}
+        msPerCommit={msPerCommit}
+        onSeek={onSeek}
+      />
       <div className="control-cluster">
         <div className="control-row control-row--playback">
           <button className="btn" onClick={onRestart} title="Restart" type="button">
@@ -87,13 +105,24 @@ export default function ControlBar({
           </button>
           <button
             type="button"
+            className="btn"
+            onClick={() => onSeek(index + 1)}
+            disabled={buildingFinal || atFinal || !commits.length}
+            title="Next commit"
+            aria-label="Next commit"
+          >
+            <StepIcon />
+          </button>
+          <button
+            type="button"
             className={`btn btn-final-state${atFinal ? ' is-active' : ''}`}
             onClick={onGoToFinal}
             disabled={buildingFinal || atFinal || !commits.length}
             title={atFinal ? 'At final state' : 'Load final state (all commits)'}
+            aria-label="Jump to the final state"
             aria-busy={buildingFinal}
           >
-            <FinalStateIcon />
+            <EndIcon />
           </button>
         </div>
         <div className="control-row control-row--tools">
@@ -107,15 +136,7 @@ export default function ControlBar({
               ))}
             </select>
           </div>
-          <button
-            type="button"
-            className={`btn btn-sm btn-tuning${tuningOpen ? ' is-active' : ''}`}
-            title="Adjust the layout: pull, spacing, sizes"
-            aria-pressed={tuningOpen}
-            onClick={onToggleTuning}
-          >
-            layout
-          </button>
+          <div className="control-sep" aria-hidden="true" />
           <div className="zoom-control" title="Canvas zoom">
             <button type="button" className="btn btn-sm" onClick={onZoomOut}>
               −
@@ -168,9 +189,20 @@ export default function ControlBar({
             </span>
             <span className="toggle-switch-label">People</span>
           </button>
-          <div className="perf-control"></div>
+          <div className="control-sep" aria-hidden="true" />
+          <button
+            type="button"
+            className={`btn btn-sm btn-tuning${tuningOpen ? ' is-active' : ''}`}
+            title="Adjust the layout: pull, spacing, sizes"
+            aria-pressed={tuningOpen}
+            onClick={onToggleTuning}
+          >
+            layout
+          </button>
           <StylePicker style={style} onChange={onStyleChange} />
+          {exportControls && <ExportControls {...exportControls} />}
           <div className="spacer" />
+          <FrameRate fps={exportControls?.fps ?? null} />
         </div>
       </div>
     </div>
