@@ -71,8 +71,8 @@ function buildPythonIndex(pathSet) {
 function buildJavaIndex(pathSet) {
   const classToPath = new Map();
   for (const p of pathSet) {
-    if (!p.endsWith('.java') && !p.endsWith('.kt')) continue;
-    const base = p.replace(/\.(java|kt)$/, '');
+    if (!p.endsWith('.java') && !p.endsWith('.kt') && !p.endsWith('.kts')) continue;
+    const base = p.replace(/\.(java|kts|kt)$/, '');
     const className = base.split('/').pop();
     const pkgPath = base.includes('/')
       ? base.slice(0, base.lastIndexOf('/')).replace(/\//g, '.')
@@ -167,6 +167,9 @@ function resolveRustImport(raw, fromFile, pathSet) {
 
 function resolveJavaImport(raw, javaIndex) {
   if (javaIndex.has(raw)) return javaIndex.get(raw);
+  // `import com.foo.*` names a package, not a class, and there is no one
+  // file it stands for.
+  if (raw.endsWith('.*')) return null;
   const simple = raw.split('.').pop();
   return javaIndex.get(simple) || null;
 }

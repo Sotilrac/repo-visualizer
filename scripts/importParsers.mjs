@@ -57,12 +57,35 @@ export function parseRust(src) {
   return [...imports];
 }
 
+/**
+ * What a Java or Kotlin import names.
+ *
+ * Kotlin writes the same line without the semicolon Java insists on, and
+ * may rename what it imports with `as`. The framework packages are dropped
+ * here rather than left to the resolver: a simple name like `Text` or
+ * `Card` matches a repo class of that name, and an Android import would
+ * quietly become a link to a file it has nothing to do with.
+ */
+const LIBRARY_PACKAGES = [
+  'java.',
+  'javax.',
+  'kotlin.',
+  'kotlinx.',
+  'android.',
+  'androidx.',
+  'dagger.',
+  'org.junit.',
+  'com.google.',
+];
+
 export function parseJava(src) {
   const imports = new Set();
-  const re = /^\s*import\s+(?:static\s+)?([\w.*]+);/gm;
+  const re =
+    /^[ \t]*import[ \t]+(?:static[ \t]+)?([\w.]+(?:\.\*)?)[ \t]*(?:as[ \t]+\w+)?[ \t]*;?[ \t]*$/gm;
   for (const m of src.matchAll(re)) {
     const name = m[1];
-    if (!name.startsWith('java.') && !name.startsWith('javax.')) imports.add(name);
+    if (LIBRARY_PACKAGES.some((pkg) => name.startsWith(pkg))) continue;
+    imports.add(name);
   }
   return [...imports];
 }
