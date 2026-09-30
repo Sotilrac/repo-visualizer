@@ -8,7 +8,11 @@
  * copies the avatars in with it.
  *
  * People on a hidden team are left out entirely, which is how bots stay off
- * the graph.
+ * the graph. A hidden team that is also drawn as one person is the other
+ * case: the external contributors are too many to name and not worth a
+ * colour each in the legend, but they are still on the graph, as one face.
+ * So being drawn as one is decided first, and hiding only applies to what
+ * is left.
  */
 
 /**
@@ -30,7 +34,6 @@ export function buildPeoplePayload(config) {
 
   for (const person of config.people ?? []) {
     const team = teams.get(person.team);
-    if (team?.shown === false) continue;
 
     // A team drawn as one person: everyone on it resolves to a single
     // actor, so a crowd of one-commit strangers is one face on the graph
@@ -51,6 +54,8 @@ export function buildPeoplePayload(config) {
       }
       continue;
     }
+
+    if (team?.shown === false) continue;
 
     const entry = { name: person.name ?? person.id };
     if (team?.hue !== undefined) entry.hue = team.hue;

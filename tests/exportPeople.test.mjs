@@ -74,3 +74,45 @@ describe('buildPeoplePayload', () => {
     expect(buildPeoplePayload({}).people).toEqual({});
   });
 });
+
+describe('a team kept out of the legend but drawn as one person', () => {
+  /**
+   * External contributors: too many to name and not worth a colour each, so
+   * the team is hidden from the legend and drawn as a single face.
+   */
+  const config = {
+    teams: [
+      { id: 'acme', name: 'Acme', hue: 210, shown: true },
+      { id: 'external', name: 'External', hue: 20, shown: false, merged: true },
+      { id: 'bots', name: 'Bots', shown: false },
+    ],
+    people: [
+      { id: 'ada', name: 'Ada', team: 'acme', emails: ['ada@acme.com'] },
+      { id: 'pat', name: 'Pat', team: 'external', emails: ['pat@other.com'] },
+      { id: 'sam', name: 'Sam', team: 'external', emails: ['sam@other.org'] },
+      { id: 'ci', name: 'CI', team: 'bots', emails: ['ci@acme.com'] },
+    ],
+  };
+
+  it('draws the whole team as one person', () => {
+    const { people } = buildPeoplePayload(config);
+
+    expect(people['team:external']).toMatchObject({ name: 'External', team: 'external' });
+    expect(people.pat).toBeUndefined();
+    expect(people.sam).toBeUndefined();
+  });
+
+  it('sends every address on it to that one person', () => {
+    const { byEmail } = buildPeoplePayload(config);
+
+    expect(byEmail['pat@other.com']).toBe('team:external');
+    expect(byEmail['sam@other.org']).toBe('team:external');
+  });
+
+  it('still leaves a hidden team with nobody to merge into off the graph', () => {
+    const { people, byEmail } = buildPeoplePayload(config);
+
+    expect(people.ci).toBeUndefined();
+    expect(byEmail['ci@acme.com']).toBeUndefined();
+  });
+});
