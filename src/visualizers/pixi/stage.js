@@ -386,6 +386,37 @@ function drawLinks(g, frame, px, py) {
   }
 }
 
+/**
+ * The smallest a disc is drawn, in screen pixels.
+ *
+ * Below about a pixel each one lands on a different part of the pixel grid,
+ * and a field of them beats against that grid into a pattern the bloom then
+ * makes plain. Holding the size and taking the brightness down instead puts
+ * the same amount of light on screen without the pattern.
+ */
+export const MIN_DOT = 1.1;
+
+/**
+ * The alpha to draw at, once a disc is being held at the floor.
+ *
+ * Area, not radius: a disc held at twice the size it asked for has to be a
+ * quarter as bright to put the same light on the screen.
+ *
+ * @param {number} radius what it asked for, in screen pixels
+ * @param {number} alpha
+ */
+export function fadedBelow(radius, alpha) {
+  return radius >= MIN_DOT ? alpha : alpha * (radius / MIN_DOT) ** 2;
+}
+
+/** A filled disc that thins out rather than shrinking past a pixel. */
+function dot(g, x, y, radius, color, alpha) {
+  const faded = fadedBelow(radius, alpha);
+  if (faded < 0.004) return;
+  g.circle(x, y, Math.max(MIN_DOT, radius));
+  g.fill({ color, alpha: faded });
+}
+
 function drawBodies(g, frame, px, py, scale) {
   const { style, palette, styleName, nodeOpacity, cam, w, h } = frame;
   g.clear();
@@ -396,7 +427,7 @@ function drawBodies(g, frame, px, py, scale) {
     const color = clusterRgb(palette, n.dir, styleName);
     const x = px(n.x);
     const y = py(n.y);
-    const r = Math.max(0.6, (n.r ?? 6) * scale);
+    const r = (n.r ?? 6) * scale;
     const container = !!n.kind && n.kind !== 'file';
     // The cluster's own colour. `core` is nearly white in the galaxy
     // palette, where it was a pinpoint inside a coloured corona; what
@@ -406,19 +437,24 @@ function drawBodies(g, frame, px, py, scale) {
     if (container) {
       // A repo or a folder is not one thing, and a disc that size reads as
       // an enormous file. The ring says it holds what is inside it.
-      g.circle(x, y, r);
-      g.stroke({ width: style.body.ringWidth, color: tint, alpha: alpha * style.body.ring });
-      g.circle(x, y, Math.max(0.6, r * style.body.core * 0.5));
-      g.fill({ color: tint, alpha: alpha * style.body.fill });
+      // Zoomed out far enough the ring is wider than what it encircles, so
+      // it thins with the bubble rather than filling it in.
+      const ring = Math.min(style.body.ringWidth, Math.max(0.7, r * 0.7));
+      if (fadedBelow(r, alpha) > 0.004) {
+        g.circle(x, y, Math.max(MIN_DOT, r));
+        g.stroke({ width: ring, color: tint, alpha: fadedBelow(r, alpha * style.body.ring) });
+      }
+      dot(g, x, y, r * style.body.core * 0.5, tint, alpha * style.body.fill);
       continue;
     }
 
-    g.circle(x, y, r);
-    g.fill({ color: tint, alpha: alpha * style.body.fill });
+    dot(g, x, y, r, tint, alpha * style.body.fill);
     // A hot centre, which is what the bloom picks up and turns into a star.
-    if (r > 2) {
-      g.circle(x, y, Math.max(0.5, r * style.body.core));
-      g.fill({ color: color.core.value, alpha: alpha * 0.9 });
+    // Only once the bubble is big enough to have a middle: below that the
+    // disc itself is the star, and a white dot on top of a one-pixel disc
+    // is just a brighter pixel that flickers as the camera moves.
+    if (r > 2.5) {
+      dot(g, x, y, r * style.body.core, color.core.value, alpha * 0.9);
     }
   }
 
