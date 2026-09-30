@@ -1,16 +1,25 @@
 /**
  * The people, drawn on the graph.
  *
- * An actor is one contributor. They drift toward whatever they are working
- * on and fire a beam at each file a commit touched; the beam triggers that
- * file's ripple when it lands, so the two effects stay in step. Someone who
+ * An actor is one contributor. They are pulled towards whatever they are
+ * working on, hardest towards the files they still have a beam flying at,
+ * and pushed off each other and off every bubble on screen. Someone who
  * stops committing fades and is recycled.
+ *
+ * It is a physics simulation, not a set of position adjustments: d3-force
+ * integrates velocity Verlet over the same forces the bodies use, so the
+ * people move under the same rules as the graph they stand on and settle
+ * by losing speed rather than by being told to stop. What the forces cannot
+ * promise, that two faces never overlap and that nobody is ever drawn on
+ * top of a bubble, is imposed afterwards as a constraint on position.
  *
  * This module owns only the arithmetic. Loading avatars and drawing is the
  * renderer's job, which keeps the behaviour testable without a canvas.
  */
 
+import { forceCollide, forceSimulation } from 'd3-force';
 import { tileHue } from '../shared/avatarTile.js';
+import { createGrid } from './grid.js';
 
 /** How big a face is drawn, in world units. The renderer draws to this. */
 export const AVATAR_RADIUS = 14;
@@ -24,6 +33,20 @@ export const AVATAR_FOOTPRINT = AVATAR_RADIUS + 2;
 /** Clear space left between two faces, so they never look joined. */
 const AVATAR_GAP = 8;
 
+/** And between a face and any bubble, so it never sits on a centre dot. */
+const BUBBLE_GAP = 4;
+
+/** How far out a bubble is felt before it is actually in the way. */
+const BUBBLE_REACH = 26;
+
+/**
+ * How many times the constraints are relaxed each step.
+ *
+ * Pulling one pair of faces apart pushes one of them into a third, so a
+ * pile needs several rounds before every pair is clear at once.
+ */
+const PROJECT_PASSES = 16;
+
 const DEFAULTS = {
   /** How long a beam takes to travel, in milliseconds. */
   beamMs: 700,
@@ -31,67 +54,28 @@ const DEFAULTS = {
   idleMs: 14000,
   /** The share of that time it stays at full strength before fading. */
   holdFraction: 0.5,
-  /** How hard an actor is pulled toward its work, per second. */
-  spring: 3.2,
   /** Beyond this many at once the graph is unreadable, so the quietest go. */
   maxActors: 40,
-  /** How far an actor stays off the bubbles it is working on. */
-  nodeClearance: 30,
+  /** How hard the work pulls, as a fraction of the distance per step. */
+  aim: 0.02,
+  /**
+   * How much harder it pulls towards a file the actor has a beam flying at.
+   *
+   * Someone who has just committed is on their way in; someone whose beams
+   * landed a while ago is standing about near their work. Both are the same
+   * force with a different weight on it.
+   */
+  aimPending: 3,
+  /** How fast the pull towards a file fades once it is no longer touched. */
+  aimDecay: 0.994,
+  /** Below this an old target is forgotten. */
+  aimFloor: 0.05,
+  /** The most files one person is pulled towards at once. */
+  maxAims: 16,
   /** How far two actors prefer to stay apart. */
   actorClearance: 242,
-  /**
-   * How close two faces may ever get, centre to centre.
-   *
-   * The preference above is a push that balances against everything else
-   * pulling them together, so it is a tendency rather than a rule. Two
-   * faces drawn on top of each other are unreadable whatever the forces
-   * wanted, so this one is imposed afterwards, on the drawn position. It
-   * measures what is drawn, halo and all, and leaves a gap between them.
-   */
-  minSeparation: AVATAR_FOOTPRINT * 2 + AVATAR_GAP,
-  /** How far outside a repo's blob an actor stands to fire into it. */
-  blobClearance: 144,
-  /**
-   * The time constant of the filter on the drawn position, in milliseconds.
-   *
-   * A spring, two repulsions and a target that moves with every commit add
-   * up to a position that twitches frame to frame. The forces stay as they
-   * are and what is drawn lags them, which is the difference between a
-   * person moving and a person flickering.
-   */
-  smoothingMs: 420,
-  /**
-   * Movement below this is not worth drawing. Three forces balancing each
-   * other leave a face creeping around its resting place forever, and a
-   * picture that never quite stops is what reads as unstable.
-   */
-  stillness: 0.35,
-  /**
-   * How long after their last commit someone stops being moved about.
-   *
-   * The spring towards their work and the pushes off the bubbles and off
-   * each other balance at a point they circle rather than reach, so an
-   * avatar with nothing to do drifts for as long as it is on screen. Long
-   * enough to reach their work first, and then they stop; a new commit
-   * sets them going again.
-   */
-  restAfterMs: 1500,
-  /**
-   * How hard the blob pushes back. Firmer than the rest: the spring is
-   * pulling the avatar towards the middle of the work the whole time, and a
-   * soft push settles inside the blob rather than outside it.
-   */
-  blobSeparation: 0.9,
-  /** How firmly they push off the bubbles they are working on. */
-  separation: 0.35,
-  /**
-   * How hard they push off each other when they are nearly touching.
-   *
-   * The push falls away steeply with distance (see `crowdFalloff`), so this
-   * is the strength at the point where they would overlap, not an amount
-   * applied across the whole range.
-   */
-  crowding: 0.9,
+  /** How hard they push each other where they would touch. */
+  crowding: 1,
   /**
    * How steeply that push falls off with distance.
    *
@@ -100,86 +84,83 @@ const DEFAULTS = {
    * means it is almost nothing across the room and immovable up close.
    */
   crowdFalloff: 3,
-  /** The most one push may move someone in a frame, so it cannot overshoot. */
+  /** The most one push may add to a speed in one step. */
   crowdCap: 6,
+  /**
+   * How close two faces may ever get, centre to centre. Measured on what is
+   * drawn, halo and all, with a gap left between them.
+   */
+  minSeparation: AVATAR_FOOTPRINT * 2 + AVATAR_GAP,
+  /** How far outside a repo's blob an actor stands to fire into it. */
+  blobClearance: 144,
+  /** How firmly the blob pushes back. */
+  blobSeparation: 0.05,
+  /** How firmly a single bubble pushes back. */
+  separation: 0.12,
+  /**
+   * How much speed is lost each step.
+   *
+   * This is what makes them settle. A lightly damped actor circles its work
+   * for as long as it is on screen, which is what used to need a rule that
+   * stopped moving them after a while.
+   */
+  damping: 0.45,
+  /**
+   * Below this speed an actor is put to rest, in world units per step.
+   *
+   * Damping approaches nought without reaching it, so without a floor a
+   * face that has finished moving still creeps by a fraction of a pixel
+   * every frame, for as long as it is on screen. Physics engines call this
+   * sleeping and every one of them has it.
+   */
+  sleepSpeed: 0.02,
   /** How far from the work a new actor appears, so the approach is visible. */
   entryOffset: 90,
-  /**
-   * How much of the way a commit moves where someone is heading.
-   *
-   * A person usually commits to the same corner twice running and this
-   * changes nothing. A whole team drawn as one avatar is the case it is
-   * for: its commits come from everywhere, and aiming at the latest one
-   * sends it across the graph and back several times a second.
-   */
-  targetBlend: 0.3,
 };
 
 /**
- * Move `subject` directly away from `other` until they are `clearance` apart.
+ * Hold every actor outside every bubble and off every other actor.
  *
- * A fraction of the way each frame, so a crowd spreads out over several
- * frames and comes to rest. Moving the whole distance at once snaps.
- */
-function push(subject, other, clearance, strength) {
-  let dx = subject.x - other.x;
-  let dy = subject.y - other.y;
-  let distance = Math.hypot(dx, dy);
-
-  // Exactly on top of each other has no direction to escape along, so pick one.
-  if (distance < 1e-6) {
-    dx = 1;
-    dy = 0;
-    distance = 1e-6;
-  }
-  if (distance >= clearance) return;
-
-  const shift = ((clearance - distance) / distance) * strength;
-  subject.x += dx * shift;
-  subject.y += dy * shift;
-}
-
-/**
- * Move `subject` away from `other`, hard when they are close and barely at
- * all when they are not.
- *
- * @param {any} subject
- * @param {any} other
- * @param {{ range: number, floor: number, strength: number, falloff: number, cap: number }} how
- */
-function repel(subject, other, { range, floor, strength, falloff, cap }) {
-  let dx = subject.x - other.x;
-  let dy = subject.y - other.y;
-  let distance = Math.hypot(dx, dy);
-  if (distance >= range) return;
-
-  if (distance < 1e-6) {
-    dx = 1;
-    dy = 0;
-    distance = 1e-6;
-  }
-
-  // 0 at the far edge of the range, 1 where they would touch.
-  const closeness = Math.min(1, (range - distance) / Math.max(1, range - floor));
-  const shift = Math.min(cap, strength * closeness ** falloff * (range - distance)) / distance;
-  subject.x += dx * shift;
-  subject.y += dy * shift;
-}
-
-/**
- * Pull apart any pair closer than `min`, half the overlap each.
- *
- * Several passes, because moving one pair apart can push one of them into
- * a third, and it stops as soon as a pass finds nothing left to do.
+ * The forces make them behave; this makes them legal. Several passes,
+ * because moving someone out of one bubble can put them inside the next.
  *
  * @param {any[]} people
- * @param {number} min
+ * @param {{ bubblesNear: (x: number, y: number, reach: number, visit: (b: any) => void) => void }} world
+ * @param {number} min how close two faces may get
  * @param {'x' | 'sx'} xk
  * @param {'y' | 'sy'} yk
  */
-function separate(people, min, xk, yk) {
-  for (let pass = 0; pass < 4; pass++) {
-    let touched = false;
+function project(people, world, min, xk, yk) {
+  for (let pass = 0; pass < PROJECT_PASSES; pass++) {
+    let moved = false;
+
+    for (const person of people) {
+      world.bubblesNear(person[xk], person[yk], AVATAR_FOOTPRINT + BUBBLE_GAP, (bubble) => {
+        const need = (bubble.r ?? 0) + AVATAR_FOOTPRINT + BUBBLE_GAP;
+        let dx = person[xk] - bubble.x;
+        let dy = person[yk] - bubble.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance >= need) return;
+        if (distance < 1e-6) {
+          // Dead centre has no direction to leave along, so pick one.
+          dx = 1;
+          dy = 0;
+          distance = 1e-6;
+        }
+        moved = true;
+        person[xk] = bubble.x + (dx / distance) * need;
+        person[yk] = bubble.y + (dy / distance) * need;
+        // And stop carrying the speed that took them in there.
+        if (xk === 'x' && person.vx != null) {
+          const into = (person.vx * dx + person.vy * dy) / distance;
+          if (into < 0) {
+            person.vx -= (into * dx) / distance;
+            person.vy -= (into * dy) / distance;
+          }
+        }
+      });
+    }
+
     for (let i = 0; i < people.length; i++) {
       for (let j = i + 1; j < people.length; j++) {
         const a = people[i];
@@ -198,7 +179,7 @@ function separate(people, min, xk, yk) {
           distance = 1;
         }
 
-        touched = true;
+        moved = true;
         // A little more than half the overlap each: a pile resolved by
         // exact halves converges towards the floor without reaching it, and
         // what is left is a row of faces just touching.
@@ -209,8 +190,8 @@ function separate(people, min, xk, yk) {
         b[yk] += dy * shift;
       }
     }
-    // A pass that finds no overlap means the rest would find none either.
-    if (!touched) return;
+
+    if (!moved) return;
   }
 }
 
@@ -231,14 +212,238 @@ export function createActors(options = {}) {
     }));
   /** @type {Map<string, any>} */
   const actors = new Map();
+  /** The same actors as an array, which is what the simulation holds. */
+  let people = [];
   /** @type {any[]} */
   let beams = [];
   /** @type {Array<{ x: number, y: number, radius: number }>} */
   let blobs = [];
+  const grid = createGrid(160);
+
+  /** Every bubble near a point: the ones on screen, plus this actor's own. */
+  function bubblesNear(x, y, reach, visit) {
+    grid.near(x, y, reach, visit);
+  }
+
+  /** Where an actor is pulled, and how hard. */
+  function aimOf(actor) {
+    if (!actor.aims?.size) return null;
+    let wx = 0;
+    let wy = 0;
+    let total = 0;
+    let pending = 0;
+    for (const entry of actor.aims.values()) {
+      const weight = entry.weight * (entry.pending ? config.aimPending : 1);
+      wx += entry.node.x * weight;
+      wy += entry.node.y * weight;
+      total += weight;
+      if (entry.pending) pending += weight;
+    }
+    if (total <= 0) return null;
+    const share = pending / total;
+    return {
+      x: wx / total,
+      y: wy / total,
+      pull: config.aim * (1 + (config.aimPending - 1) * share),
+    };
+  }
+
+  /** Pull each actor towards its work. */
+  function forceAim() {
+    /** @type {any[]} */
+    let nodes = [];
+    const force = () => {
+      for (const actor of nodes) {
+        const aim = aimOf(actor);
+        if (!aim) continue;
+        actor.vx += (aim.x - actor.x) * aim.pull;
+        actor.vy += (aim.y - actor.y) * aim.pull;
+      }
+    };
+    force.initialize = (next) => {
+      nodes = next;
+    };
+    return force;
+  }
+
+  /**
+   * Push each actor out of the repo blobs and off the bubbles.
+   *
+   * The pull above aims at the middle of the work, which is inside the
+   * repo; without this an avatar sits on top of the files it is firing at.
+   */
+  function forceClear() {
+    /** @type {any[]} */
+    let nodes = [];
+    const away = (actor, x, y, need, strength) => {
+      const dx = actor.x - x;
+      const dy = actor.y - y;
+      const distance = Math.hypot(dx, dy);
+      if (distance >= need) return;
+      if (distance < 1e-6) {
+        actor.vx += need * strength;
+        return;
+      }
+      const shove = ((need - distance) / distance) * strength;
+      actor.vx += dx * shove;
+      actor.vy += dy * shove;
+    };
+
+    const force = () => {
+      for (const actor of nodes) {
+        for (const blob of blobs) {
+          away(actor, blob.x, blob.y, blob.radius + config.blobClearance, config.blobSeparation);
+        }
+        const reach = AVATAR_FOOTPRINT + BUBBLE_GAP + BUBBLE_REACH;
+        bubblesNear(actor.x, actor.y, reach, (bubble) => {
+          away(actor, bubble.x, bubble.y, (bubble.r ?? 0) + reach, config.separation);
+        });
+      }
+    };
+    force.initialize = (next) => {
+      nodes = next;
+    };
+    return force;
+  }
+
+  /**
+   * Push each pair of actors apart, hard when they are nearly touching and
+   * barely at all when they are not.
+   */
+  function forceSpace() {
+    /** @type {any[]} */
+    let nodes = [];
+    const force = () => {
+      const range = config.actorClearance;
+      const floor = config.minSeparation;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i];
+          const b = nodes[j];
+          let dx = b.x - a.x;
+          let dy = b.y - a.y;
+          let distance = Math.hypot(dx, dy);
+          if (distance >= range) continue;
+          if (distance < 1e-6) {
+            dx = 1;
+            dy = 0;
+            distance = 1e-6;
+          }
+          // 0 at the far edge of the range, 1 where they would touch.
+          const closeness = Math.min(1, (range - distance) / Math.max(1, range - floor));
+          const shove =
+            Math.min(
+              config.crowdCap,
+              config.crowding * closeness ** config.crowdFalloff * (range - distance),
+            ) /
+            distance /
+            2;
+          a.vx -= dx * shove;
+          a.vy -= dy * shove;
+          b.vx += dx * shove;
+          b.vy += dy * shove;
+        }
+      }
+    };
+    force.initialize = (next) => {
+      nodes = next;
+    };
+    return force;
+  }
+
+  /**
+   * Put to rest anyone who has all but stopped.
+   *
+   * Runs after every other force and before the step is integrated, so an
+   * actor whose forces have come into balance stays exactly where it is
+   * instead of creeping a fraction of a pixel a frame forever.
+   */
+  function forceSleep() {
+    /** @type {any[]} */
+    let nodes = [];
+    const force = () => {
+      for (const actor of nodes) {
+        if (Math.hypot(actor.vx, actor.vy) >= config.sleepSpeed) continue;
+        actor.vx = 0;
+        actor.vy = 0;
+      }
+    };
+    force.initialize = (next) => {
+      nodes = next;
+    };
+    return force;
+  }
+
+  const sim = forceSimulation(people)
+    .force('aim', forceAim())
+    .force('clear', forceClear())
+    .force('space', forceSpace())
+    .force(
+      'touch',
+      forceCollide(config.minSeparation / 2)
+        .strength(1)
+        .iterations(3),
+    )
+    .force('sleep', forceSleep())
+    .velocityDecay(config.damping)
+    .alpha(1)
+    .alphaTarget(1)
+    .alphaDecay(0);
+  // d3 runs its own animation frame timer, and this simulation is stepped
+  // by the frame loop at a fixed rate. Left running, both would step it.
+  sim.stop();
+
+  /** What the actors have to stay clear of: their own work and the graph. */
+  function rebuildGrid() {
+    /** @type {Map<any, any>} */
+    const bubbles = new Map();
+    for (const bubble of bodies) bubbles.set(bubble, bubble);
+    for (const actor of people) {
+      for (const entry of actor.aims?.values() ?? []) bubbles.set(entry.node, entry.node);
+    }
+    grid.build(bubbles.values());
+  }
+
+  /** @type {any[]} */
+  let bodies = [];
+
+  function members() {
+    people = [...actors.values()];
+    sim.nodes(people);
+  }
+
+  const world = { bubblesNear };
+
+  function stepOnce() {
+    for (const actor of people) {
+      actor.px = actor.x;
+      actor.py = actor.y;
+      for (const [path, entry] of actor.aims ?? []) {
+        entry.weight *= config.aimDecay;
+        // The last one is kept however stale. Dropping it leaves nobody
+        // holding the actor anywhere, and it drifts off whatever pushed it
+        // last instead of standing by the work it was doing.
+        if (entry.weight < config.aimFloor && actor.aims.size > 1) actor.aims.delete(path);
+      }
+    }
+    rebuildGrid();
+    sim.tick();
+    project(people, world, config.minSeparation, 'x', 'y');
+    // Where they are drawn, until the frame loop says how far into the next
+    // step it is. Without this a caller that never interpolates draws
+    // everyone wherever they first appeared.
+    for (const actor of people) {
+      actor.sx = actor.x;
+      actor.sy = actor.y;
+    }
+  }
 
   return {
-    list: () => [...actors.values()],
+    list: () => people,
     beams: () => beams,
+    get minSeparation() {
+      return config.minSeparation;
+    },
 
     /** @param {(commit: any) => any} next */
     setResolver(next) {
@@ -252,14 +457,15 @@ export function createActors(options = {}) {
      *   standoff?: number,
      *   avatarLinger?: number,
      *   avatarSpacing?: number,
-     *   avatarSmoothing?: number,
+     *   avatarDamping?: number,
      * }} next
      */
     setTuning(next) {
       if (Number.isFinite(next.standoff)) config.blobClearance = Number(next.standoff);
       if (Number.isFinite(next.avatarSpacing)) config.actorClearance = Number(next.avatarSpacing);
-      if (Number.isFinite(next.avatarSmoothing)) {
-        config.smoothingMs = Math.max(0, Number(next.avatarSmoothing));
+      if (Number.isFinite(next.avatarDamping)) {
+        config.damping = Math.min(0.95, Math.max(0.05, Number(next.avatarDamping)));
+        sim.velocityDecay(config.damping);
       }
       if (Number.isFinite(next.avatarLinger)) {
         config.idleMs = Math.max(500, Number(next.avatarLinger) * 1000);
@@ -276,9 +482,19 @@ export function createActors(options = {}) {
       blobs = [...centers];
     },
 
+    /**
+     * Every bubble on screen, which is what nobody may be drawn on top of.
+     *
+     * @param {Iterable<{ x: number, y: number, r?: number }>} next
+     */
+    setBodies(next) {
+      bodies = [...next];
+    },
+
     clear() {
       actors.clear();
       beams = [];
+      members();
     },
 
     /**
@@ -317,24 +533,34 @@ export function createActors(options = {}) {
           hue: person.hue ?? tileHue(key),
           x: entryX,
           y: entryY,
+          px: entryX,
+          py: entryY,
           sx: entryX,
           sy: entryY,
+          vx: 0,
+          vy: 0,
           alpha: 1,
           commits: 0,
           idleFor: 0,
+          aims: new Map(),
         };
         actors.set(key, actor);
+        members();
       }
 
       actor.name = person.name;
       actor.avatar = person.avatar;
-      actor.target = actor.target
-        ? {
-            x: actor.target.x + (centre.x - actor.target.x) * config.targetBlend,
-            y: actor.target.y + (centre.y - actor.target.y) * config.targetBlend,
-          }
-        : centre;
-      actor.nodes = targets.map((target) => target.node);
+      for (const target of targets) {
+        actor.aims.set(target.path, { node: target.node, weight: 1, pending: true });
+      }
+      // Only so many at once: a team drawn as one avatar touches everything,
+      // and being pulled at every file it ever saw leaves it in the middle.
+      if (actor.aims.size > config.maxAims) {
+        const ranked = [...actor.aims.entries()].sort((a, b) => a[1].weight - b[1].weight);
+        for (const [path] of ranked.slice(0, actor.aims.size - config.maxAims)) {
+          actor.aims.delete(path);
+        }
+      }
       actor.idleFor = 0;
       actor.alpha = 1;
       actor.commits += 1;
@@ -356,97 +582,39 @@ export function createActors(options = {}) {
         const ranked = [...actors.values()].sort((a, b) => b.commits - a.commits);
         for (const spare of ranked.slice(config.maxActors)) actors.delete(spare.key);
         beams = beams.filter((beam) => actors.has(beam.key));
+        members();
       }
     },
 
     /**
-     * Advance everything by `dt` milliseconds.
+     * Advance the people.
      *
-     * @param {number} dt
-     * @returns {string[]} the files any beam reached on this frame
+     * @param {number} dt milliseconds since the last frame, which is what
+     *   the beams and the fading run on
+     * @param {number} [steps] simulation steps to run, from the step clock
+     * @returns {string[]} the files any beam reached
      */
-    tick(dt) {
-      const seconds = dt / 1000;
+    tick(dt, steps = 1) {
+      for (let step = 0; step < steps; step++) stepOnce();
 
-      const everyone = [...actors.values()];
-
-      for (const actor of everyone) {
-        // Nothing to move towards and nothing pushing: they have arrived.
-        if (actor.idleFor > config.restAfterMs) {
-          actor.idleFor += dt;
-          const hold = config.idleMs * config.holdFraction;
-          const fading = Math.max(0, actor.idleFor - hold) / Math.max(1, config.idleMs - hold);
-          actor.alpha = Math.max(0, 1 - fading);
-          continue;
-        }
-
-        if (actor.target) {
-          const pull = Math.min(1, config.spring * seconds);
-          actor.x += (actor.target.x - actor.x) * pull;
-          actor.y += (actor.target.y - actor.y) * pull;
-        }
-
-        // Outside the repo it is working on. The target is in the middle of
-        // the files it touched, which is inside the blob, so without this
-        // the avatar sits on top of the bubbles it is firing at.
-        for (const blob of blobs) {
-          push(actor, blob, blob.radius + config.blobClearance, config.blobSeparation);
-        }
-
-        // And off the bubbles themselves, for a repo drawn at file level
-        // where there is no blob worth the name.
-        for (const target of actor.nodes ?? []) {
-          push(actor, target, config.nodeClearance + (target.r ?? 0), config.separation);
-        }
-
+      for (const actor of people) {
         actor.idleFor += dt;
-        // Full strength for a while, then a fade. Dimming from the instant of
-        // a commit makes someone who is actively working look like they are
-        // leaving.
+        // Full strength for a while, then a fade. Dimming from the instant
+        // of a commit makes someone who is actively working look like they
+        // are leaving.
         const hold = config.idleMs * config.holdFraction;
         const fading = Math.max(0, actor.idleFor - hold) / Math.max(1, config.idleMs - hold);
         actor.alpha = Math.max(0, 1 - fading);
       }
 
-      // And off each other. Soft on purpose: people working on the same files
-      // should still read as a group. Only those still in motion: pushing a
-      // pair that has come to rest starts them moving again.
-      const moving = everyone.filter((actor) => actor.idleFor <= config.restAfterMs);
-      const how = {
-        range: config.actorClearance,
-        floor: config.minSeparation,
-        strength: config.crowding,
-        falloff: config.crowdFalloff,
-        cap: config.crowdCap,
-      };
-      for (const a of moving) {
-        for (const b of everyone) {
-          if (a === b) continue;
-          repel(a, b, how);
+      let gone = false;
+      for (const [key, actor] of actors) {
+        if (actor.idleFor >= config.idleMs) {
+          actors.delete(key);
+          gone = true;
         }
       }
-
-      // What is drawn follows where the forces put them, a fixed fraction
-      // of the remaining distance each frame. The fraction comes from the
-      // frame time, so the motion is the same whatever the frame rate.
-      const follow = config.smoothingMs > 0 ? 1 - Math.exp(-dt / config.smoothingMs) : 1;
-      for (const actor of everyone) {
-        const dx = actor.x - actor.sx;
-        const dy = actor.y - actor.sy;
-        if (Math.hypot(dx, dy) < config.stillness) continue;
-        actor.sx += dx * follow;
-        actor.sy += dy * follow;
-      }
-
-      // Never overlapping, whatever the forces and the filter worked out
-      // between them. Both positions: the raw one so the next frame starts
-      // from somewhere legal, the drawn one because that is what is seen.
-      separate(everyone, config.minSeparation, 'x', 'y');
-      separate(everyone, config.minSeparation, 'sx', 'sy');
-
-      for (const [key, actor] of actors) {
-        if (actor.idleFor >= config.idleMs) actors.delete(key);
-      }
+      if (gone) members();
 
       /** @type {string[]} */
       const landed = [];
@@ -454,12 +622,38 @@ export function createActors(options = {}) {
       for (const beam of beams) {
         beam.age += dt;
         beam.progress = Math.min(1, beam.age / config.beamMs);
-        if (beam.progress >= 1) landed.push(beam.path);
-        else if (actors.has(beam.key)) still.push(beam);
+        if (beam.progress >= 1) {
+          landed.push(beam.path);
+          const aim = beam.from.aims?.get(beam.path);
+          if (aim) aim.pending = false;
+        } else if (actors.has(beam.key)) {
+          still.push(beam);
+        }
       }
       beams = still;
 
       return landed;
+    },
+
+    /**
+     * Work out where everyone is drawn, part of the way between the last
+     * simulation step and the one before it.
+     *
+     * The simulation runs at its own fixed rate and the screen refreshes at
+     * another, so without this the people step along in time with the
+     * simulation instead of moving smoothly.
+     *
+     * @param {number} alpha how far past the last step, 0 to 1
+     */
+    interpolate(alpha) {
+      const t = Math.min(1, Math.max(0, alpha));
+      for (const actor of people) {
+        actor.sx = actor.px + (actor.x - actor.px) * t;
+        actor.sy = actor.py + (actor.y - actor.py) * t;
+      }
+      // Two legal positions can interpolate to an illegal one, so what is
+      // drawn is held to the same rules as what was simulated.
+      project(people, world, config.minSeparation, 'sx', 'sy');
     },
   };
 }

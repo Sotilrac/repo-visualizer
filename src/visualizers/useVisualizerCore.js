@@ -22,6 +22,7 @@ import { createLayout } from '../engine/layout.js';
 import { createLodTransitions } from '../engine/lodTransitions.js';
 import { drawRecordingOverlay } from '../engine/recordingOverlay.js';
 import { buildRepoClock } from '../engine/repoClock.js';
+import { createStepClock } from '../engine/stepClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
 import { cameraSpeed, DEFAULT_TUNING, renderScale } from '../engine/tuning.js';
 import { isNodeVisible, nodeOpacity } from '../engine/visibility.js';
@@ -218,6 +219,9 @@ export function useVisualizerCore({
     canvas.addEventListener('pointercancel', onPointerUpCursor);
 
     let raf;
+    // The simulation runs at its own rate whatever the monitor does, so the
+    // graph settles in the same place and at the same speed on any machine.
+    const clock = createStepClock();
     let lastTime = performance.now();
     function frameLoop(now) {
       const dt = now - lastTime;
@@ -285,7 +289,10 @@ export function useVisualizerCore({
       if (levelKey(levels) !== hierarchyRef.current.key) rebuildRef.current?.();
       layout.setMotion((repo) => transitions.stateFor(repo));
 
-      if (!hasFocus) layout.tick();
+      const steps = clock.advance(dt);
+      if (!hasFocus) {
+        for (let step = 0; step < steps; step++) layout.tick();
+      }
 
       const ripples = ripplesRef.current;
       const nowMs = now;
@@ -331,8 +338,13 @@ export function useVisualizerCore({
 
       // A beam triggers its file's ripple when it lands, so the two effects
       // stay in step rather than both firing on the commit.
-      if (p.showActors) actorsRef.current.setClusters(layout.getClusterCenters().values());
-      const landed = p.showActors ? actorsRef.current.tick(dt) : [];
+      if (p.showActors) {
+        actorsRef.current.setClusters(layout.getClusterCenters().values());
+        // Everything on screen, which is what nobody may be drawn on top of.
+        actorsRef.current.setBodies(nodes);
+      }
+      const landed = p.showActors ? actorsRef.current.tick(dt, steps) : [];
+      if (p.showActors) actorsRef.current.interpolate(clock.alpha());
       for (const path of landed) {
         ripplesRef.current.push({
           path,

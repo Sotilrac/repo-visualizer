@@ -234,7 +234,7 @@ describe('keeping clear of the bubbles', () => {
   };
 
   it('hovers near its file rather than on top of it', () => {
-    const actors = createActors({ nodeClearance: 30, idleMs: 60000 });
+    const actors = createActors({ idleMs: 60000 });
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
 
     settle(actors);
@@ -244,7 +244,7 @@ describe('keeping clear of the bubbles', () => {
   });
 
   it('stays close, rather than being pushed away', () => {
-    const actors = createActors({ nodeClearance: 30, idleMs: 60000 });
+    const actors = createActors({ idleMs: 60000 });
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
 
     settle(actors);
@@ -255,7 +255,7 @@ describe('keeping clear of the bubbles', () => {
 
   it('allows for a bigger bubble', () => {
     const big = { path: 'a.js', x: 0, y: 0, r: 40 };
-    const actors = createActors({ nodeClearance: 30, idleMs: 60000 });
+    const actors = createActors({ idleMs: 60000 });
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': big }, 0);
 
     settle(actors);
@@ -404,63 +404,48 @@ describe('avatars in a crowd', () => {
   });
 });
 
-describe('the filter on the drawn position', () => {
-  /**
-   * One actor with nothing pulling on it, so what moves is the filter and
-   * only the filter.
-   */
-  function jumper(options = {}) {
-    const actors = createActors({ idleMs: 60000, smoothingMs: 170, ...options });
+describe('where an actor is drawn', () => {
+  /** One actor with nothing left pulling on it, so only stepping moves it. */
+  function jumper() {
+    const actors = createActors({ idleMs: 60000 });
     actors.onCommit(commit('Ada', 'ada@acme.com', ['a.js']), { 'a.js': node('a.js', 0, 0) }, 0);
     for (let i = 0; i < 200; i++) actors.tick(16);
-    const [actor] = actors.list();
-    actor.target = null;
-    actor.nodes = [];
+    actors.list()[0].aims.clear();
     return actors;
   }
 
-  it('lags the forces instead of snapping to them', () => {
+  it('is where the last step left it when the frame lands on a step', () => {
     const actors = jumper();
     const [actor] = actors.list();
-    actor.x += 400;
     actors.tick(16);
+    actors.interpolate(1);
 
-    expect(actor.sx - (actor.x - 400)).toBeLessThan(80);
+    expect(actor.sx).toBeCloseTo(actor.x, 6);
   });
 
-  it('catches up given a few frames', () => {
+  it('is part of the way along between one step and the next', () => {
     const actors = jumper();
     const [actor] = actors.list();
-    const from = actor.sx;
-    actor.x = from + 400;
-    for (let i = 0; i < 120; i++) actors.tick(16);
-
-    expect(Math.abs(actor.sx - actor.x)).toBeLessThan(2);
-  });
-
-  it('moves the same distance whatever the frame rate', () => {
-    const slow = jumper();
-    const fast = jumper();
-    const [a] = slow.list();
-    const [b] = fast.list();
-    a.x += 400;
-    b.x += 400;
-
-    slow.tick(48);
-    fast.tick(16);
-    fast.tick(16);
-    fast.tick(16);
-
-    expect(Math.abs(a.sx - b.sx)).toBeLessThan(2);
-  });
-
-  it('follows exactly when the filter is turned off', () => {
-    const actors = jumper({ smoothingMs: 0 });
-    const [actor] = actors.list();
-    actor.x += 400;
+    actor.x = 0;
+    actor.y = 0;
+    actor.vx = 0;
+    actor.vy = 0;
     actors.tick(16);
+    // As if that step had carried them a hundred to the right.
+    actor.x = 100;
+    actors.interpolate(0.25);
 
-    expect(actor.sx).toBe(actor.x);
+    expect(actor.sx).toBeCloseTo(25, 6);
+  });
+
+  it('never runs ahead of the step it is heading for', () => {
+    const actors = jumper();
+    const [actor] = actors.list();
+    actors.tick(16);
+    actor.x = 100;
+    actors.interpolate(2);
+
+    expect(actor.sx).toBeCloseTo(100, 6);
   });
 });
 
@@ -643,10 +628,8 @@ describe('how hard they push', () => {
     a.y = 0;
     b.x = apart;
     b.y = 0;
-    a.target = null;
-    b.target = null;
-    a.nodes = [];
-    b.nodes = [];
+    a.aims.clear();
+    b.aims.clear();
     const was = b.x - a.x;
     actors.tick(16);
     return b.x - a.x - was;

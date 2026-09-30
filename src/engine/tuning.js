@@ -140,14 +140,14 @@ export const KNOBS = {
     max: 260,
     step: 2,
   },
-  avatarSmoothing: {
-    label: 'Avatar smoothing',
-    hint: 'How much the drawn position lags the forces, in milliseconds',
+  avatarDamping: {
+    label: 'Avatar damping',
+    hint: 'How much speed a person loses each step. Higher settles sooner, lower drifts further',
     group: 'People',
-    value: 420,
-    min: 0,
-    max: 600,
-    step: 10,
+    value: 0.45,
+    min: 0.05,
+    max: 0.9,
+    step: 0.01,
   },
   standoff: {
     label: 'Avatar standoff',

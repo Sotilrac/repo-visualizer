@@ -130,6 +130,11 @@ export function createLayout({ width, height, tuning = null }) {
     .alphaDecay(0.022)
     .alphaTarget(0)
     .velocityDecay(0.38);
+  // d3 steps a simulation from its own animation frame timer as soon as it
+  // is made. The frame loop steps this one at a fixed rate instead, so with
+  // the timer left running it would be stepped twice a frame, at whatever
+  // rate the monitor happens to refresh at.
+  sim.stop();
 
   function scaleForSize() {
     const n = nodes.length;
@@ -146,7 +151,7 @@ export function createLayout({ width, height, tuning = null }) {
     width = w;
     height = h;
     rebuildClusterCenters(true);
-    sim.alpha(0.22).restart();
+    sim.alpha(0.22);
   }
 
   function rebuildClusterCenters(force = false) {
@@ -355,7 +360,7 @@ export function createLayout({ width, height, tuning = null }) {
     // simulation will not carry them to the new one: they sit wherever they
     // were until something else warms it up.
     if (replaced) {
-      sim.alpha(Math.max(sim.alpha(), 0.3)).restart();
+      sim.alpha(Math.max(sim.alpha(), 0.3));
       lastVisibleCount = visibleCount;
       lastLinkCount = linkCount;
       return;
@@ -377,7 +382,7 @@ export function createLayout({ width, height, tuning = null }) {
       heat = large ? 0.1 : 0.18;
     }
 
-    sim.alpha(Math.max(sim.alpha(), heat)).restart();
+    sim.alpha(Math.max(sim.alpha(), heat));
   }
 
   /**
@@ -449,7 +454,7 @@ export function createLayout({ width, height, tuning = null }) {
       node._targetR = bodyRadius(node, 0, tune);
     }
     rebuildClusterCenters(true);
-    sim.alpha(Math.max(sim.alpha(), 0.35)).restart();
+    sim.alpha(Math.max(sim.alpha(), 0.35));
   }
 
   function getNode(path) {
@@ -474,7 +479,7 @@ export function createLayout({ width, height, tuning = null }) {
 
     if (sim.alpha() < 0.0008) {
       if ([...clusterCenters.values()].some((center) => center.target)) {
-        sim.alpha(0.05).restart();
+        sim.alpha(0.05);
       }
       sim.stop();
       for (const n of nodes) {
