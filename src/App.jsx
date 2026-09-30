@@ -123,6 +123,13 @@ export default function App() {
   const excludePatterns = useMemo(() => dataset?.exclude ?? [], [dataset?.exclude]);
 
   const currentCommit = timeline.index >= 0 ? timeline.commits[timeline.index] : null;
+  // A commit by someone the config hides has nobody on the graph firing at
+  // it, so the card holds the last one that did rather than naming a person
+  // who is deliberately not being shown.
+  const shownCommitRef = useRef(null);
+  const currentAuthor = currentCommit ? resolveAuthor(currentCommit) : null;
+  if (currentAuthor) shownCommitRef.current = currentCommit;
+  const shownCommit = currentAuthor ? currentCommit : shownCommitRef.current;
   const repoAuthor = useMemo(() => primaryRepoAuthor(timeline.commits), [timeline.commits]);
   const recordingOverlay = useMemo(() => {
     if (!recording) return null;
@@ -509,8 +516,8 @@ export default function App() {
         }}
       />
       <CommitCard
-        author={currentCommit ? resolveAuthor(currentCommit) : null}
-        commit={currentCommit}
+        author={shownCommit ? resolveAuthor(shownCommit) : null}
+        commit={shownCommit}
         commitIndex={timeline.index}
         commitCount={timeline.commits.length}
         collapsible={!compactLayout}

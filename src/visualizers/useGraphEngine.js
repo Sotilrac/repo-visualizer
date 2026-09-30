@@ -28,6 +28,7 @@ import { actorsOn } from '../engine/isolate.js';
 import { createLayout } from '../engine/layout.js';
 import { createLodTransitions } from '../engine/lodTransitions.js';
 import { buildRepoClock } from '../engine/repoClock.js';
+import { lightAt, restOf } from '../engine/restfulness.js';
 import { createStepClock } from '../engine/stepClock.js';
 import { syncBodies } from '../engine/syncBodies.js';
 import { cameraSpeed, DEFAULT_TUNING, folderDepthOf } from '../engine/tuning.js';
@@ -369,8 +370,13 @@ export function useGraphEngine({
         selectedCluster: p.selectedCluster,
         // A body mid-collapse is faded by the transition on top of the
         // ordinary fade-in.
+        // How far each bubble has settled, which the renderer takes the
+        // colour out of as well as the light.
+        restFor: (n) => restOf(n.lastTouchedAt, idx),
         nodeOpacity: (n) => {
-          const base = nodeOpacity(n, idx) * (n.alpha ?? 1);
+          // A body mid-collapse is faded by the transition, and one nobody
+          // has touched in a long time settles towards a floor.
+          const base = nodeOpacity(n, idx) * (n.alpha ?? 1) * lightAt(restOf(n.lastTouchedAt, idx));
           if (!dimOthers) return base;
           // At anything but file level the drawn body is a folder or a
           // repo, and the focus set is a set of file paths, so the body

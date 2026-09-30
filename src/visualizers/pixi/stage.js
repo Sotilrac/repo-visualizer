@@ -18,6 +18,7 @@ import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } fr
 import { AVATAR_FOOTPRINT, AVATAR_RADIUS } from '../../engine/actors.js';
 import { budgetFor, shortened, showsCount } from '../../engine/labelBudget.js';
 import { drawRecordingOverlay } from '../../engine/recordingOverlay.js';
+import { settled } from '../../engine/restfulness.js';
 import { FONT_MONO } from '../../shared/fonts.js';
 import { blurForZoom, createBloom } from './bloom.js';
 import { onScreen, visible } from './culling.js';
@@ -365,7 +366,11 @@ function drawLinks(g, frame, px, py) {
     // interesting one, but there is no room to shout it: drawn at full
     // strength across the width of the graph it buries everything local.
     const fade = link.crossRepo ? style.link.crossFade : 1;
-    const focus = linkAlpha(a.path, b.path) * fade;
+    // No more present than the quieter of the two ends: that is what fades
+    // a link out as its cluster collapses into one bubble, and what settles
+    // it afterwards alongside what it connects.
+    const ends = Math.min(frame.nodeOpacity(a), frame.nodeOpacity(b));
+    const focus = linkAlpha(a.path, b.path) * fade * ends;
     const alpha = focus * style.link.alpha;
     if (alpha < 0.02) continue;
 
@@ -447,7 +452,7 @@ function dot(g, x, y, radius, color, alpha) {
 }
 
 function drawBodies(g, frame, px, py, scale) {
-  const { style, palette, styleName, nodeOpacity, cam, w, h } = frame;
+  const { style, palette, styleName, nodeOpacity, restFor, cam, w, h } = frame;
   g.clear();
 
   for (const n of visible(frame.nodes, cam, w, h)) {
@@ -461,7 +466,10 @@ function drawBodies(g, frame, px, py, scale) {
     // The cluster's own colour. `core` is nearly white in the galaxy
     // palette, where it was a pinpoint inside a coloured corona; what
     // carries the identity now the glow is a post-process is the swatch.
-    const tint = (color.swatch ?? color.core).value;
+    // A bubble nobody has touched in a long time keeps its hue and loses
+    // some of its colour, so it still says which repo it is.
+    const rest = restFor(n);
+    const tint = settled((color.swatch ?? color.core).value, rest);
 
     if (container) {
       // A repo or a folder is not one thing, and a disc that size reads as
