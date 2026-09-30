@@ -35,7 +35,7 @@ function waitMs(ms) {
 }
 
 export default function App() {
-  const { dataset, source, loading } = useDataset();
+  const { dataset, loading } = useDataset();
   const fps = useFrameRate();
   const timeline = useTimeline(dataset);
   const [style, setStyle] = useState('galaxy');

@@ -1276,10 +1276,6 @@ a.repo-list-item:hover {
   flex: none;
 }
 
-.export-controls .btn {
-  white-space: nowrap;
-}
-
 .timeline {
   position: relative;
   height: 36px;
