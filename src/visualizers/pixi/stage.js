@@ -21,6 +21,7 @@ import { FONT_MONO } from '../../shared/fonts.js';
 import { blurForZoom, createBloom } from './bloom.js';
 import { onScreen, visible } from './culling.js';
 import { createFaces } from './faces.js';
+import { repoLabelSpot } from './labels.js';
 import { clusterRgb } from './palette.js';
 
 /** Below this many screen pixels a label is unreadable, so it is left out. */
@@ -613,19 +614,23 @@ function drawLabels(labelFor, pool, frame, px, py, scale) {
   for (const label of pool.values()) label.visible = false;
   if (!showLabels) return;
 
-  // One name per repo, out beyond the bubbles it holds, and only for the
-  // repos that have something on screen to name.
-  const shown = new Set();
-  for (const n of nodes) shown.add(n.dir);
-  for (const [dir, center] of clusters) {
-    if (!shown.has(dir)) continue;
-    const reach = (center.radius ?? 80) + 26 / scale;
-    const angle = center.angle ?? -Math.PI / 2;
-    const x = px(center.x + Math.cos(angle) * reach);
-    const y = py(center.y + Math.sin(angle) * reach);
-    if (x < -120 || x > frame.w + 120 || y < -40 || y > frame.h + 40) continue;
+  // One name per repo, and only for the repos with something on screen to
+  // name. Where it goes depends on whether the repo is one bubble or a
+  // cluster of them, which `repoLabelSpot` decides.
+  /** @type {Map<string, Array<{ x: number, y: number, r: number }>>} */
+  const byRepo = new Map();
+  for (const n of nodes) {
+    const spot = { x: px(n.x), y: py(n.y), r: (n.r ?? 6) * scale };
+    const seen = byRepo.get(n.dir);
+    if (seen) seen.push(spot);
+    else byRepo.set(n.dir, [spot]);
+  }
+  for (const [dir, members] of byRepo) {
+    const at = repoLabelSpot(members, clusters.get(dir)?.angle ?? -Math.PI / 2);
+    if (!at) continue;
+    if (at.x < -120 || at.x > frame.w + 120 || at.y < -40 || at.y > frame.h + 40) continue;
     const label = labelFor(`repo:${dir}`, dir, style.label);
-    label.position.set(x, y);
+    label.position.set(at.x, at.y);
     label.alpha = style.label.alpha;
   }
 
