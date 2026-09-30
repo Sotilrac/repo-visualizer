@@ -7,6 +7,7 @@
  */
 
 import { isClusterExcluded, isPathExcluded } from './excludes.js';
+import { familiesOf, familyHues } from './repoFamilies.js';
 import { isNodeVisible } from './visibility.js';
 
 export function emptyState() {
@@ -494,26 +495,20 @@ function buildDistinctHues(n) {
 }
 
 /**
- * Assign one unique color slot per cluster. Uses the full-repo cluster list so
- * hues stay fixed during timeline playback.
+ * A colour for every cluster, by the family its name puts it in.
+ *
+ * Built from the full repo list rather than from what is on screen, so a
+ * colour does not change under you as the timeline plays.
  */
 export function clusterPalette(state, allClusters = null) {
   const source = allClusters?.size ? allClusters : state.clusters;
   const universe = [...source].sort();
-  const palette = new Map();
-  const n = universe.length;
-  if (n === 0) return palette;
+  if (universe.length === 0) return new Map();
 
-  const hues = buildDistinctHues(n);
-
-  for (let i = 0; i < n; i++) {
-    palette.set(universe[i], {
-      hue: hues[i],
-      variant: i % 5,
-    });
-  }
-
-  return palette;
+  // The distinct hues go to the families, not to the repos: `flexsea-core`
+  // and `flexsea-dephy` share one and are told apart within it.
+  const hues = buildDistinctHues(familiesOf(universe).size);
+  return familyHues(universe, (_family, index) => hues[index]);
 }
 
 /**

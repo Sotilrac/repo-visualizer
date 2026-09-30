@@ -15,6 +15,7 @@ import { useFrameRate } from './engine/useFrameRate.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
 import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
 import { useTimeline } from './engine/useTimeline.js';
+import { tabTitle } from './shared/pageTitle.js';
 import PixiVisualizer from './visualizers/PixiVisualizer.jsx';
 
 /** Breathing room between the layout card and the topmost year marker. */
@@ -77,6 +78,10 @@ export default function App() {
   const cameraApiRef = useRef(null);
   const recordStopRef = useRef(false);
   timelineRef.current = timeline;
+
+  useEffect(() => {
+    document.title = tabTitle(dataset?.title);
+  }, [dataset?.title]);
 
   // The layout card is bottom aligned with the scrubber, and the control
   // bar is sized by what is in it, so where the scrubber starts is measured

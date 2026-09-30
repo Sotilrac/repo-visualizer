@@ -192,12 +192,6 @@ button:focus-visible {
   line-height: 1;
 }
 
-.brand-tagline {
-  font-size: 13px;
-  color: var(--fg-dim);
-  white-space: nowrap;
-}
-
 .brand-title-row {
   display: flex;
   align-items: center;
