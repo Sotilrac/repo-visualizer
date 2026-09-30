@@ -23,9 +23,6 @@ import { onScreen, visible } from './culling.js';
 import { createFaces } from './faces.js';
 import { clusterRgb } from './palette.js';
 
-/** How far a bloom pass is allowed to blur, relative to the screen. */
-const BLOOM_RESOLUTION = 0.5;
-
 /** Below this many screen pixels a label is unreadable, so it is left out. */
 const LABEL_MIN_RADIUS = 9;
 
@@ -108,7 +105,9 @@ export async function createStage(host, { background }) {
 
   /** Turn the bloom on, off, or on to different settings. */
   function setBloom(spec) {
-    const key = spec ? `${spec.threshold}|${spec.scale}|${spec.blur}|${spec.quality}` : '';
+    const key = spec
+      ? `${spec.threshold}|${spec.scale}|${spec.blur}|${spec.quality}|${spec.step}`
+      : '';
     if (key === bloomKey) return;
     bloomKey = key;
     if (!spec) {
@@ -124,10 +123,17 @@ export async function createStage(host, { background }) {
       brightness: 1,
       blur: spec.blur,
       quality: spec.quality,
+      // The blur samples in strides instead of every pixel, which is what
+      // makes it cheap. Dropping the filter's resolution instead would be
+      // cheaper still, but the layer is drawn into that same target: every
+      // bubble and every line would be drawn at half size and blown back
+      // up, which is what a bloom pass must not cost.
+      pixelSize: spec.step,
     });
-    // Half resolution on the blur, which is where a bloom spends its time
-    // and where nobody can see the difference.
-    bloom.resolution = BLOOM_RESOLUTION;
+    // A filter renders its target itself, and its own antialiasing setting
+    // is off whatever the renderer was asked for. Everything that glows
+    // comes out stepped without this.
+    bloom.antialias = 'inherit';
     lit.filters = [bloom];
   }
 
@@ -346,7 +352,7 @@ function drawLinks(g, frame, px, py) {
   for (const link of frame.highlightLinks) {
     const color = clusterRgb(palette, link.source.dir, frame.styleName);
     g.moveTo(px(link.source.x), py(link.source.y)).lineTo(px(link.target.x), py(link.target.y));
-    g.stroke({ width: 2.4, color: (color.swatch ?? color.core).value, alpha: 0.95 });
+    g.stroke({ width: 3, color: (color.swatch ?? color.core).value, alpha: 0.95 });
   }
 }
 
@@ -389,7 +395,7 @@ function drawBodies(g, frame, px, py, scale) {
   const chosen = frame.nodeByPath.get(frame.selectedPath);
   if (chosen) {
     g.circle(px(chosen.x), py(chosen.y), (chosen.r ?? 6) * scale + 7);
-    g.stroke({ width: 2, color: 0xffffff, alpha: 0.92 });
+    g.stroke({ width: 2.6, color: 0xffffff, alpha: 0.92 });
   }
 }
 
@@ -444,9 +450,9 @@ function drawBeams(g, frame, px, py) {
     const color = beamColor(from.hue ?? 200);
 
     g.moveTo(fx, fy).lineTo(headX, headY);
-    g.stroke({ width: 1, color, alpha: 0.12 * fade });
+    g.stroke({ width: 1.4, color, alpha: 0.12 * fade });
     g.moveTo(tailX, tailY).lineTo(headX, headY);
-    g.stroke({ width: 2.2, color, alpha: 0.85 * fade, cap: 'round' });
+    g.stroke({ width: 3, color, alpha: 0.85 * fade, cap: 'round' });
   }
 }
 
