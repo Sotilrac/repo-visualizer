@@ -48,11 +48,12 @@ function interner(keyOf = (value) => value) {
  * @param {{
  *   window?: { since: string | null, until: string | null },
  *   folderDepth?: number,
+ *   title?: string | null,
  * }} [options]
  */
 export function buildDataset(
   repos,
-  { window = { since: null, until: null }, folderDepth = 2 } = {},
+  { window = { since: null, until: null }, folderDepth = 2, title = null } = {},
 ) {
   // `git log --since` filters on the committer date, and a commit shows its
   // author date, so a 2015 commit rebased in 2021 gets through the git
@@ -146,6 +147,7 @@ export function buildDataset(
 
   const manifest = {
     generatedAt: new Date().toISOString(),
+    ...(title ? { title } : {}),
     window,
     folderDepth,
     repos: manifestRepos,

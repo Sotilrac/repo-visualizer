@@ -2,6 +2,12 @@ import MobileChrome from './MobileChrome.jsx';
 import RepoList from './RepoList.jsx';
 
 const GITHUB_URL = 'https://github.com/Sotilrac/repo-visualizer';
+
+/** What the page calls itself when the config does not say. */
+const DEFAULT_TITLE = 'Repo Visualizer';
+
+/** And what it is, which is the same whatever it is called. */
+const TAGLINE = 'A cinematic journey through the codebase';
 const UPSTREAM = 'Jany-M/repo-visualizer';
 
 /** Datasets written before the analyzer recorded remotes have only a name. */
@@ -34,7 +40,8 @@ export default function Header({
       <div className="header-start">
         <div className="brand">
           <div className="brand-title-row">
-            <div className="brand-mark">Repo Visualizer</div>
+            <div className="brand-mark">{dataset.title?.trim() || DEFAULT_TITLE}</div>
+            <div className="brand-tagline">— {TAGLINE}</div>
             <a
               className="brand-github"
               href={GITHUB_URL}

@@ -221,3 +221,26 @@ describe('a group that overlaps one already recorded', () => {
     expect(parse(readFileSync(file, 'utf8')).merge).toEqual([['bo', 'ada']]);
   });
 });
+
+describe('the page title', () => {
+  it('is written at the top of the config', () => {
+    const config = edit({ section: 'settings', field: 'title', value: 'Six Years at Dephy' });
+
+    expect(config.title).toBe('Six Years at Dephy');
+  });
+
+  it('goes away again when it is cleared, so the default comes back', () => {
+    edit({ section: 'settings', field: 'title', value: 'Something' });
+    const config = edit({ section: 'settings', field: 'title', value: '' });
+
+    expect(config.title).toBeUndefined();
+  });
+
+  it("refuses a setting that is not the editor's to write", () => {
+    const doc = loadConfig(file);
+
+    expect(() => applyEdits(doc, [{ section: 'settings', field: 'owners', value: ['x'] }])).toThrow(
+      /cannot be edited/,
+    );
+  });
+});

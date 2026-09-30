@@ -68,7 +68,7 @@ export function clusterColor(hue, style, variant = 0) {
         edge: hslCss(hue, 100, 58 + light, 0.55),
         ripple: hslCss(hue, 100, 72 + light, 0.85),
       };
-    case 'minimal':
+    case 'paper':
       return {
         core: hslCss(hue, 42 + sat, 32 + light, 0.92),
         glow: hslCss(hue, 38 + sat, 42 + light, 0.16),

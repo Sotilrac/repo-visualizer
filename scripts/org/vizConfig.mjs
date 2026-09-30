@@ -234,6 +234,8 @@ export function mergeScan(doc, scan, { repropose = false, merged = [] } = {}) {
  * silently correct it, so the write is refused instead.
  */
 const EDITABLE = {
+  /** Values that belong to the whole config rather than to a row. */
+  settings: new Set(['title']),
   repos: new Set(['lod', 'project']),
   people: new Set(['name', 'team', 'role', 'avatar', 'active']),
   teams: new Set(['name', 'hue', 'shown', 'domains', 'merged']),
@@ -252,10 +254,20 @@ export function applyEdits(doc, edits) {
   const rowEdits = [];
   const mergeEdits = [];
 
+  const settingEdits = [];
+
   for (const edit of edits) {
     if (edit.section === 'merge') {
       checkMergeEdit(doc, edit);
       mergeEdits.push(edit);
+      continue;
+    }
+
+    if (edit.section === 'settings') {
+      if (!EDITABLE.settings.has(edit.field)) {
+        throw new Error(`settings.${edit.field} cannot be edited here`);
+      }
+      settingEdits.push(edit);
       continue;
     }
 
@@ -271,6 +283,10 @@ export function applyEdits(doc, edits) {
     rowEdits.push({ row, edit });
   }
 
+  for (const edit of settingEdits) {
+    if (edit.value === null || edit.value === '') doc.delete(edit.field);
+    else doc.set(edit.field, edit.value);
+  }
   for (const { row, edit } of rowEdits) {
     if (edit.value === null) row.delete(edit.field);
     else row.set(edit.field, doc.createNode(edit.value));

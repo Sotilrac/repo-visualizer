@@ -144,6 +144,7 @@ async function main() {
   const { manifest, shards } = buildDataset(histories, {
     window,
     folderDepth: config.defaults?.folderDepth ?? 2,
+    title: config.title ?? null,
   });
 
   writeFileSync(path.join(args.out, 'manifest.json'), JSON.stringify(manifest));

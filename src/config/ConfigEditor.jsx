@@ -93,6 +93,17 @@ export default function ConfigEditor() {
       <header className="editor-header">
         <div>
           <h1>Config editor</h1>
+          <label className="editor-title-field">
+            <span>Page title</span>
+            <input
+              type="text"
+              value={state.config?.title ?? ''}
+              placeholder="Repo Visualizer"
+              onChange={(ev) =>
+                edit({ section: 'settings', field: 'title', value: ev.target.value })
+              }
+            />
+          </label>
           <p className="editor-path" title={state.path}>
             {state.path}
             <span className={`editor-saved${savedAt ? ' is-visible' : ''}`} aria-live="polite">

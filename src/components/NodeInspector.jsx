@@ -17,7 +17,7 @@ function folderBadgeStyle(palette, cluster, style) {
   const c = clusterColorFor(palette, cluster, style);
   return {
     background: c.core,
-    color: style === 'minimal' ? 'rgba(255, 255, 255, 0.92)' : 'rgba(6, 6, 13, 0.88)',
+    color: style === 'paper' ? 'rgba(255, 255, 255, 0.92)' : 'rgba(6, 6, 13, 0.88)',
     borderColor: c.edge,
   };
 }

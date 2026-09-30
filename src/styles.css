@@ -89,12 +89,12 @@ button:focus-visible {
   overflow: hidden;
 }
 
-.app[data-style="minimal"] {
+.app[data-style="paper"] {
   background: #f7f5f0;
   color: #0f1116;
 }
 
-.app[data-style="minimal"] {
+.app[data-style="paper"] {
   --bg: #f7f5f0;
   --bg-elevated: rgba(255, 255, 255, 0.92);
   --fg: #0f1116;
@@ -190,6 +190,12 @@ button:focus-visible {
   font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1;
+}
+
+.brand-tagline {
+  font-size: 13px;
+  color: var(--fg-dim);
+  white-space: nowrap;
 }
 
 .brand-title-row {
@@ -642,17 +648,17 @@ a.repo-list-item:hover {
   box-shadow: 0 0 8px rgba(138, 180, 255, 0.55);
 }
 
-.app[data-style="minimal"] .toggle-switch-track {
+.app[data-style="paper"] .toggle-switch-track {
   background: rgba(15, 17, 22, 0.08);
 }
 
-.app[data-style="minimal"] .toggle-switch.is-on .toggle-switch-track {
+.app[data-style="paper"] .toggle-switch.is-on .toggle-switch-track {
   background: rgba(15, 17, 22, 0.14);
   border-color: rgba(15, 17, 22, 0.22);
   box-shadow: none;
 }
 
-.app[data-style="minimal"] .toggle-switch.is-on .toggle-switch-thumb {
+.app[data-style="paper"] .toggle-switch.is-on .toggle-switch-thumb {
   background: var(--fg);
   box-shadow: none;
 }
@@ -680,11 +686,11 @@ a.repo-list-item:hover {
   color: var(--fg);
 }
 
-.app[data-style="minimal"] .speed-control select {
+.app[data-style="paper"] .speed-control select {
   color-scheme: light;
 }
 
-.app[data-style="minimal"] .speed-control select option {
+.app[data-style="paper"] .speed-control select option {
   background-color: #f7f5f0;
   color: var(--fg);
 }
@@ -767,11 +773,11 @@ a.repo-list-item:hover {
   outline-offset: 1px;
 }
 
-.app[data-style="minimal"] .perf-mode-picker {
+.app[data-style="paper"] .perf-mode-picker {
   background: rgba(15, 17, 22, 0.06);
 }
 
-.app[data-style="minimal"] .perf-mode-btn.active {
+.app[data-style="paper"] .perf-mode-btn.active {
   background: rgba(15, 17, 22, 0.12);
   box-shadow: none;
   color: var(--fg);
@@ -940,11 +946,11 @@ a.repo-list-item:hover {
   outline-offset: 1px;
 }
 
-.app[data-style="minimal"] .export-toggle-group {
+.app[data-style="paper"] .export-toggle-group {
   background: rgba(15, 17, 22, 0.06);
 }
 
-.app[data-style="minimal"] .export-toggle-btn.active {
+.app[data-style="paper"] .export-toggle-btn.active {
   background: rgba(15, 17, 22, 0.12);
   box-shadow: none;
   color: var(--fg);
@@ -1029,7 +1035,7 @@ a.repo-list-item:hover {
     background 0.15s ease;
 }
 
-.app[data-style="minimal"] .commit-card-collapse {
+.app[data-style="paper"] .commit-card-collapse {
   background: rgba(255, 255, 255, 0.5);
 }
 
@@ -1234,7 +1240,7 @@ a.repo-list-item:hover {
   display: none;
 }
 
-.app[data-style="minimal"] .control-bar {
+.app[data-style="paper"] .control-bar {
   background: linear-gradient(to top, rgba(247, 245, 240, 0.85), transparent);
 }
 
@@ -1473,7 +1479,7 @@ a.repo-list-item:hover {
   pointer-events: all;
 }
 
-.app[data-style="minimal"] .final-state-loader {
+.app[data-style="paper"] .final-state-loader {
   background: rgba(247, 245, 240, 0.78);
 }
 
@@ -1502,7 +1508,7 @@ a.repo-list-item:hover {
   overflow: hidden;
 }
 
-.app[data-style="minimal"] .final-state-loader-track {
+.app[data-style="paper"] .final-state-loader-track {
   background: rgba(15, 17, 22, 0.08);
 }
 
@@ -1594,7 +1600,7 @@ a.repo-list-item:hover {
   color: var(--fg);
 }
 
-.app[data-style="minimal"] .style-picker .style-btn[aria-selected="true"] {
+.app[data-style="paper"] .style-picker .style-btn[aria-selected="true"] {
   background: rgba(15, 17, 22, 0.06);
 }
 
@@ -1618,7 +1624,7 @@ a.repo-list-item:hover {
 .style-swatch.neural {
   background: linear-gradient(135deg, #00ffea, #ff00d4);
 }
-.style-swatch.minimal {
+.style-swatch.paper {
   background: #fff;
   border: 1px solid rgba(15, 17, 22, 0.16);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
@@ -1693,11 +1699,11 @@ a.repo-list-item:hover {
   border-color: rgba(138, 180, 255, 0.35);
 }
 
-.app[data-style="minimal"] .legend .legend-item:hover {
+.app[data-style="paper"] .legend .legend-item:hover {
   background: rgba(15, 17, 22, 0.06);
 }
 
-.app[data-style="minimal"] .legend .legend-item.is-active {
+.app[data-style="paper"] .legend .legend-item.is-active {
   background: rgba(15, 17, 22, 0.08);
   border-color: rgba(15, 17, 22, 0.2);
 }
@@ -1775,7 +1781,7 @@ a.repo-list-item:hover {
   color: var(--fg);
 }
 
-.app[data-style="minimal"] .legend-collapse-btn:hover {
+.app[data-style="paper"] .legend-collapse-btn:hover {
   background: rgba(15, 17, 22, 0.08);
 }
 
@@ -1811,11 +1817,11 @@ a.repo-list-item:hover {
   background: rgba(255, 255, 255, 0.09);
 }
 
-.app[data-style="minimal"] .legend-search-input {
+.app[data-style="paper"] .legend-search-input {
   background: rgba(15, 17, 22, 0.06);
 }
 
-.app[data-style="minimal"] .legend-search-input:focus {
+.app[data-style="paper"] .legend-search-input:focus {
   background: rgba(15, 17, 22, 0.1);
   border-color: rgba(15, 17, 22, 0.3);
 }
@@ -1883,7 +1889,7 @@ a.repo-list-item:hover {
   border-color: var(--hairline);
 }
 
-.app[data-style="minimal"] .legend-search-item:hover {
+.app[data-style="paper"] .legend-search-item:hover {
   background: rgba(15, 17, 22, 0.06);
 }
 
@@ -2656,4 +2662,26 @@ a.repo-list-item:hover {
     bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     max-height: min(48vh, 360px);
   }
+}
+
+/* ───────── Config editor: the page's own name ───────── */
+
+.editor-title-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+/* biome-ignore lint/style/noDescendingSpecificity: the modal's field rule earlier in the file styles a different element, so order changes nothing */
+.editor-title-field > input {
+  width: 260px;
+  padding: 5px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-size: 12px;
 }

@@ -35,7 +35,7 @@ describe('colours for the GPU', () => {
 
   it('gives the same cluster a different colour in a different look', () => {
     expect(clusterRgb(palette, 'app', 'galaxy').core.value).not.toBe(
-      clusterRgb(palette, 'app', 'minimal').core.value,
+      clusterRgb(palette, 'app', 'paper').core.value,
     );
   });
 

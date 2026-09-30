@@ -1,6 +1,6 @@
 const STYLES = [
   { id: 'galaxy', label: 'Galaxy' },
-  { id: 'minimal', label: 'Minimal' },
+  { id: 'paper', label: 'Paper' },
 ];
 
 export default function StylePicker({ style, onChange }) {

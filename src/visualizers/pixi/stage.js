@@ -580,11 +580,11 @@ function beamColor(hue) {
 }
 
 function drawAvatars(layer, glow, pool, faces, frame, px, py, scale) {
-  const { actors, images } = frame;
+  const { images } = frame;
   for (const sprite of pool.values()) sprite.visible = false;
   glow.clear();
 
-  for (const actor of actors) {
+  for (const actor of frame.actors) {
     if (actor.alpha <= 0.01) continue;
     const x = px(actor.sx ?? actor.x);
     const y = py(actor.sy ?? actor.y);
@@ -643,15 +643,8 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
 
   // Something is picked out, so the rest of the writing goes: the point of
   // isolating a bubble is to read it without the other two hundred names
-  // over the top of it. A folder or a repo is never in the focus set, which
-  // holds file paths, so what it belongs to is tested as well.
-  const picked = frame.focused;
-  const isolating = !!(picked?.size || frame.selectedPath || frame.selectedCluster);
-  const inPicture = (n) =>
-    !isolating ||
-    n.path === frame.selectedPath ||
-    n.dir === frame.selectedCluster ||
-    Boolean(picked?.has(n.path));
+  // over the top of it.
+  const { isolating, inFocus: inPicture } = frame;
 
   // One name per repo, and only for the repos with something on screen to
   // name. Where it goes depends on whether the repo is one bubble or a
@@ -726,7 +719,7 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
 
   // And the people, unless something is picked out, which they are not
   // part of.
-  for (const actor of isolating ? [] : actors) {
+  for (const actor of actors) {
     if (actor.alpha <= 0.05) continue;
     const label = labelFor(`who:${actor.key}`, actor.name, style.label);
     label.position.set(

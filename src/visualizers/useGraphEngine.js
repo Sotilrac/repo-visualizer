@@ -24,6 +24,7 @@ import { attachCanvasGestures } from '../engine/canvasGestures.js';
 import { editIntensity, FLOOR } from '../engine/editIntensity.js';
 import { activePoints } from '../engine/followAction.js';
 import { getDepsForPath, resolveFocusSet } from '../engine/graphState.js';
+import { actorsOn } from '../engine/isolate.js';
 import { createLayout } from '../engine/layout.js';
 import { createLodTransitions } from '../engine/lodTransitions.js';
 import { buildRepoClock } from '../engine/repoClock.js';
@@ -262,6 +263,15 @@ export function useGraphEngine({
         p.excludePatterns,
       );
       const dimOthers = focusSet.size > 0;
+      // Something is picked out. At anything but file level the drawn body
+      // is a folder or a repo, and the focus set holds file paths, so what
+      // a body belongs to is tested as well as the body itself.
+      const isolating = !!(p.selectedPath || p.selectedCluster || dimOthers);
+      const inFocus = (n) =>
+        !isolating ||
+        n.path === p.selectedPath ||
+        n.dir === p.selectedCluster ||
+        focusSet.has(n.path);
 
       const highlightLinks = [];
       if (p.selectedPath && stateRef.current) {
@@ -322,6 +332,11 @@ export function useGraphEngine({
       }
       lerpCamera(cam, dt, cameraSpeed(p.tuning?.cameraEase ?? 420));
 
+      // With something picked out, only the people working on it stay.
+      const onStage = isolating ? actorsOn(crowd, inFocus) : crowd;
+      const keys = new Set(onStage.map((actor) => actor.key));
+      const flying = p.showActors ? actorsRef.current.beams() : [];
+
       rendererRef.current?.draw({
         w,
         h,
@@ -338,11 +353,12 @@ export function useGraphEngine({
         nodeByPath,
         clusters: layout.getClusterCenters(),
         ripples,
-        actors: crowd,
-        beams: p.showActors ? actorsRef.current.beams() : [],
+        actors: onStage,
+        beams: isolating ? flying.filter((beam) => keys.has(beam.key)) : flying,
         images: avatarsRef.current,
         showLabels: p.showLabels,
-        focused: dimOthers ? focusSet : null,
+        isolating,
+        inFocus,
         selectedPath: p.selectedPath,
         selectedCluster: p.selectedCluster,
         // A body mid-collapse is faded by the transition on top of the

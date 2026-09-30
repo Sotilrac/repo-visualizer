@@ -69,7 +69,7 @@ export const STYLES = {
     label: { color: 0xd6e8d8, size: 11, alpha: 0.85, plate: 0.8 },
     beams: true,
   },
-  minimal: {
+  paper: {
     background: '#f7f5f0',
     sky: 'grid',
     bloom: null,

@@ -392,7 +392,7 @@ export default function App() {
       else if (ev.code === 'Digit1') setStyle('galaxy');
       else if (ev.code === 'Digit2') setStyle('organic');
       else if (ev.code === 'Digit3') setStyle('neural');
-      else if (ev.code === 'Digit4') setStyle('minimal');
+      else if (ev.code === 'Digit4') setStyle('paper');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

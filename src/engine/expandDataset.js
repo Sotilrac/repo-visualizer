@@ -74,6 +74,8 @@ export function expandDataset(manifest, shards) {
     });
 
   return {
+    // What the page calls itself, when the config says.
+    title: manifest.title ?? null,
     repo: repos.length === 1 ? repos[0].name : `${repos.length} repos`,
     repos,
     generatedAt: manifest.generatedAt,
