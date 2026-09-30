@@ -55,3 +55,42 @@ describe('a repo with nothing on screen', () => {
     expect(repoLabelSpot([], 0)).toBeNull();
   });
 });
+
+describe('clearing the ring, not just its centre', () => {
+  const name = { width: 80, height: 14 };
+
+  it('pushes a wide name out by half of itself', () => {
+    const bare = repoLabelSpot([at(0, 0, 20)], 0);
+    const wide = repoLabelSpot([at(0, 0, 20)], 0, name);
+
+    expect(wide.x - bare.x).toBe(name.width / 2);
+  });
+
+  it('leaves the gap between the ring and the near edge of the word', () => {
+    const spot = repoLabelSpot([at(0, 0, 20)], 0, name);
+    const nearEdge = spot.x - name.width / 2;
+
+    expect(nearEdge).toBe(20 + REPO_LABEL_GAP);
+  });
+
+  it('measures the height when the name goes above the bubble', () => {
+    const spot = repoLabelSpot([at(0, 0, 20)], -Math.PI / 2, name);
+
+    // Straight up, so it is the line height that has to clear the ring.
+    expect(-spot.y - name.height / 2).toBeCloseTo(20 + REPO_LABEL_GAP, 6);
+  });
+
+  it('measures both when the name goes off at an angle', () => {
+    const spot = repoLabelSpot([at(0, 0, 20)], Math.PI / 4, name);
+    const out = Math.hypot(spot.x, spot.y);
+
+    expect(out).toBeGreaterThan(20 + REPO_LABEL_GAP + name.height / 2);
+    expect(out).toBeLessThan(20 + REPO_LABEL_GAP + name.width / 2);
+  });
+
+  it('is unchanged for a cluster, which sits in the middle regardless', () => {
+    const members = [at(0, 0, 10), at(100, 0, 10)];
+
+    expect(repoLabelSpot(members, 0, name)).toEqual(repoLabelSpot(members, 0));
+  });
+});

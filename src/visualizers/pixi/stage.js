@@ -643,10 +643,19 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
     else byRepo.set(n.dir, [spot]);
   }
   for (const [dir, members] of byRepo) {
-    const at = repoLabelSpot(members, clusters.get(dir)?.angle ?? -Math.PI / 2);
-    if (!at) continue;
-    if (at.x < -120 || at.x > frame.w + 120 || at.y < -40 || at.y > frame.h + 40) continue;
+    // The word is laid out first, because how far out it goes depends on
+    // how wide it is.
     const label = labelFor(`repo:${dir}`, dir, style.label, plates.parent);
+    const angle = clusters.get(dir)?.angle ?? -Math.PI / 2;
+    const at = repoLabelSpot(members, angle, {
+      width: label.width + TAG_PAD_X * 2,
+      height: label.height + TAG_PAD_Y * 2,
+    });
+    if (!at) continue;
+    if (at.x < -120 || at.x > frame.w + 120 || at.y < -40 || at.y > frame.h + 40) {
+      label.visible = false;
+      continue;
+    }
     label.position.set(at.x, at.y);
     label.alpha = style.label.alpha;
 
