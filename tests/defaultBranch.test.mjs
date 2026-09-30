@@ -68,3 +68,30 @@ describe('defaultBranchOf', () => {
     expect(defaultBranchOf(dir)).toBe('HEAD');
   });
 });
+
+describe('a branch the config asks for', () => {
+  it('is used when the repo has it', () => {
+    git('branch', 'develop');
+
+    expect(defaultBranchOf(dir, 'develop')).toBe('develop');
+  });
+
+  it('is found on the remote when only the remote has it', () => {
+    git('update-ref', 'refs/remotes/origin/develop', 'HEAD');
+
+    expect(defaultBranchOf(dir, 'develop')).toBe('origin/develop');
+  });
+
+  it('falls back to the default when the repo has no such branch', () => {
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+
+    expect(defaultBranchOf(dir, 'nonexistent')).toBe('origin/main');
+  });
+
+  it('is ignored when the config names none', () => {
+    git('branch', 'develop');
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+
+    expect(defaultBranchOf(dir, '')).toBe('origin/main');
+  });
+});

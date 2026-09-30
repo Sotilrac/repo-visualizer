@@ -101,3 +101,19 @@ describe('writeShards', () => {
     expect(readdirSync(fresh)).toEqual(['2020.json']);
   });
 });
+
+describe('the branch a repo is read from', () => {
+  it('carries what the config asked for', () => {
+    const chosen = selectRepos([{ name: 'bendy' }], {
+      repos: [{ name: 'bendy', branch: 'develop' }],
+    });
+
+    expect(chosen[0].branch).toBe('develop');
+  });
+
+  it('leaves it unset when the config says nothing', () => {
+    const chosen = selectRepos([{ name: 'bendy' }], { repos: [] });
+
+    expect(chosen[0].branch).toBeUndefined();
+  });
+});

@@ -236,7 +236,7 @@ export function mergeScan(doc, scan, { repropose = false, merged = [] } = {}) {
 const EDITABLE = {
   /** Values that belong to the whole config rather than to a row. */
   settings: new Set(['title']),
-  repos: new Set(['lod', 'project']),
+  repos: new Set(['lod', 'project', 'branch']),
   people: new Set(['name', 'team', 'role', 'avatar', 'active']),
   teams: new Set(['name', 'hue', 'shown', 'domains', 'merged']),
 };

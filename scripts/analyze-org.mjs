@@ -48,7 +48,13 @@ export function parseArgs(argv) {
  *
  * @param {Array<{ name: string }>} discovered
  * @param {{
- *   repos?: Array<{ name: string, lod?: number, project?: string, submodules?: string[] }>,
+ *   repos?: Array<{
+ *     name: string,
+ *     lod?: number,
+ *     project?: string,
+ *     branch?: string,
+ *     submodules?: string[],
+ *   }>,
  * }} config
  */
 export function selectRepos(discovered, config) {
@@ -59,6 +65,9 @@ export function selectRepos(discovered, config) {
       ...repo,
       lod: settings.get(repo.name)?.lod ?? 1,
       project: settings.get(repo.name)?.project,
+      // Where a project keeps its history, when that is not the default
+      // branch: bendy develops on `develop` and merges to main at release.
+      branch: settings.get(repo.name)?.branch,
       submodules: settings.get(repo.name)?.submodules,
     }));
 }
@@ -127,7 +136,11 @@ async function main() {
 
   let done = 0;
   const histories = await inParallel(selected, args.jobs, async (repo) => {
-    const result = await walkRepo(repo.path, { since: window.since, until: window.until });
+    const result = await walkRepo(repo.path, {
+      since: window.since,
+      until: window.until,
+      branch: repo.branch,
+    });
     done += 1;
     process.stdout.write(`\r  ${done}/${selected.length} repos`);
     return {

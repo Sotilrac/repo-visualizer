@@ -2686,3 +2686,14 @@ a.repo-list-item:hover {
   color: var(--fg);
   font-size: 12px;
 }
+
+.editor-branch {
+  width: 130px;
+  padding: 3px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}

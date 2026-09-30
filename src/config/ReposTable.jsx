@@ -41,6 +41,7 @@ export default function ReposTable({ repos, query, onEdit }) {
             onSort={sortBy}
             className="editor-number"
           />
+          <th scope="col">Branch</th>
           <SortableHeader label="Active" sortKey="last" sort={sort} onSort={sortBy} />
         </tr>
       </thead>
@@ -91,6 +92,23 @@ export default function ReposTable({ repos, query, onEdit }) {
               </td>
               <td className="editor-number">{(repo.commits ?? 0).toLocaleString()}</td>
               <td className="editor-number">{(repo.files ?? 0).toLocaleString()}</td>
+              <td>
+                <input
+                  className="editor-branch"
+                  type="text"
+                  value={repo.branch ?? ''}
+                  placeholder="default"
+                  title="The branch to read this repo's history from, when it is not the default one"
+                  onChange={(ev) =>
+                    onEdit({
+                      section: 'repos',
+                      id: repo.name,
+                      field: 'branch',
+                      value: ev.target.value.trim() || null,
+                    })
+                  }
+                />
+              </td>
               <td className="editor-dates">
                 {repo.first ?? '—'} → {repo.last ?? '—'}
               </td>

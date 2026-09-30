@@ -48,16 +48,17 @@ async function getNameStatusMap(git, hash, parentHash) {
  *   maxCommits?: number,
  *   since?: string | null,
  *   until?: string | null,
+ *   branch?: string,
  *   onProgress?: (done: number, total: number) => void,
  * }} [options]
  * @returns {Promise<{ name: string, remote: string | null, commits: any[], files?: number }>}
  */
 export async function walkRepo(
   repoPath,
-  { maxCommits = 0, since = null, until = null, onProgress } = {},
+  { maxCommits = 0, since = null, until = null, branch: wanted = '', onProgress } = {},
 ) {
   const git = simpleGit(repoPath);
-  const branch = defaultBranchOf(repoPath);
+  const branch = defaultBranchOf(repoPath, wanted);
 
   const logOpts = { '--reverse': null, [branch]: null };
   if (maxCommits) logOpts.maxCount = maxCommits;
