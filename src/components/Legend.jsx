@@ -92,7 +92,7 @@ export default function Legend({
             <input
               type="text"
               className="legend-search-input"
-              placeholder="Search files…"
+              placeholder="Search…"
               value={query}
               onChange={(ev) => setQuery(ev.target.value)}
               onClick={(ev) => ev.stopPropagation()}
