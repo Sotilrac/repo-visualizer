@@ -1594,10 +1594,6 @@ a.repo-list-item:hover {
   color: var(--fg);
 }
 
-.style-picker .style-btn[aria-selected="false"] .style-swatch {
-  opacity: 0.35;
-}
-
 .app[data-style="minimal"] .style-picker .style-btn[aria-selected="true"] {
   background: rgba(15, 17, 22, 0.06);
 }
@@ -1606,6 +1602,11 @@ a.repo-list-item:hover {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+/* Only the chosen look shows its colour. */
+.style-picker .style-btn[aria-selected="false"] .style-swatch {
+  opacity: 0.35;
 }
 
 .style-swatch.galaxy {
