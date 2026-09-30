@@ -15,6 +15,15 @@ import { tileHue } from '../shared/avatarTile.js';
 /** How big a face is drawn, in world units. The renderer draws to this. */
 export const AVATAR_RADIUS = 14;
 
+/**
+ * How much room a face takes up, which is wider than the face: there is a
+ * ring around it and a halo around that.
+ */
+export const AVATAR_FOOTPRINT = AVATAR_RADIUS + 2;
+
+/** Clear space left between two faces, so they never look joined. */
+const AVATAR_GAP = 8;
+
 const DEFAULTS = {
   /** How long a beam takes to travel, in milliseconds. */
   beamMs: 700,
@@ -36,9 +45,10 @@ const DEFAULTS = {
    * The preference above is a push that balances against everything else
    * pulling them together, so it is a tendency rather than a rule. Two
    * faces drawn on top of each other are unreadable whatever the forces
-   * wanted, so this one is imposed afterwards, on the drawn position.
+   * wanted, so this one is imposed afterwards, on the drawn position. It
+   * measures what is drawn, halo and all, and leaves a gap between them.
    */
-  minSeparation: AVATAR_RADIUS * 2,
+  minSeparation: AVATAR_FOOTPRINT * 2 + AVATAR_GAP,
   /** How far outside a repo's blob an actor stands to fire into it. */
   blobClearance: 144,
   /**

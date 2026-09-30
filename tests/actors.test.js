@@ -495,7 +495,9 @@ describe('a whole team drawn as one avatar', () => {
 });
 
 describe('faces never drawn on top of each other', () => {
-  const MIN = AVATAR_RADIUS * 2;
+  // What a face takes up on screen, halo and all, twice over, plus the gap
+  // between them.
+  const MIN = (AVATAR_RADIUS + 2) * 2 + 8;
 
   /** Everyone piling onto one file, which is where they would overlap. */
   function pileOn(size, options = {}) {
@@ -545,12 +547,21 @@ describe('faces never drawn on top of each other', () => {
     expect(closest(actors.list(), 'sx', 'sy')).toBeGreaterThanOrEqual(MIN - 0.01);
   });
 
+  it('leaves a gap between two faces rather than letting them touch', () => {
+    const actors = pileOn(6);
+    actors.setTuning({ avatarSpacing: 28 });
+    for (let i = 0; i < 60; i++) actors.tick(16);
+
+    // Two circles of the drawn size exactly touch at twice their radius.
+    expect(closest(actors.list(), 'sx', 'sy')).toBeGreaterThan((AVATAR_RADIUS + 2) * 2);
+  });
+
   it('lets them sit close, and no further than asked', () => {
     const actors = pileOn(4);
     actors.setTuning({ avatarSpacing: 0 });
     for (let i = 0; i < 60; i++) actors.tick(16);
 
-    expect(closest(actors.list(), 'sx', 'sy')).toBeLessThan(MIN * 1.6);
+    expect(closest(actors.list(), 'sx', 'sy')).toBeLessThan(MIN * 1.8);
   });
 
   it('separates two people who arrive at exactly the same spot', () => {
@@ -614,7 +625,7 @@ describe('coming to rest', () => {
     const actors = afterTheWork(300);
     const [a, b] = actors.list();
 
-    expect(Math.hypot(a.sx - b.sx, a.sy - b.sy)).toBeGreaterThanOrEqual(AVATAR_RADIUS * 2 - 0.01);
+    expect(Math.hypot(a.sx - b.sx, a.sy - b.sy)).toBeGreaterThan((AVATAR_RADIUS + 2) * 2);
   });
 });
 

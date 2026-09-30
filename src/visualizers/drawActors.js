@@ -6,7 +6,7 @@
  * behind it is faint so a busy commit does not white out the graph.
  */
 
-import { AVATAR_RADIUS } from '../engine/actors.js';
+import { AVATAR_FOOTPRINT, AVATAR_RADIUS } from '../engine/actors.js';
 
 export { AVATAR_RADIUS };
 
@@ -79,7 +79,7 @@ function drawActor(ctx, actor, image, cameraScale) {
   ctx.globalAlpha = alpha;
 
   ctx.beginPath();
-  ctx.arc(x, y, AVATAR_RADIUS + 2, 0, Math.PI * 2);
+  ctx.arc(x, y, AVATAR_FOOTPRINT, 0, Math.PI * 2);
   ctx.fillStyle = `hsla(${hue}, 60%, 50%, 0.35)`;
   ctx.fill();
 
