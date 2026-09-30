@@ -15,13 +15,18 @@
  * upsamples with a tent filter; one halving is enough here, because the
  * dots are the only thing at that frequency.
  *
- * Asking for the same region at a lower resolution rather than for a
- * smaller region is what keeps the composite lined up: the shader reads the
- * blurred copy at the same coordinates as the scene, so the two have to
- * cover the same frame.
+ * Keeping the composite lined up is the fiddly part. The shader reads the
+ * blurred copy at the same coordinates as the scene, so the blurred copy has
+ * to hold its content at the same place in its texture. Pixi's texture pool
+ * rounds a request up to a screen size or a power of two, whichever is
+ * smaller, and those two rules do not agree once the size is halved: asking
+ * the pool for the half-size copy of a 1600x900 frame hands back a 2048x1024
+ * texture, the scene is read across all of it instead of the 1600x900 corner
+ * it occupies, and the glow drifts up and to the left of what is glowing.
+ * So these two are made to measure and kept.
  */
 
-import { TexturePool } from 'pixi.js';
+import { RenderTexture } from 'pixi.js';
 import { AdvancedBloomFilter } from 'pixi-filters';
 
 /**
@@ -54,31 +59,80 @@ export function blurForZoom(base, scale) {
   return base * tracked;
 }
 
+/**
+ * The shape of the target to blur in.
+ *
+ * The same region as the scene, at fewer pixels: same width and height,
+ * lower resolution. Shrinking the width and height instead is what puts the
+ * glow in the wrong place, because the shader reads the blurred copy at the
+ * scene's own coordinates.
+ *
+ * @param {{ width: number, height: number, resolution: number }} source
+ * @param {number} downscale
+ */
+export function targetFor(source, downscale) {
+  return {
+    width: source.width,
+    height: source.height,
+    resolution: source.resolution * downscale,
+    antialias: false,
+  };
+}
+
 class DownsampledBloom extends AdvancedBloomFilter {
   /** @param {any} options `downscale` is the fraction of the size to blur at */
   constructor({ downscale = 0.5, ...options } = {}) {
     super(options);
     this.downscale = downscale;
+    /** @type {any} */
+    this._bright = null;
+    /** @type {any} */
+    this._blurred = null;
+    this._shape = '';
+  }
+
+  /**
+   * Two targets the same shape as what is being filtered, with a fraction of
+   * the pixels. Held between frames and remade only when the window changes.
+   *
+   * @param {any} input
+   */
+  _targets(input) {
+    const source = input.source;
+    const resolution = source.resolution * this.downscale;
+    const shape = `${source.width}x${source.height}@${resolution}`;
+    if (shape === this._shape) return;
+
+    this._bright?.destroy(true);
+    this._blurred?.destroy(true);
+    const options = targetFor(source, this.downscale);
+    this._bright = RenderTexture.create(options);
+    this._blurred = RenderTexture.create(options);
+    this._shape = shape;
   }
 
   /** @override */
   apply(filterManager, input, output, clearMode) {
-    const resolution = input.source.resolution * this.downscale;
-    const size = { width: input.width, height: input.height, resolution, antialias: false };
+    this._targets(input);
 
-    const bright = TexturePool.getOptimalTexture(size);
-    passesOf(this)._extractFilter.apply(filterManager, input, bright, true);
-
-    const blurred = TexturePool.getOptimalTexture(size);
-    passesOf(this)._blurFilter.apply(filterManager, bright, blurred, true);
+    // The extract runs into the smaller target, so it downsamples and picks
+    // out the bright pixels in the one pass.
+    passesOf(this)._extractFilter.apply(filterManager, input, this._bright, true);
+    passesOf(this)._blurFilter.apply(filterManager, this._bright, this._blurred, true);
 
     this.uniforms.uBloomScale = this.bloomScale;
     this.uniforms.uBrightness = this.brightness;
-    this.resources.uMapTexture = blurred.source;
+    this.resources.uMapTexture = this._blurred.source;
     filterManager.applyFilter(this, input, output, clearMode);
+  }
 
-    TexturePool.returnTexture(blurred);
-    TexturePool.returnTexture(bright);
+  /** @override */
+  destroy() {
+    this._bright?.destroy(true);
+    this._blurred?.destroy(true);
+    this._bright = null;
+    this._blurred = null;
+    super.destroy();
   }
 }
 
