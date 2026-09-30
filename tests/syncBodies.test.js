@@ -70,7 +70,7 @@ describe('syncBodies', () => {
       { name: 'core', lod: 1 },
     ]);
 
-    expect(edges).toEqual([{ source: 'core', target: 'battery', weight: 1 }]);
+    expect(edges).toEqual([{ source: 'core', target: 'battery', weight: 1, crossRepo: true }]);
   });
 
   it('drops an import that no longer crosses anything', () => {

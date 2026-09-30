@@ -40,8 +40,6 @@ describe('the looks', () => {
   it('keeps the one paper-white look light and the rest dark', () => {
     expect(STYLES.paper.background).toMatch(/^#f/i);
     expect(STYLES.paper.bloom).toBeNull();
-    for (const name of ['galaxy', 'neural', 'organic']) {
-      expect(STYLES[name].bloom, `${name} has no glow`).not.toBeNull();
-    }
+    expect(STYLES.galaxy.bloom).not.toBeNull();
   });
 });

@@ -20,7 +20,7 @@ describe('aggregateEdges', () => {
   it('lifts an end to the body that stands in for it', () => {
     const toRepo = (path) => path.split('/')[0];
 
-    expect(aggregateEdges([edges[2]], toRepo)).toEqual([
+    expect(aggregateEdges([edges[2]], toRepo)).toMatchObject([
       { source: 'core', target: 'battery', weight: 1 },
     ]);
   });
@@ -41,7 +41,7 @@ describe('aggregateEdges', () => {
       toFolder,
     );
 
-    expect(out).toEqual([{ source: 'battery/src', target: 'battery/lib', weight: 5 }]);
+    expect(out).toMatchObject([{ source: 'battery/src', target: 'battery/lib', weight: 5 }]);
   });
 
   it('keeps direction, so two ways round stay two edges', () => {
@@ -76,5 +76,35 @@ describe('aggregateEdges', () => {
 
   it('handles an empty list', () => {
     expect(aggregateEdges([], asFiles)).toEqual([]);
+  });
+});
+
+describe('edges that cross a repo', () => {
+  const body = (path) => path.split('/').slice(0, 2).join('/');
+
+  it('marks one whose ends are in different repos', () => {
+    const [edge] = aggregateEdges([{ from: 'app/src/a.c', to: 'lib/inc/b.h' }], body);
+
+    expect(edge.crossRepo).toBe(true);
+  });
+
+  it('leaves one inside a repo unmarked', () => {
+    const [edge] = aggregateEdges([{ from: 'app/src/a.c', to: 'app/inc/b.h' }], body);
+
+    expect(edge.crossRepo).toBe(false);
+  });
+
+  it('marks a merged pair that carries even one crossing import', () => {
+    // Both land on the same pair of bodies; one of them crosses.
+    const onto = (path) => (path.startsWith('app') ? 'app' : 'lib');
+    const [edge] = aggregateEdges(
+      [
+        { from: 'app/a.c', to: 'lib/b.h' },
+        { from: 'app/c.c', to: 'lib/d.h' },
+      ],
+      onto,
+    );
+
+    expect(edge.crossRepo).toBe(true);
   });
 });

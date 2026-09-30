@@ -52,22 +52,6 @@ export function clusterColor(hue, style, variant = 0) {
         edge: hslCss(hue, 75 + sat, 75 + light, 0.2),
         ripple: hslCss(hue, 85 + sat, 82 + light, 0.75),
       };
-    case 'organic':
-      return {
-        core: hslCss(hue, 72 + sat, 58 + light, 0.88),
-        glow: hslCss(hue, 68 + sat, 46 + light, 0.28),
-        glowFar: hslCss(hue, 62 + sat, 38 + light, 0.1),
-        edge: hslCss(hue, 58 + sat, 48 + light, 0.28),
-        ripple: hslCss(hue, 75 + sat, 55 + light, 0.45),
-      };
-    case 'neural':
-      return {
-        core: hslCss(hue, 100, 68 + light, 1),
-        glow: hslCss(hue, 95 + sat, 55 + light, 0.22),
-        glowFar: hslCss(hue, 90 + sat, 45 + light, 0.06),
-        edge: hslCss(hue, 100, 58 + light, 0.55),
-        ripple: hslCss(hue, 100, 72 + light, 0.85),
-      };
     case 'paper':
       return {
         core: hslCss(hue, 42 + sat, 32 + light, 0.92),

@@ -32,8 +32,8 @@ describe('where an include points', () => {
     expect(from('fx/src/motor.c', 'board.h')).toBe('fx/inc/board.h');
   });
 
-  it('stays inside the repo, since the same name is everywhere', () => {
-    // talaria has a board.h of its own; fx must not point at it.
+  it('picks the copy nearest the file that asked for it', () => {
+    // Two board.h in the tree; the one in the same subtree wins.
     expect(from('talaria/src/main.c', 'board.h')).toBe('talaria/inc/board.h');
   });
 
@@ -41,8 +41,8 @@ describe('where an include points', () => {
     expect(from('fx/src/main.c', 'stdint.h')).toBeNull();
   });
 
-  it('points at nothing for a repo that has no such header', () => {
-    expect(from('talaria/src/main.c', 'motor.h')).toBeNull();
+  it('reaches further out when nothing closer answers', () => {
+    expect(from('talaria/src/main.c', 'motor.h')).toBe('fx/src/motor.h');
   });
 
   it('ignores a leading ./', () => {
@@ -61,5 +61,27 @@ describe('where an include points', () => {
 
   it('leaves an absolute include alone', () => {
     expect(from('fx/src/main.c', '/usr/include/stdio.h')).toBeNull();
+  });
+});
+
+describe('choosing between copies of a header', () => {
+  const tree = [
+    'app/src/main.c',
+    'app/inc/board.h',
+    'vendor/hal/inc/board.h',
+    'app/src/deep/nested/leaf.c',
+  ];
+  const resolver = createImportResolver(tree);
+
+  it('takes the one in the same subtree', () => {
+    expect(resolver.resolve('board.h', 'app/src/main.c')).toBe('app/inc/board.h');
+  });
+
+  it('takes the same one from deeper in that subtree', () => {
+    expect(resolver.resolve('board.h', 'app/src/deep/nested/leaf.c')).toBe('app/inc/board.h');
+  });
+
+  it('takes the vendored one when the include spells its path', () => {
+    expect(resolver.resolve('hal/inc/board.h', 'app/src/main.c')).toBe('vendor/hal/inc/board.h');
   });
 });

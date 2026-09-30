@@ -118,6 +118,23 @@ export function parseC(src) {
   return [...imports];
 }
 
+/**
+ * Dart, which is what a Flutter app is written in.
+ *
+ * `package:` imports name a published package or the app's own `lib`
+ * folder; relative ones name a file beside the importer. Both are read and
+ * the resolver works out which of them the tree answers to.
+ */
+export function parseDart(src) {
+  const imports = new Set();
+  const re = /^[ \t]*(?:import|export|part)\s+['"]([^'"\n]+)['"]/gm;
+  for (const m of src.matchAll(re)) {
+    const spec = m[1].trim();
+    if (spec && !spec.startsWith('dart:')) imports.add(spec);
+  }
+  return [...imports];
+}
+
 /** Human-readable language list (single source of truth for README + CLI). */
 export const ANALYZER_LANGUAGES = [
   {
@@ -146,7 +163,7 @@ export const ANALYZER_LANGUAGES = [
   },
   {
     name: 'Java / Kotlin',
-    extensions: ['.java', '.kt'],
+    extensions: ['.java', '.kt', '.kts'],
     parse: parseJava,
     resolution: 'FQCN and simple class name',
   },
@@ -161,6 +178,12 @@ export const ANALYZER_LANGUAGES = [
     extensions: ['.php'],
     parse: parsePhp,
     resolution: '`use`, `require`/`include`, `__DIR__` joins, dotted namespace paths',
+  },
+  {
+    name: 'Dart / Flutter',
+    extensions: ['.dart'],
+    parse: parseDart,
+    resolution: '`import` / `export` / `part`; relative paths and `package:` into `lib`',
   },
   {
     name: 'C / C++',

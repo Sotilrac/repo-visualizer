@@ -77,9 +77,10 @@ The analyzer parses **imports** on changed files and resolves them to other path
 | Python | `.py` | Relative (`from .`, `from ..`), dotted modules, `__init__.py` package index |
 | Go | `.go` | Import path suffix → file under repo |
 | Rust | `.rs` | `use` / `mod`; `crate::`, `super::`, `self::` |
-| Java / Kotlin | `.java` `.kt` | FQCN and simple class name |
+| Java / Kotlin | `.java` `.kt` `.kts` | FQCN and simple class name |
 | Ruby | `.rb` | `require` / `require_relative` |
 | PHP | `.php` | `use`, `require`/`include`, `__DIR__` joins, dotted namespace paths |
+| Dart / Flutter | `.dart` | `import` / `export` / `part`; relative paths and `package:` into `lib` |
 | C / C++ | `.c` `.h` `.cc` `.cpp` `.cxx` `.hh` `.hpp` `.hxx` `.ino` | `#include`, beside the file or anywhere in the same repo |
 | CSS / SCSS / Sass / Less | `.css` `.scss` `.sass` `.less` | `@import` |
 
@@ -138,9 +139,7 @@ npm run analyze -- /path/to/your/repo --config=/path/to/repovisualizer.config.js
 | `Space` | Play / pause |
 | `←` / `→` | Step backward / forward one commit |
 | `1` | Galaxy theme |
-| `2` | Organic theme |
-| `3` | Neural theme |
-| `4` | Minimal theme |
+| `2` | Paper theme |
 | `End` | Jump to final state (all commits) |
 | `Esc` | Stop recording, close export panel, or clear selection / cluster focus |
 

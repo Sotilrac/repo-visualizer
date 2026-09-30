@@ -27,6 +27,7 @@ const FILE_EXTS = [
   '.svelte',
   '.css',
   '.scss',
+  '.dart',
 ];
 
 /** What a C or C++ include can land on. */
@@ -227,11 +228,12 @@ function buildIncludeIndex(pathSet) {
  * Where an `#include` points.
  *
  * Beside the including file first, since that is what the quoted form
- * means, then anywhere in the same repo. Not outside it: across a hundred
- * repos the same header name turns up again and again, and guessing which
- * one was meant would draw imports between repos that never import each
- * other. A name nothing in the repo answers to is a toolchain header and
- * has nothing to point at.
+ * means, then the header whose path the include spelled out, then the one
+ * of that name nearest to the file that asked for it. A toolchain header no
+ * file in the tree answers to has nothing to point at.
+ *
+ * Nearest means fewest folders between the two, which is what picks the
+ * local copy when a tree vendors several of the same header.
  *
  * @param {string} raw
  * @param {string} from
@@ -246,19 +248,38 @@ function resolveInclude(raw, from, pathSet, byName) {
   const near = posix.normalize(posix.join(posix.dirname(from), spec));
   if (pathSet.has(near)) return near;
 
-  const repo = `${from.split('/')[0]}/`;
   const name = spec.slice(spec.lastIndexOf('/') + 1);
-  const tail = `/${spec}`;
-  const inRepo = (byName.get(name) ?? []).filter((p) => p.startsWith(repo));
-  if (inRepo.length === 0) return null;
+  const candidates = byName.get(name) ?? [];
+  if (candidates.length === 0) return null;
 
   // The whole path the include spelled out, where it spelled one out.
-  const spelled = inRepo.filter((p) => p === spec || p.endsWith(tail));
-  const candidates = spelled.length > 0 ? spelled : inRepo;
-  // Shallowest, then alphabetical: an include that matches several files
-  // has to pick one, and it has to pick the same one every run.
+  const tail = `/${spec}`;
+  const spelled = candidates.filter((c) => c === spec || c.endsWith(tail));
+  return nearestTo(from, spelled.length > 0 ? spelled : candidates);
+}
+
+/**
+ * The candidate fewest folders away from `from`.
+ *
+ * Ties go to the shallower path and then to the alphabet, so a tree with
+ * two equally close copies resolves the same way on every run.
+ *
+ * @param {string} from
+ * @param {string[]} candidates
+ */
+function nearestTo(from, candidates) {
+  const here = posix.dirname(from).split('/');
+  const distance = (candidate) => {
+    const there = posix.dirname(candidate).split('/');
+    let shared = 0;
+    while (shared < here.length && shared < there.length && here[shared] === there[shared]) {
+      shared++;
+    }
+    return here.length - shared + (there.length - shared);
+  };
   return [...candidates].sort(
-    (a, b) => a.split('/').length - b.split('/').length || (a < b ? -1 : 1),
+    (a, b) =>
+      distance(a) - distance(b) || a.split('/').length - b.split('/').length || (a < b ? -1 : 1),
   )[0];
 }
 
@@ -300,7 +321,24 @@ export function createImportResolver(allPaths, options = {}) {
       }
     }
 
-    if (ext === '.java' || ext === '.kt') {
+    if (ext === '.dart') {
+      // package:app/foo.dart is the app's own lib/foo.dart.
+      const spec = raw.startsWith('package:')
+        ? `lib/${raw.slice('package:'.length).split('/').slice(1).join('/')}`
+        : raw;
+      if (spec.startsWith('.')) {
+        const joined = posix.normalize(posix.join(posix.dirname(from), spec));
+        if (pathSet.has(joined)) return joined;
+      }
+      const hit = firstExisting(spec, pathSet);
+      if (hit) return hit;
+      const name = spec.slice(spec.lastIndexOf('/') + 1);
+      const tail = `/${spec}`;
+      const near = [...pathSet].filter((p) => p.endsWith(tail) || p.endsWith(`/${name}`));
+      return near.length > 0 ? nearestTo(from, near) : null;
+    }
+
+    if (ext === '.java' || ext === '.kt' || ext === '.kts') {
       const j = resolveJavaImport(raw, javaIndex);
       if (j) return j;
     }

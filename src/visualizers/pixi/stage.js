@@ -361,7 +361,11 @@ function drawLinks(g, frame, px, py) {
     const a = link.source;
     const b = link.target;
     if (!a || !b) continue;
-    const focus = linkAlpha(a.path, b.path);
+    // A repo talking to another repo is the rarer statement and the more
+    // interesting one, but there is no room to shout it: drawn at full
+    // strength across the width of the graph it buries everything local.
+    const fade = link.crossRepo ? style.link.crossFade : 1;
+    const focus = linkAlpha(a.path, b.path) * fade;
     const alpha = focus * style.link.alpha;
     if (alpha < 0.02) continue;
 

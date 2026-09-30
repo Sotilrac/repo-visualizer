@@ -1625,12 +1625,6 @@ a.repo-list-item:hover {
 .style-swatch.galaxy {
   background: radial-gradient(circle at 30% 30%, #fff, #8ab4ff 60%, #2b1e6a);
 }
-.style-swatch.organic {
-  background: radial-gradient(circle at 30% 30%, #fff, #8affd3 50%, #14463c);
-}
-.style-swatch.neural {
-  background: linear-gradient(135deg, #00ffea, #ff00d4);
-}
 .style-swatch.paper {
   background: #fff;
   border: 1px solid rgba(15, 17, 22, 0.16);
