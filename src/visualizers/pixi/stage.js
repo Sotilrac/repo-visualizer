@@ -123,11 +123,12 @@ export async function createStage(host, { background }) {
       brightness: 1,
       blur: spec.blur,
       quality: spec.quality,
-      // The blur samples in strides instead of every pixel, which is what
-      // makes it cheap. Dropping the filter's resolution instead would be
-      // cheaper still, but the layer is drawn into that same target: every
-      // bubble and every line would be drawn at half size and blown back
-      // up, which is what a bloom pass must not cost.
+      // How far apart the blur samples. Above one it skips pixels, which
+      // is cheaper and lays a diagonal moiré over everything the glow
+      // touches. Dropping the filter's resolution instead would be cheaper
+      // still and worse: the layer is drawn into that same target, so
+      // every bubble and line would be drawn at half size and blown back
+      // up, which is exactly what a bloom pass must not cost.
       pixelSize: spec.step,
     });
     // A filter renders its target itself, and its own antialiasing setting
