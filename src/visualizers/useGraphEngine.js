@@ -344,12 +344,16 @@ export function useGraphEngine({
         showLabels: p.showLabels,
         focused: dimOthers ? focusSet : null,
         selectedPath: p.selectedPath,
+        selectedCluster: p.selectedCluster,
         // A body mid-collapse is faded by the transition on top of the
         // ordinary fade-in.
         nodeOpacity: (n) => {
           const base = nodeOpacity(n, idx) * (n.alpha ?? 1);
           if (!dimOthers) return base;
-          if (n.path === p.selectedPath) return 1;
+          // At anything but file level the drawn body is a folder or a
+          // repo, and the focus set is a set of file paths, so the body
+          // itself is never in it. What it belongs to is what to test.
+          if (n.path === p.selectedPath || n.dir === p.selectedCluster) return 1;
           return focusSet.has(n.path) ? Math.max(base, 0.9) : 0.08;
         },
         linkAlpha: (a, b) => {

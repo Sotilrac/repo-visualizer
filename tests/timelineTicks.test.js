@@ -90,3 +90,28 @@ describe('timelineTicks', () => {
     }
   });
 });
+
+describe('the year that lands on top of the start date', () => {
+  /** Ten years opening in December, so January lands in the first 1%. */
+  const commits = [];
+  for (let i = 0; i < 400; i++) {
+    commits.push({ date: new Date(Date.UTC(2020, 11, 1 + i * 9)).toISOString() });
+  }
+
+  it('drops its label, since the start date is already written there', () => {
+    const ticks = timelineTicks(commits);
+    const crowded = ticks.filter((t) => t.label && t.pct < 3);
+
+    expect(crowded).toEqual([]);
+  });
+
+  it('keeps the mark itself', () => {
+    const ticks = timelineTicks(commits);
+
+    expect(ticks.some((t) => t.kind === 'year' && t.pct < 3)).toBe(true);
+  });
+
+  it('still labels the years that have room', () => {
+    expect(timelineTicks(commits).filter((t) => t.label).length).toBeGreaterThan(0);
+  });
+});

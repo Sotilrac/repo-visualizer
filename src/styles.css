@@ -1335,18 +1335,15 @@ a.repo-list-item:hover {
   font-size: 9px;
   letter-spacing: 0.06em;
   color: var(--fg-dim);
+  white-space: nowrap;
 }
 
 /* The first date sits above the track, in line with the year markers. */
-.timeline-start {
-  position: absolute;
+/* The first date is a year marker at the very start, so its label hangs
+   off the right of the mark rather than being centred on it. */
+.timeline-tick--start .timeline-year {
   left: 0;
-  top: -15px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  color: var(--fg-dim);
-  white-space: nowrap;
+  transform: none;
 }
 
 /* How far into the run you are, and how long it takes at this speed. */

@@ -6,7 +6,60 @@ import ToolButton from './ToolButton.jsx';
 /** One commit forward. */
 const StepIcon = () => (
   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M5 3 L12 8 L5 13 Z" />
+    <path d="M2 3 L8 8 L2 13 Z" />
+    <path d="M8 3 L14 8 L8 13 Z" />
+  </svg>
+);
+
+/*
+ * The zoom controls, as icons rather than as characters.
+ *
+ * A plus typed into a button is set at the button's own font size, which
+ * beside a 16px icon reads as a different size of control.
+ */
+const ZoomOutIcon = () => (
+  <svg
+    aria-hidden="true"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+  >
+    <path d="M3.5 8h9" />
+  </svg>
+);
+
+const ZoomInIcon = () => (
+  <svg
+    aria-hidden="true"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+  >
+    <path d="M3.5 8h9" />
+    <path d="M8 3.5v9" />
+  </svg>
+);
+
+const ZoomResetIcon = () => (
+  <svg
+    aria-hidden="true"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+  >
+    <circle cx="8" cy="8" r="5.2" />
+    <circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none" />
   </svg>
 );
 
@@ -125,13 +178,13 @@ export default function ControlBar({
           <div className="control-sep" aria-hidden="true" />
           <div className="zoom-control" title="Canvas zoom">
             <ToolButton onClick={onZoomOut} title="Zoom out">
-              −
+              <ZoomOutIcon />
             </ToolButton>
             <ToolButton onClick={onZoomReset} title="Reset view">
-              ◎
+              <ZoomResetIcon />
             </ToolButton>
             <ToolButton onClick={onZoomIn} title="Zoom in">
-              +
+              <ZoomInIcon />
             </ToolButton>
           </div>
           <button

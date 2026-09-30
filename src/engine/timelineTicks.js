@@ -21,6 +21,14 @@ const MIN_GAP = { month: 0.5, half: 0.25, year: 0.25 };
 const LABEL_GAP = 3;
 
 /**
+ * And how much the date at the very start needs.
+ *
+ * More than a year needs, because it is a longer word: `Oct 20` against
+ * `2021`.
+ */
+const START_GAP = 5;
+
+/**
  * @param {Array<{ date: string }>} commits in timeline order
  * @returns {Array<{ pct: number, kind: 'month' | 'half' | 'year', label?: string }>}
  */
@@ -71,6 +79,9 @@ function thin(ticks) {
   );
   for (const tick of spacedFromTheEnd(years, LABEL_GAP)) tick.keepLabel = true;
   for (const tick of years) {
+    // The date the history opens on is marked at the very start of the
+    // track, and a year landing a few weeks later writes over it.
+    if (tick.pct < START_GAP) tick.keepLabel = undefined;
     if (!tick.keepLabel) tick.label = undefined;
     tick.keepLabel = undefined;
   }

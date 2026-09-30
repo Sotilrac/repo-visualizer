@@ -633,6 +633,18 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
   plates.clear();
   if (!showLabels) return;
 
+  // Something is picked out, so the rest of the writing goes: the point of
+  // isolating a bubble is to read it without the other two hundred names
+  // over the top of it. A folder or a repo is never in the focus set, which
+  // holds file paths, so what it belongs to is tested as well.
+  const picked = frame.focused;
+  const isolating = !!(picked?.size || frame.selectedPath || frame.selectedCluster);
+  const inPicture = (n) =>
+    !isolating ||
+    n.path === frame.selectedPath ||
+    n.dir === frame.selectedCluster ||
+    Boolean(picked?.has(n.path));
+
   // One name per repo, and only for the repos with something on screen to
   // name. Where it goes depends on whether the repo is one bubble or a
   // cluster of them, which `repoLabelSpot` decides.
@@ -644,7 +656,9 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
     if (seen) seen.push(spot);
     else byRepo.set(n.dir, [spot]);
   }
+  const named = isolating ? new Set(nodes.filter(inPicture).map((n) => n.dir)) : null;
   for (const [dir, members] of byRepo) {
+    if (named && !named.has(dir)) continue;
     // The word is laid out first, because how far out it goes depends on
     // how wide it is.
     const label = labelFor(`repo:${dir}`, dir, style.label, plates.parent);
@@ -678,6 +692,7 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
   // Folder names, once a folder is big enough on screen to read one.
   for (const n of nodes) {
     if (!n.kind || n.kind === 'file' || n.kind === 'repo') continue;
+    if (!inPicture(n)) continue;
     if ((n.r ?? 6) * scale < LABEL_MIN_RADIUS) continue;
     if (!onScreen(frame.cam, frame.w, frame.h, n.x, n.y, n.r ?? 6)) continue;
     const name = n.path.slice(n.path.lastIndexOf('/') + 1);
@@ -686,10 +701,13 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
     label.alpha = style.label.alpha * 0.8;
   }
 
-  // The files the inspector has picked out, named.
-  if (frame.focused?.size) {
+  // The bodies the inspector has picked out, named.
+  if (isolating) {
     for (const n of nodes) {
-      if (!frame.focused.has(n.path)) continue;
+      if (!inPicture(n)) continue;
+      // A repo already has its name on a plate; a second copy underneath is
+      // the same word twice.
+      if (n.kind === 'repo') continue;
       if (!onScreen(frame.cam, frame.w, frame.h, n.x, n.y, n.r ?? 6)) continue;
       const name = n.path.slice(n.path.lastIndexOf('/') + 1);
       const label = labelFor(`pick:${n.path}`, name, style.label);
@@ -698,8 +716,9 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
     }
   }
 
-  // And the people.
-  for (const actor of actors) {
+  // And the people, unless something is picked out, which they are not
+  // part of.
+  for (const actor of isolating ? [] : actors) {
     if (actor.alpha <= 0.05) continue;
     const label = labelFor(`who:${actor.key}`, actor.name, style.label);
     label.position.set(

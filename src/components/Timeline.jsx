@@ -130,6 +130,14 @@ export default function Timeline({ commits, index, seekingTo = null, msPerCommit
         <div className="timeline-progress" style={{ width: `${progressPct}%` }} />
         <div className="timeline-handle" style={{ left: `${progressPct}%` }} />
         <div className="timeline-ticks">
+          {/* The first date is marked the same way a year is, so it lines
+              up with them instead of being positioned on its own terms. */}
+          <div
+            className="timeline-tick timeline-tick--year timeline-tick--start"
+            style={{ left: '0%' }}
+          >
+            <span className="timeline-year">{fmt(firstDate)}</span>
+          </div>
           {ticks.map((t) => (
             <div
               key={`${t.kind}-${t.pct}`}
@@ -140,7 +148,6 @@ export default function Timeline({ commits, index, seekingTo = null, msPerCommit
             </div>
           ))}
         </div>
-        <div className="timeline-start">{fmt(firstDate)}</div>
         <div className="timeline-clock" aria-live="off">
           {clock.at}
           <span className="timeline-clock-dim"> / {clock.of}</span>
