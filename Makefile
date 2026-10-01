@@ -3,13 +3,18 @@
 
 NPM := npm
 
+# What `make serve` listens on. BIND is every interface, so other machines
+# on the network can open it.
+PORT ?= 8080
+BIND ?= 0.0.0.0
+
 # Local settings, if you have made one. See .env.example. Values already in
 # the environment win, so a one-off `make scan ROOT=...` still overrides it.
 -include .env
 export
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev build preview check lint typecheck test test-watch coverage fix scan edit people analyze analyze-org all viz demo clean distclean
+.PHONY: help install dev build preview serve check lint typecheck test test-watch coverage fix scan edit people analyze analyze-org all viz demo clean distclean
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -26,6 +31,14 @@ build: ## Build the production bundle into dist/
 
 preview: ## Serve the built bundle
 	$(NPM) run preview
+
+# For the machine that hosts this on the Dephy network. dist/data/people.json
+# maps real email addresses to names, so keep this off any interface reachable
+# from outside: `make serve BIND=127.0.0.1` for a private look.
+serve: ## Serve dist/ to the network on :8080 (PORT, BIND override)
+	@test -d dist || { echo "no dist/. Run make build, or copy one in"; exit 1; }
+	@echo "http://$$(hostname -I | awk '{print $$1}'):$(PORT)"
+	python3 -m http.server -d dist --bind $(BIND) $(PORT)
 
 check: lint typecheck test ## Everything CI runs, minus the build
 

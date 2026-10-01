@@ -50,6 +50,17 @@ That's it. The app boots with a built-in **demo dataset** (a synthetic SaaS code
 
 Visit <http://localhost:5173> and press **play**.
 
+### Show it to other people on your network
+
+A built `dist/` is a static site, so the machine that serves it needs nothing installed:
+
+```bash
+make build    # or copy a dist/ in from wherever the dataset was analyzed
+make serve    # :8080, on every interface
+```
+
+The target prints the address other machines should open. `dist/data/people.json` maps real email addresses to names, so keep that port on a network you trust, and use `make serve BIND=127.0.0.1` when you only want to look at it yourself.
+
 
 
 ## Visualize your own repo
