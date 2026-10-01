@@ -6,6 +6,8 @@ Repo Visualizer reads and visualizes a git repository's full history, extracts t
 Each top-level directory is a feature cluster, each file is a node sized by code churn, each import is an edge.
 A commit advances the timeline and triggers a ripple from every touched file.
 
+Forked from [Jany-M/repo-visualizer](https://github.com/Jany-M/repo-visualizer) by Jany Martelli, and still GPL-3.0. This fork adds an org-wide scanner that reads many repositories as one history, a PixiJS renderer, and a frame-by-frame video export.
+
 ## Support this Project if you like it
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-shambix-FFDD00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/shambix)
