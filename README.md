@@ -31,7 +31,8 @@ Forked from [Jany-M/repo-visualizer](https://github.com/Jany-M/repo-visualizer) 
 - **Legend focus** - click a cluster in the legend to highlight that folder and dim everything else; click again or press `Esc` to clear
 - **One GPU renderer** - the scene is drawn with PixiJS at the screen's own resolution, and the glow is a bloom pass over the whole layer rather than a halo behind every bubble, so a big graph costs no more to light than a small one
 - **Mobile layout** - speed, themes, zoom, and other options live in the expandable **Controls** panel; **Info** opens the commit card and cluster legend
-- **Timeline player**, or you can scrub through history, adjust playback speed, and **export the whole animation as a WebM video** or **GIF** for sharing.
+- **Timeline player** - scrub through history, adjust playback speed, and **export the whole animation as a WebM video** or **GIF**, computed frame by frame so a busy machine makes the export take longer and the file comes out the same
+- **A whole organization at once** - point it at a tree of clones and every repository plays on one timeline, with each committer orbiting the files they touch
 - **Four visual themes included**, all switchable live.
 
 <img width="1000" height="1000" alt="themes" src="https://github.com/user-attachments/assets/34495cc6-b63e-45b5-b5c1-0ba652a46c14" />
@@ -52,7 +53,7 @@ Visit <http://localhost:5173> and press **play**.
 
 ### Show it to other people on your network
 
-A built `dist/` is a static site, so the machine that serves it needs nothing installed:
+A built `dist/` is a static site, so the machine that serves it does not need node or npm:
 
 ```bash
 make build    # or copy a dist/ in from wherever the dataset was analyzed
@@ -161,16 +162,33 @@ npm run analyze -- /path/to/your/repo --config=/path/to/repovisualizer.config.js
 
 ### Export to video or GIF
 
-Click **Export** in the header (top-right). Choose format, frame rate, and resolution. The app restarts the timeline and records the active canvas directly via `MediaRecorder` (for WebM) or `gif.js` (for animated GIF).
-Exports burn in the **repository name** (top), **commit date** (top-right), and **primary author** (bottom) on the recording only, not during normal playback.
+Click **Export** in the header. Choose the format, the frame rate and the aspect ratio (16:9, 4:3, 1:1, 9:16).
 
-**WebM** is the most reliable format and is supported by every modern player including VLC, QuickTime (10.7+), and the macOS / Windows media stack. To convert to MP4 if you need it:
+The recording runs on a virtual clock. Each frame places the timeline on the commit it belongs to, draws, and is encoded before the next one starts, so a slow machine makes the export take longer and every frame still lands. WebM goes through `VideoEncoder` with [mediabunny](https://mediabunny.dev); GIF loads gif.js on demand and is capped at 600 frames. The screen is kept awake for the length of a recording or a playback, since neither touches the keyboard.
+
+A canvas capture never sees the HTML around it, so the recording draws its own: the commit date on a plate at the top, the title and the span of history at the bottom, and the commit card in the top right with the author's face, the message and the files touched. The file is named for the title and the dates it covers, like `dephys-firmware-and-software-2020-10-22_2026-09-30.webm`.
+
+**WebM** plays in VLC, QuickTime (10.7+) and the macOS / Windows media stack. To convert to MP4:
 
 ```bash
-ffmpeg -i repo-visualizer-timeline.webm -c:v libx264 -crf 18 output.mp4
+ffmpeg -i <export>.webm -c:v libx264 -crf 18 output.mp4
 ```
 
-**Animated GIF** export loads gif.js from CDN on demand and supports up to 600 frames. Best for short, shareable clips at 720p.
+
+## Many repositories as one history
+
+One config file lists the repos, the people and the teams. `scripts/org/` reads a tree of clones against it and writes a dataset sharded by year.
+
+```bash
+make scan          # find clones under ROOT, append new repos and people to the config
+make edit          # a browser editor for that config
+make people        # copy avatars and identities into public/data
+make analyze-org   # walk every repo the config does not hide
+```
+
+`ROOT`, `OWNERS`, `SINCE` and `REPO_VIZ_CONFIG` come from a `.env` you write; see `.env.example`. Keep the config outside this repository, because it lists contributor email addresses, which is also why `.gitignore` covers `*.viz.yaml`.
+
+Each repo row can name the branch its history is read from. Without one the analyzer takes `origin/HEAD`, then `main`, then `master`, which is the default branch whatever happens to be checked out locally. Identities merge by email, so a person who committed under three addresses is one actor on screen.
 
 
 ## How it works
@@ -183,7 +201,7 @@ ffmpeg -i repo-visualizer-timeline.webm -c:v libx264 -crf 18 output.mp4
 
 4. **`src/visualizers/useGraphEngine.js`** owns the layout, the people, the camera and the frame clock, and hands the renderer a plain description of one frame. **`src/visualizers/pixi/`** draws it. Geometry is built in screen space every frame rather than inside a scaled container, which is what keeps a line one pixel wide and a label the size it asked for at any zoom. A look is a descriptor in `pixi/styles.js`, not a renderer of its own.
 
-5. **`src/engine/recorder.js`** records the active canvas to WebM via `canvas.captureStream()` + `MediaRecorder`, or to GIF via gif.js.
+5. **`src/engine/recorder.js`** drives a recording. **`renderClock.js`** stands in for wall-clock time, **`frameCapture.js`** draws one frame per frame of the plan, and **`videoSink.js`** encodes each one through mediabunny before the next is started.
 
 
 ### Project structure
@@ -192,6 +210,9 @@ ffmpeg -i repo-visualizer-timeline.webm -c:v libx264 -crf 18 output.mp4
 repo-visualizer/
 ├── scripts/
 │   ├── analyze.mjs         # Git history analyzer (Node CLI)
+│   ├── analyze-org.mjs     # Every repo in the config, as one dataset
+│   ├── scan.mjs            # Build that config from a tree of clones
+│   ├── org/                # Config, identities, avatars, per-repo git stats
 │   └── make-demo.mjs       # Regenerate the demo dataset
 ├── src/
 │   ├── App.jsx             # Main app shell
@@ -209,6 +230,11 @@ repo-visualizer/
 │   │   ├── canvasGestures.js  # Pan, pinch-zoom, tap on graph canvas
 │   │   ├── colors.js       # Per-style color palettes
 │   │   ├── recordingOverlay.js  # Titles drawn on export recordings
+│   │   ├── recordingCard.js     # The commit card, drawn into the frame
+│   │   ├── renderClock.js  # Virtual time, so an export is deterministic
+│   │   ├── frameCapture.js # One frame at a time, kept whatever it costs
+│   │   ├── videoSink.js    # WebM through mediabunny
+│   │   ├── wakeLock.js     # Holds the screen on while playing or recording
 │   │   └── recorder.js     # Canvas → WebM / GIF
 │   ├── visualizers/
 │   │   ├── useGraphEngine.js     # Layout, people, camera, frame clock
