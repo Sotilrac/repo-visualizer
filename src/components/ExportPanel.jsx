@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const DEFAULT_OPTS = { format: 'webm', fps: 30, resolution: 1 };
+const DEFAULT_OPTS = { format: 'webm', fps: 30, aspect: 16 / 9 };
 
 const FORMATS = [
   { value: 'webm', label: 'WebM' },
@@ -14,10 +14,13 @@ const FPS_OPTIONS = [
   { value: 60, label: '60' },
 ];
 
-const RES_OPTIONS = [
-  { value: 1, label: '1×' },
-  { value: 1.5, label: '1.5×' },
-  { value: 2, label: '2×' },
+// The stage is framed to this while recording, and drawn at the screen's
+// own resolution, so what the file holds is what the frame shows.
+const ASPECT_OPTIONS = [
+  { value: 16 / 9, label: '16:9' },
+  { value: 4 / 3, label: '4:3' },
+  { value: 1, label: '1:1' },
+  { value: 9 / 16, label: '9:16' },
 ];
 
 function ToggleRow({ label, options, value, onChange }) {
@@ -66,10 +69,10 @@ export default function ExportPanel({ open, onClose, onStartRecord }) {
             onChange={(fps) => setOpts((o) => ({ ...o, fps }))}
           />
           <ToggleRow
-            label="Size"
-            options={RES_OPTIONS}
-            value={opts.resolution}
-            onChange={(resolution) => setOpts((o) => ({ ...o, resolution }))}
+            label="Frame"
+            options={ASPECT_OPTIONS}
+            value={opts.aspect}
+            onChange={(aspect) => setOpts((o) => ({ ...o, aspect }))}
           />
         </>
       )}

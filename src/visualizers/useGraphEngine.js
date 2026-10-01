@@ -27,6 +27,7 @@ import { getDepsForPath, resolveFocusSet } from '../engine/graphState.js';
 import { actorsOn } from '../engine/isolate.js';
 import { createLayout } from '../engine/layout.js';
 import { createLodTransitions } from '../engine/lodTransitions.js';
+import { renderClock } from '../engine/renderClock.js';
 import { buildRepoClock } from '../engine/repoClock.js';
 import { lightAt, restOf } from '../engine/restfulness.js';
 import { createStepClock } from '../engine/stepClock.js';
@@ -214,12 +215,27 @@ export function useGraphEngine({
     // The simulation runs at its own rate whatever the monitor does, so the
     // graph settles in the same place and at the same speed on any machine.
     const steps = createStepClock();
-    let lastTime = performance.now();
+    let lastTime = renderClock.now();
 
-    function frameLoop(now) {
-      const dt = now - lastTime;
-      lastTime = now;
+    function frameLoop() {
       raf = requestAnimationFrame(frameLoop);
+      // While a recording is being made the exporter calls drawFrame itself,
+      // one frame at a time, and the screen is only showing what it draws.
+      if (renderClock.stepping()) return;
+      const now = renderClock.now();
+      const dt = Math.max(0, now - lastTime);
+      lastTime = now;
+      drawFrame(dt, now);
+    }
+
+    /**
+     * One frame, moving everything on by exactly `dt`.
+     *
+     * @param {number} dt milliseconds
+     * @param {number} now the clock this frame is drawn against
+     */
+    function drawFrame(dt, now = renderClock.now()) {
+      lastTime = now;
 
       const w = host.clientWidth;
       const h = host.clientHeight;
@@ -393,8 +409,10 @@ export function useGraphEngine({
       });
     }
     raf = requestAnimationFrame(frameLoop);
+    const stopStepping = renderClock.drawsWith((ms) => drawFrame(ms));
 
     return () => {
+      stopStepping();
       cancelAnimationFrame(raf);
       ro.disconnect();
       layout.stop();
@@ -431,7 +449,7 @@ export function useGraphEngine({
         transitions: transitionsRef.current,
         excludePatterns,
         groups,
-        at: performance.now(),
+        at: renderClock.now(),
       });
       hierarchyRef.current = { targets, key: levelKey(levels), idFor };
       onBodyCount?.(count);
@@ -455,7 +473,7 @@ export function useGraphEngine({
     if (commitIndex === lastCommitIdxRef.current) return;
     if (paramsRef.current.selectedPath || paramsRef.current.selectedCluster) return;
     if (commitIndex >= 0 && state?.lastCommit && commitIndex > lastCommitIdxRef.current) {
-      const now = performance.now();
+      const now = renderClock.now();
       const layout = layoutRef.current;
       // A commit touches files, but at most levels a file is not on screen:
       // what is drawn is the folder or repo it was rolled into. Collect the

@@ -12,7 +12,6 @@ import { useGraphEngine } from './useGraphEngine.js';
 export default function PixiVisualizer(props) {
   const hostRef = useRef(null);
   const rendererRef = useRef(null);
-  const resolution = props.exportResolution ?? 1;
 
   // Mount-only: the renderer outlives every prop, and the frame loop reads
   // what it needs through the engine.
@@ -43,10 +42,6 @@ export default function PixiVisualizer(props) {
       made?.destroy();
     };
   }, []);
-
-  useEffect(() => {
-    rendererRef.current?.setResolution(resolution);
-  }, [resolution]);
 
   useGraphEngine({ hostRef, rendererRef, ...props });
 

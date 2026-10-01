@@ -190,8 +190,22 @@ export async function createStage(host, { background }) {
   }
 
   /** Titles for an export, redrawn only when what they say changes. */
-  function drawTitles(meta, background) {
-    const key = meta ? `${JSON.stringify(meta)}|${width}|${height}|${background}` : '';
+  function drawTitles(meta, background, face) {
+    // Cheap enough to build every frame: what a title says changes once a
+    // commit, and redrawing the overlay means redrawing a full-size canvas.
+    const key = meta
+      ? [
+          meta.repoName,
+          meta.subtitle,
+          meta.commitDate,
+          meta.card?.sha,
+          meta.card?.changes?.length,
+          !!face,
+          width,
+          height,
+          background,
+        ].join('|')
+      : '';
     titles.visible = !!meta;
     if (!meta || key === titleKey) return;
     titleKey = key;
@@ -202,7 +216,7 @@ export async function createStage(host, { background }) {
     const ctx = titleCanvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, titleCanvas.width, titleCanvas.height);
-    drawRecordingOverlay(ctx, { w: width, h: height, dpr }, meta, background);
+    drawRecordingOverlay(ctx, { w: width, h: height, dpr }, meta, background, face);
     titles.texture?.destroy(true);
     titles.texture = Texture.from(titleCanvas);
     titles.texture.source.update();
@@ -213,23 +227,6 @@ export async function createStage(host, { background }) {
   return {
     canvas: app.canvas,
     resize,
-
-    /**
-     * Draw at a multiple of the screen's own pixel ratio.
-     *
-     * A video is a capture of the canvas, so its resolution is whatever the
-     * canvas is drawn at, and an export can ask for more than the screen.
-     *
-     * @param {number} multiple
-     */
-    setResolution(multiple) {
-      const wanted =
-        Math.min(4, Math.max(0.5, multiple)) * Math.min(2, globalThis.devicePixelRatio || 1);
-      if (app.renderer.resolution === wanted) return;
-      app.renderer.resolution = wanted;
-      titleKey = '';
-      app.renderer.resize(width, height);
-    },
 
     /** @param {any} frame */
     draw(frame) {
@@ -251,7 +248,11 @@ export async function createStage(host, { background }) {
       drawBeams(beamArt, frame, px, py);
       drawAvatars(avatarArt, faceGlowArt, avatarPool, faces, frame, px, py, scale);
       drawLabels(labelFor, labelPool, tagPlates, frame, px, py, scale);
-      drawTitles(frame.recording, style.background);
+      // The author's face for the burned-in commit card, if it has loaded.
+      const cardFace = frame.recording?.card?.author
+        ? frame.images?.get(frame.recording.card.author)
+        : null;
+      drawTitles(frame.recording, style.background, cardFace);
 
       app.render();
     },

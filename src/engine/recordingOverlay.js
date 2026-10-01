@@ -3,6 +3,7 @@
  */
 
 import { monoFont, sansFont } from '../shared/fonts.js';
+import { CARD_WIDTH, drawCommitCard } from './recordingCard.js';
 
 function isLightBackground(hex) {
   if (!hex?.startsWith('#') || hex.length < 7) return false;
@@ -51,7 +52,7 @@ export function recordingSpan(first, last) {
 /**
  * Draw export titles in screen space (call after graph, before frame ends).
  */
-export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03040a') {
+export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03040a', face) {
   if (!meta) return;
 
   const light = isLightBackground(background);
@@ -59,6 +60,7 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
   const fgMuted = light ? 'rgba(12, 14, 20, 0.62)' : 'rgba(255, 255, 255, 0.62)';
   const panel = light ? 'rgba(255, 255, 255, 0.72)' : 'rgba(6, 8, 16, 0.55)';
   const padY = Math.max(22, h * 0.04);
+  const ink = { fg, muted: fgMuted, panel, cool: '#8affd3', hot: '#ff8ad8' };
 
   ctx.save();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -78,6 +80,10 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
     ctx.fill();
     ctx.fillStyle = fg;
     ctx.fillText(dateStr, w / 2, ty + 10);
+  }
+
+  if (meta.card) {
+    drawCommitCard(ctx, { x: w - padY - CARD_WIDTH, bottom: h - padY }, meta.card, ink, face);
   }
 
   const repoName = meta.repoName?.trim() || '';

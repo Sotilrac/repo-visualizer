@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CommitCard from './components/CommitCard.jsx';
 import ControlBar from './components/ControlBar.jsx';
+import ExportPanel from './components/ExportPanel.jsx';
 import Header from './components/Header.jsx';
 import Legend from './components/Legend.jsx';
 import NodeInspector from './components/NodeInspector.jsx';
@@ -9,6 +10,7 @@ import { isClusterExcluded } from './engine/excludes.js';
 import { clusterPalette, collectAllClusters } from './engine/graphState.js';
 import { startRecording } from './engine/recorder.js';
 import { recordingSpan } from './engine/recordingOverlay.js';
+import { renderClock } from './engine/renderClock.js';
 import { DEFAULT_TUNING, loadTuning, saveTuning } from './engine/tuning.js';
 import { useDataset } from './engine/useDataset.js';
 import { useFrameRate } from './engine/useFrameRate.js';
@@ -29,6 +31,21 @@ function loadBool(key, defaultVal) {
   } catch {
     return defaultVal;
   }
+}
+
+/**
+ * Let React apply what was just set and run the effects it starts.
+ *
+ * A commit fires its beams from an effect, so a recording that stepped the
+ * timeline and drew in the same breath would record the commit before
+ * anything had been fired at it.
+ */
+function painted() {
+  /** @type {Promise<void>} */
+  const settled = new Promise((resolve) => {
+    requestAnimationFrame(() => setTimeout(resolve, 0));
+  });
+  return settled;
 }
 
 function waitMs(ms) {
@@ -61,9 +78,8 @@ export default function App() {
   );
   const [tuning, setTuning] = useState(() => loadTuning());
   const [tuningOpen, setTuningOpen] = useState(false);
-  // A video is a capture of the canvas, so an export asking for 2x draws
-  // the whole scene at twice the screen's pixel ratio.
-  const [exportResolution, setExportResolution] = useState(1);
+  // The shape a recording is framed to, while one is being made.
+  const [exportAspect, setExportAspect] = useState(null);
   const layoutMode = useLayoutMode();
   const compactLayout = isCompactLayout(layoutMode);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
@@ -140,12 +156,45 @@ export default function App() {
   }, [dataset?.title, dataset?.repo, timeline.commits]);
   const recordingOverlay = useMemo(() => {
     if (!recording) return null;
+    // The card on screen is HTML and a canvas capture cannot see it, so the
+    // recording carries what it says and the stage draws its own.
+    const author = shownCommit ? resolveAuthor(shownCommit) : null;
     return {
       repoName,
       subtitle,
       commitDate: currentCommit?.date ?? null,
+      card: shownCommit
+        ? {
+            sha: shownCommit.shortSha,
+            position: `${timeline.index + 1} / ${timeline.commits.length}`,
+            author,
+            name: author?.name ?? shownCommit.author,
+            hue: author?.hue,
+            date: new Date(shownCommit.date).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }),
+            message: shownCommit.message,
+            stats: {
+              files: shownCommit.stats.filesChanged,
+              insertions: shownCommit.stats.insertions,
+              deletions: shownCommit.stats.deletions,
+            },
+            changes: shownCommit.changes.map((c) => ({ status: c.status, path: c.path })),
+          }
+        : null,
     };
-  }, [recording, repoName, subtitle, currentCommit?.date]);
+  }, [
+    recording,
+    repoName,
+    subtitle,
+    currentCommit?.date,
+    shownCommit,
+    resolveAuthor,
+    timeline.index,
+    timeline.commits.length,
+  ]);
   const allClusters = useMemo(
     () => collectAllClusters(timeline.commits, excludePatterns),
     [timeline.commits, excludePatterns],
@@ -287,12 +336,6 @@ export default function App() {
     if (timeline.playing) setHasStartedPlayback(true);
   }, [timeline.playing]);
 
-  const updateRecordingProgress = useCallback(() => {
-    const total = timelineRef.current.commits.length;
-    const idx = timelineRef.current.index;
-    setRecordingProgress(total > 1 ? Math.max(0, (idx + 1) / total) : 0);
-  }, []);
-
   const handleStopRecord = useCallback(() => {
     recordStopRef.current = true;
     timeline.pause();
@@ -318,56 +361,63 @@ export default function App() {
         const canvas = getCanvas();
         if (!canvas) return;
         setExportOpen(false);
-        await startRecording({
-          canvas,
-          opts,
-          shouldStop: () => true,
-          repo: repoName,
-        });
+        await startRecording({ canvas, opts, name: repoName });
         return;
       }
 
       recordStopRef.current = false;
-
-      if (opts.resolution !== 1) {
-        setExportResolution(opts.resolution);
-        await waitMs(250);
-      }
-
-      const canvas = getCanvas();
-      if (!canvas) return;
-
       setExportOpen(false);
+      setExportAspect(opts.aspect ?? null);
       setRecording(true);
       setRecordingProgress(0);
 
+      // The stage takes the shape of the frame being recorded, so the
+      // resize and the camera fit have both happened before frame one.
       timeline.restart();
-      await waitMs(200);
-      timeline.play();
+      await waitMs(250);
 
-      const total = timeline.commits.length;
+      const canvas = getCanvas();
+      if (!canvas) {
+        setRecording(false);
+        return;
+      }
 
+      renderClock.begin();
       try {
         await startRecording({
           canvas,
           opts,
-          onCaptureProgress: updateRecordingProgress,
+          playback: {
+            commits: timelineRef.current.commits.length,
+            msPerCommit: timelineRef.current.msPerCommit,
+          },
+          // One commit at a time, letting the page settle on each: the beams
+          // a commit fires are started by an effect, not by the draw.
+          advanceTo: async (commit) => {
+            while (timelineRef.current.index < commit) {
+              if (!timelineRef.current.stepForward()) break;
+              await painted();
+            }
+          },
+          drawFrame: (ms) => renderClock.step(ms),
+          onCaptureProgress: setRecordingProgress,
           onEncodeProgress: setEncodeProgress,
           onEncodingStart: handleEncodingStart,
-          shouldStop: () => recordStopRef.current || timelineRef.current.index >= total - 1,
-          repo: repoName,
+          shouldStop: () => recordStopRef.current,
+          name: repoName,
         });
       } finally {
+        renderClock.end();
         timeline.pause();
         setRecording(false);
         setEncoding(false);
         setRecordingProgress(0);
         setEncodeProgress(0);
         setExportOpen(false);
-        setExportResolution(1);
+        setExportAspect(null);
       }
     },
-    [repoName, timeline, updateRecordingProgress, handleEncodingStart],
+    [repoName, timeline, handleEncodingStart],
   );
 
   const handleToggleExport = useCallback(() => {
@@ -444,8 +494,12 @@ export default function App() {
       data-controls-open={controlsExpanded ? 'true' : 'false'}
       data-info-open={infoExpanded ? 'true' : 'false'}
     >
-      <div className="stage" ref={stageRef}>
-        <PixiVisualizer {...visProps} style={style} exportResolution={exportResolution} />
+      <div
+        className={exportAspect ? 'stage stage--framed' : 'stage'}
+        ref={stageRef}
+        style={exportAspect ? { '--frame-ratio': exportAspect } : undefined}
+      >
+        <PixiVisualizer {...visProps} style={style} />
         {timeline.buildingFinal && (
           <div className="final-state-loader" role="status" aria-live="polite">
             <div className="final-state-loader-card">
@@ -543,6 +597,10 @@ export default function App() {
         />
       )}
 
+      {exportOpen && !recording && !encoding && (
+        <ExportPanel open onClose={() => setExportOpen(false)} onStartRecord={handleStartRecord} />
+      )}
+
       {tuningOpen && (
         <TuningPanel
           tuning={tuning}
@@ -585,14 +643,12 @@ export default function App() {
           fps,
           exportOpen,
           onToggleExport: handleToggleExport,
-          onCloseExport: () => setExportOpen(false),
           recording,
           recordingProgress,
           encoding,
           encodeProgress,
           encodeFormat,
           recordingPlaying: timeline.playing,
-          onStartRecord: handleStartRecord,
           onStopRecord: handleStopRecord,
           onPauseRecord: handlePauseRecord,
         }}

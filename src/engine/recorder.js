@@ -1,5 +1,16 @@
+/**
+ * Record the stage, frame by frame.
+ *
+ * Nothing here runs on the wall clock. The caller hands over a way to put
+ * the timeline on a commit and a way to draw exactly one frame, and this
+ * walks the plan: place, draw, encode, next. A frame that takes half a
+ * second to compute makes the export longer and the file no different.
+ */
+
 import GIF from 'gif.js/dist/gif.js';
 import gifWorkerUrl from 'gif.js/dist/gif.worker.js?url';
+import { captureFrames, framePlan } from './frameCapture.js';
+import { openVideo } from './videoSink.js';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -8,30 +19,6 @@ function downloadBlob(blob, filename) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-function waitForEvent(target, event) {
-  /** @type {Promise<void>} */
-  const fired = new Promise((resolve) => {
-    target.addEventListener(event, () => resolve(), { once: true });
-  });
-  return fired;
-}
-
-function waitMs(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function waitUntil(check, intervalMs = 100) {
-  /** @type {Promise<void>} */
-  const settled = new Promise((resolve) => {
-    const tick = () => {
-      if (check()) resolve();
-      else setTimeout(tick, intervalMs);
-    };
-    tick();
-  });
-  return settled;
 }
 
 function captureFrame(canvas) {
@@ -43,6 +30,17 @@ function captureFrame(canvas) {
   });
 }
 
+/** A filename stem from whatever the recording is called. */
+function stemOf(name) {
+  return (
+    String(name ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'history'
+  );
+}
+
 /** Canvas context tuned for repeated getImageData (gif.js). */
 function createReadbackContext(width, height) {
   const el = document.createElement('canvas');
@@ -52,55 +50,13 @@ function createReadbackContext(width, height) {
   return { el, ctx };
 }
 
-async function recordWebm(
-  canvas,
-  opts,
-  onCaptureProgress,
-  onEncodeProgress,
-  onEncodingStart,
-  shouldStop,
-  repo,
-) {
-  const stream = canvas.captureStream(opts.fps);
-  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-    ? 'video/webm;codecs=vp9'
-    : 'video/webm';
-  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
-  const chunks = [];
-
-  recorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data);
-  };
-
-  recorder.start(200);
-
-  const progressTimer = setInterval(() => onCaptureProgress?.(), 100);
-  await waitUntil(() => shouldStop(), 100);
-  clearInterval(progressTimer);
-  onCaptureProgress?.();
-
-  onEncodingStart?.('webm');
-  onEncodeProgress?.(0.08);
-
-  recorder.stop();
-  await waitForEvent(recorder, 'stop');
-  onEncodeProgress?.(0.55);
-
-  const blob = new Blob(chunks, { type: mime });
-  onEncodeProgress?.(0.92);
-  downloadBlob(blob, `${repo?.name || 'repo'}-history.webm`);
-  onEncodeProgress?.(1);
-}
-
-async function recordGif(
-  canvas,
-  opts,
-  onCaptureProgress,
-  onEncodeProgress,
-  onEncodingStart,
-  shouldStop,
-  repo,
-) {
+/**
+ * A gif.js sink, which collects frames and encodes them at the end.
+ *
+ * @param {HTMLCanvasElement} canvas
+ * @param {number} frameMs
+ */
+function gifSink(canvas, frameMs) {
   const gif = new GIF({
     workers: 2,
     quality: 10,
@@ -108,90 +64,105 @@ async function recordGif(
     height: canvas.height,
     workerScript: gifWorkerUrl,
   });
+  const { ctx } = createReadbackContext(canvas.width, canvas.height);
 
-  const { ctx: readbackCtx } = createReadbackContext(canvas.width, canvas.height);
-  const frameDelay = Math.round(1000 / opts.fps);
-  const maxFrames = 300;
-  let frames = 0;
-
-  while (!shouldStop() && frames < maxFrames) {
-    readbackCtx.drawImage(canvas, 0, 0);
-    gif.addFrame(readbackCtx, { copy: true, delay: frameDelay });
-    frames += 1;
-    onCaptureProgress?.();
-    await waitMs(frameDelay);
-  }
-
-  if (frames === 0) {
-    throw new Error('No frames captured');
-  }
-
-  onEncodingStart?.('gif');
-
-  /** @type {Promise<void>} */
-  const encoded = new Promise((resolve, reject) => {
-    gif.on('progress', (p) => onEncodeProgress?.(p));
-    gif.on('finished', (blob) => {
-      onEncodeProgress?.(1);
-      downloadBlob(blob, `${repo?.name || 'repo'}-history.gif`);
-      resolve();
-    });
-    gif.on('error', reject);
-    onEncodeProgress?.(0);
-    gif.render();
-  });
-  return encoded;
+  return {
+    add() {
+      ctx.drawImage(canvas, 0, 0);
+      gif.addFrame(ctx, { copy: true, delay: Math.round(frameMs) });
+    },
+    /** @param {(n: number) => void} [onProgress] */
+    close(onProgress) {
+      /** @type {Promise<Blob>} */
+      const encoded = new Promise((resolve, reject) => {
+        gif.on('progress', (p) => onProgress?.(p));
+        gif.on('finished', (blob) => resolve(blob));
+        gif.on('error', reject);
+        onProgress?.(0);
+        gif.render();
+      });
+      return encoded;
+    },
+  };
 }
 
 /**
  * Record or snapshot the stage canvas.
  *
  * @param {object} params
- * @param {HTMLCanvasElement} params.canvas - the stage canvas to capture
+ * @param {HTMLCanvasElement} params.canvas the stage canvas to capture
  * @param {{ format: 'webm'|'gif'|'png', fps?: number }} params.opts
- * @param {() => void} [params.onCaptureProgress] - timeline capture ticks
- * @param {(n: number) => void} [params.onEncodeProgress] - 0 to 1 while building the file
- * @param {(format: 'webm'|'gif') => void} [params.onEncodingStart] - capture finished, encode begun
- * @param {() => boolean} params.shouldStop - polled to end the capture
- * @param {{ name?: string }} [params.repo] - names the downloaded file
+ * @param {{ commits: number, msPerCommit: number }} [params.playback]
+ * @param {(commit: number) => Promise<void> | void} [params.advanceTo]
+ * @param {(ms: number) => Promise<void> | void} [params.drawFrame]
+ * @param {(done: number) => void} [params.onCaptureProgress] 0 to 1 while drawing
+ * @param {(n: number) => void} [params.onEncodeProgress] 0 to 1 while building the file
+ * @param {(format: 'webm'|'gif') => void} [params.onEncodingStart]
+ * @param {() => boolean} [params.shouldStop] polled to end the capture early
+ * @param {string} [params.name] names the downloaded file
  */
 export async function startRecording({
   canvas,
   opts,
+  playback,
+  advanceTo = () => {},
+  drawFrame = () => {},
   onCaptureProgress,
   onEncodeProgress,
   onEncodingStart,
-  shouldStop,
-  repo,
+  shouldStop = () => false,
+  name,
 }) {
   if (!canvas) throw new Error('No canvas found on stage');
+  const stem = stemOf(name);
 
   if (opts.format === 'png') {
-    const blob = await captureFrame(canvas);
-    downloadBlob(blob, `${repo?.name || 'repo'}-frame.png`);
+    downloadBlob(await captureFrame(canvas), `${stem}-frame.png`);
     return;
   }
+
+  const fps = opts.fps || 30;
+  const plan = framePlan({
+    commits: playback?.commits ?? 0,
+    msPerCommit: playback?.msPerCommit ?? 1200,
+    fps,
+  });
 
   if (opts.format === 'gif') {
-    await recordGif(
-      canvas,
-      opts,
-      onCaptureProgress,
-      onEncodeProgress,
-      onEncodingStart,
+    const sink = gifSink(canvas, plan.frameMs);
+    const kept = await captureFrames({
+      plan,
+      sink,
+      advanceTo,
+      drawFrame,
+      onProgress: onCaptureProgress,
       shouldStop,
-      repo,
-    );
+    });
+    if (!kept) throw new Error('No frames captured');
+    onEncodingStart?.('gif');
+    downloadBlob(await sink.close(onEncodeProgress), `${stem}-history.gif`);
+    onEncodeProgress?.(1);
     return;
   }
 
-  await recordWebm(
-    canvas,
-    opts,
-    onCaptureProgress,
-    onEncodeProgress,
-    onEncodingStart,
-    shouldStop,
-    repo,
-  );
+  const sink = await openVideo(canvas, { fps });
+  try {
+    const kept = await captureFrames({
+      plan,
+      sink,
+      advanceTo,
+      drawFrame,
+      onProgress: onCaptureProgress,
+      shouldStop,
+    });
+    if (!kept) throw new Error('No frames captured');
+  } catch (err) {
+    await sink.cancel();
+    throw err;
+  }
+
+  onEncodingStart?.('webm');
+  onEncodeProgress?.(0.5);
+  downloadBlob(await sink.close(), `${stem}-history.webm`);
+  onEncodeProgress?.(1);
 }

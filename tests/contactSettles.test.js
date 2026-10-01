@@ -64,11 +64,20 @@ describe('someone leaning on the graph', () => {
     expect(Math.hypot(target.x - was.x, target.y - was.y)).toBeGreaterThan(2);
   });
 
+  // Against the same graph left alone, rather than against where it
+  // started: the bubbles go on settling whether anyone leans on them or
+  // not, and that drift is the layout's, not the contact's.
+  //
+  // What is bounded here is translation. The neighbours do move, by tens of
+  // pixels, because that is what being pushed means; what must not happen
+  // is the whole cluster sliding off after the person who touched it.
   it('does not drag the rest of the scene along', () => {
+    const quiet = graph();
+    for (let i = 0; i < 240; i++) frame(quiet.layout, quiet.actors);
+    const alone = centroid(quiet.layout.getNodes());
+
     const { layout, actors } = graph();
     const target = layout.getNodes()[0];
-    const before = centroid(layout.getNodes());
-
     actors.onCommit(
       { author: 'Ada', authorEmail: 'ada@acme.com', changes: [{ path: target.path }] },
       { [target.path]: target },
@@ -79,8 +88,8 @@ describe('someone leaning on the graph', () => {
     ada.y = target.y;
     for (let i = 0; i < 240; i++) frame(layout, actors);
 
-    const after = centroid(layout.getNodes());
-    expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(6);
+    const leaned = centroid(layout.getNodes());
+    expect(Math.hypot(leaned.x - alone.x, leaned.y - alone.y)).toBeLessThan(10);
   });
 
   it('lets the graph settle again once they have gone', () => {

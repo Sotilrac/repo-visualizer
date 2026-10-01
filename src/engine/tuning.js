@@ -54,16 +54,18 @@ export const KNOBS = {
     label: 'Repulsion',
     hint: 'How hard the bubbles push each other apart',
     group: 'Bubbles',
-    value: 1,
+    value: 2.5,
     min: 0.2,
     max: 4,
     step: 0.1,
   },
   spacing: {
     label: 'Bubble spacing',
+    // Wide enough that an avatar passing between two bubbles is never
+    // pinched between them and held there.
     hint: 'Clear space kept around each bubble',
     group: 'Bubbles',
-    value: 10,
+    value: 22,
     min: 0,
     max: 30,
     step: 1,
