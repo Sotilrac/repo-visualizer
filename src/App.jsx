@@ -16,6 +16,7 @@ import { useFrameRate } from './engine/useFrameRate.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
 import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
 import { useTimeline } from './engine/useTimeline.js';
+import { useWakeLock } from './engine/useWakeLock.js';
 import { recordingName, recordingSubtitle, tabTitle } from './shared/pageTitle.js';
 import PixiVisualizer from './visualizers/PixiVisualizer.jsx';
 
@@ -89,6 +90,9 @@ export default function App() {
   );
 
   const stageRef = useRef(null);
+  // Nobody touches the keyboard through a playback or a capture, which is
+  // what a screensaver is waiting for.
+  useWakeLock(timeline.playing || recording || encoding);
   const timelineRef = useRef(timeline);
   const cameraApiRef = useRef(null);
   const recordStopRef = useRef(false);
