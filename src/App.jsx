@@ -15,7 +15,7 @@ import { useFrameRate } from './engine/useFrameRate.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
 import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
 import { useTimeline } from './engine/useTimeline.js';
-import { tabTitle } from './shared/pageTitle.js';
+import { recordingName, tabTitle } from './shared/pageTitle.js';
 import PixiVisualizer from './visualizers/PixiVisualizer.jsx';
 
 /** Breathing room between the layout card and the topmost year marker. */
@@ -131,14 +131,16 @@ export default function App() {
   if (currentAuthor) shownCommitRef.current = currentCommit;
   const shownCommit = currentAuthor ? currentCommit : shownCommitRef.current;
   const repoAuthor = useMemo(() => primaryRepoAuthor(timeline.commits), [timeline.commits]);
+  // The title over a recording, and the name its file is saved under.
+  const repoName = recordingName(dataset?.title, dataset?.repo);
   const recordingOverlay = useMemo(() => {
     if (!recording) return null;
     return {
-      repoName: dataset?.repo ?? '',
+      repoName,
       repoAuthor,
       commitDate: currentCommit?.date ?? null,
     };
-  }, [recording, dataset?.repo, repoAuthor, currentCommit?.date]);
+  }, [recording, repoName, repoAuthor, currentCommit?.date]);
   const allClusters = useMemo(
     () => collectAllClusters(timeline.commits, excludePatterns),
     [timeline.commits, excludePatterns],
@@ -302,8 +304,6 @@ export default function App() {
     setEncodeProgress(0);
     setEncodeFormat(format);
   }, []);
-
-  const repoName = dataset?.repo;
 
   const handleStartRecord = useCallback(
     async (opts) => {
