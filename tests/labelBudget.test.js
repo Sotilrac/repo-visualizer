@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { budgetFor, shortened, showsCount } from '../src/engine/labelBudget.js';
 
@@ -58,5 +60,18 @@ describe('whether a bubble carries its count', () => {
 
   it('does not while it is small', () => {
     expect(showsCount(9, 16)).toBe(false);
+  });
+});
+
+describe("a person's name", () => {
+  const stage = readFileSync(
+    fileURLToPath(new URL('../src/visualizers/pixi/stage.js', import.meta.url)),
+    'utf8',
+  );
+
+  // Everything else on the graph is one of many and says which it is. A
+  // face is a person, and a person is read by their name, whole.
+  it('is drawn whole, however far back the camera is', () => {
+    expect(stage).toMatch(/labelFor\(`who:\$\{actor\.key\}`, actor\.name,/);
   });
 });

@@ -737,10 +737,11 @@ function drawLabels(labelFor, pool, plates, frame, px, py, scale) {
   }
 
   // And the people, unless something is picked out, which they are not
-  // part of.
+  // part of. Their names are never cut: a file is one of thousands and its
+  // first few characters place it, while a person is read by their name.
   for (const actor of actors) {
     if (actor.alpha <= 0.05) continue;
-    const label = labelFor(`who:${actor.key}`, shortened(actor.name, budget), style.label);
+    const label = labelFor(`who:${actor.key}`, actor.name, style.label);
     label.position.set(
       px(actor.sx ?? actor.x),
       py(actor.sy ?? actor.y) + AVATAR_FOOTPRINT * scale + 9,
