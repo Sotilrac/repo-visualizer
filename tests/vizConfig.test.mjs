@@ -455,3 +455,30 @@ describe('the owners a scan was run for', () => {
     expect(round({ repos, people }).owners).toBeUndefined();
   });
 });
+
+describe('the branch a repo is read from', () => {
+  const on = (branch) => ({ repos: [{ ...repos[0], branch }], people });
+
+  it('is written when the scan found one', () => {
+    expect(round(on('develop')).repos[0].branch).toBe('develop');
+  });
+
+  it('is filled in on a row that predates the field', () => {
+    round({ repos, people });
+
+    expect(round(on('develop')).repos[0].branch).toBe('develop');
+  });
+
+  it('is left alone once it is set by hand, which a checkout can change daily', () => {
+    round(on('develop'));
+
+    expect(round(on('a-feature-branch')).repos[0].branch).toBe('develop');
+  });
+
+  it('is taken from the checkouts again on --repropose', () => {
+    round(on('develop'));
+    writeConfig(file, mergeScan(loadConfig(file), on('release'), { repropose: true }));
+
+    expect(parse(readFileSync(file, 'utf8')).repos[0].branch).toBe('release');
+  });
+});

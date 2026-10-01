@@ -27,17 +27,25 @@ const FIELD = '\u001f';
 
 /**
  * @param {string} repoPath
- * @param {{ since?: string | null, until?: string | null, folderDepth?: number }} [window]
+ * @param {{
+ *   since?: string | null,
+ *   until?: string | null,
+ *   folderDepth?: number,
+ *   branch?: string,
+ * }} [window]
  * @returns {RepoStats}
  */
-export function readRepoStats(repoPath, { since = null, until = null, folderDepth = 2 } = {}) {
+export function readRepoStats(
+  repoPath,
+  { since = null, until = null, folderDepth = 2, branch = '' } = {},
+) {
   const args = [
     '-C',
     repoPath,
     'log',
-    // The default branch, matching what the dataset walks, so the counts you
-    // read while setting a level of detail describe what will be drawn.
-    defaultBranchOf(repoPath),
+    // The branch the dataset will walk, so the counts you read while setting
+    // a level of detail describe what will be drawn.
+    defaultBranchOf(repoPath, branch),
     '--no-renames',
     '--name-only',
     // The co-authors go on the header line, separated the same way, so the

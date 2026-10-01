@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildScan, parseArgs } from '../scripts/scan.mjs';
+import { branchPicker, buildScan, parseArgs } from '../scripts/scan.mjs';
 
 const emptyStats = { commits: 0, files: 0, folders: 0, first: null, last: null, identities: [] };
 
@@ -135,5 +135,48 @@ describe('buildScan', () => {
 
   it('keeps a repo with no history, so it can still be set to lod 0', () => {
     expect(buildScan([discovered[0]], () => emptyStats).repos[0].commits).toBe(0);
+  });
+
+  describe('the branch each repo is read from', () => {
+    const branchOf = (repo) => (repo.name === 'battery' ? 'develop' : '');
+
+    it('is recorded on the row, so the config says what was walked', () => {
+      const rows = buildScan(discovered, stats, { branchOf }).repos;
+
+      expect(rows.map((r) => r.branch)).toEqual(['develop', undefined]);
+    });
+
+    it('counts that branch, not another, so the row agrees with the dataset', () => {
+      const seen = [];
+      buildScan(
+        discovered,
+        (repoPath, branch) => {
+          seen.push([repoPath, branch]);
+          return emptyStats;
+        },
+        { branchOf },
+      );
+
+      expect(seen).toEqual([
+        ['/t/battery', 'develop'],
+        ['/t/pace', ''],
+      ]);
+    });
+  });
+});
+
+describe('branchPicker', () => {
+  const checkout = () => 'fix/help';
+
+  it('reads what the config already names, so the counts match the dataset', () => {
+    const pick = branchPicker([{ name: 'boot-loader', branch: 'dev' }], checkout);
+
+    expect(pick({ name: 'boot-loader', path: '/t/boot-loader' })).toBe('dev');
+  });
+
+  it('falls back to the checked-out branch for a repo the config says nothing about', () => {
+    const pick = branchPicker([], checkout);
+
+    expect(pick({ name: 'boot-loader', path: '/t/boot-loader' })).toBe('fix/help');
   });
 });

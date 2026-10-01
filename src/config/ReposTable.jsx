@@ -98,7 +98,7 @@ export default function ReposTable({ repos, query, onEdit }) {
                   type="text"
                   value={repo.branch ?? ''}
                   placeholder="default"
-                  title="The branch to read this repo's history from, when it is not the default one"
+                  title="The branch to read this repo's history from. The scan fills it in from the checked-out one; empty falls back to the default branch."
                   onChange={(ev) =>
                     onEdit({
                       section: 'repos',

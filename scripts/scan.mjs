@@ -17,7 +17,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defaultBranchOf } from './org/defaultBranch.mjs';
+import { checkedOutBranchOf, defaultBranchOf } from './org/defaultBranch.mjs';
 import { discoverRepos } from './org/discover.mjs';
 import { readRepoStats } from './org/gitStats.mjs';
 import { applyMergeList, bucketIdentities, slugFor } from './org/identities.mjs';
@@ -57,10 +57,25 @@ export function parseArgs(argv) {
 }
 
 /**
+ * The branch to read a repo's history from, for the scan's own counts.
+ *
+ * What the config names, where it names one. The checked-out branch is only
+ * a first guess for a repo nobody has decided about yet, and counting on it
+ * instead would put numbers in the config that the dataset disagrees with.
+ *
+ * @param {Array<{ name: string, branch?: string }>} existing rows already in the config
+ * @param {(repoPath: string) => string} [checkedOut]
+ */
+export function branchPicker(existing, checkedOut = checkedOutBranchOf) {
+  const named = new Map(existing.map((row) => [row.name, row.branch]));
+  return (repo) => named.get(repo.name) || checkedOut(repo.path);
+}
+
+/**
  * Turn discovered repos and their histories into the rows of the config.
  *
  * @param {ReturnType<typeof discoverRepos>} discovered
- * @param {(repoPath: string) => ReturnType<typeof readRepoStats>} stats
+ * @param {(repoPath: string, branch: string) => ReturnType<typeof readRepoStats>} stats
  * @param {{
  *   teams?: Array<{ id: string, domains?: string[], bots?: boolean }>,
  *   since?: string | null,
@@ -68,6 +83,7 @@ export function parseArgs(argv) {
  *   merge?: string[][],
  *   owners?: string[],
  *   submodulesOf?: (repo: { path: string, name: string }) => string[],
+ *   branchOf?: (repo: { path: string, name: string }) => string,
  * }} options
  */
 export function buildScan(
@@ -80,6 +96,7 @@ export function buildScan(
     merge = [],
     owners = [],
     submodulesOf = () => [],
+    branchOf = () => '',
   } = {},
 ) {
   // Only submodules that are themselves being scanned: a repo nobody cloned
@@ -88,13 +105,15 @@ export function buildScan(
   /** @type {Array<{ name: string, email: string, commits: number, repos: string[] }>} */
   const identities = [];
   const repos = discovered.map((repo) => {
-    const s = stats(repo.path);
+    const branch = branchOf(repo);
+    const s = stats(repo.path, branch);
     for (const identity of s.identities) identities.push({ ...identity, repos: [repo.name] });
     const submodules = submodulesOf(repo).filter((name) => known.has(name) && name !== repo.name);
 
     return {
       name: repo.name,
       remote: repo.remote,
+      ...(branch ? { branch } : {}),
       commits: s.commits,
       files: s.files,
       folders: s.folders,
@@ -142,7 +161,7 @@ async function main() {
 
   const scan = buildScan(
     discovered,
-    (p) => readRepoStats(p, { since: args.since, until: args.until, folderDepth }),
+    (p, branch) => readRepoStats(p, { since: args.since, until: args.until, folderDepth, branch }),
     {
       teams,
       since: args.since,
@@ -151,6 +170,12 @@ async function main() {
       owners: args.owners,
       submodulesOf: (repo) =>
         submodulesIn(readGitmodules(repo.path, { branch: defaultBranchOf(repo.path) })),
+      // Seed the config from the working copy. Whoever cloned this tree left
+      // each repo on the branch they were working on, which is a better first
+      // guess than the default branch for the repos where the two differ, and
+      // the same answer for the rest. It is a proposal: a row that already
+      // names a branch keeps it.
+      branchOf: branchPicker(existing.repos ?? []),
     },
   );
 

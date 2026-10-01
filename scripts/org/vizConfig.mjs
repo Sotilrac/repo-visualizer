@@ -9,7 +9,8 @@
  *   defaults: lod, folderDepth, avatarFallback
  *   projects: id, name, hue
  *   repos:    name, lod (0 hidden, 1 bubble, 2 folders, 3 files), project,
- *             plus the scan's remote, commits, files, first, last
+ *             branch (which one to read the history from), plus the scan's
+ *             remote, commits, files, first, last
  *   teams:    id, name, hue, shown, domains, bots
  *   people:   id, team, role, avatar, active, plus the scan's name, names,
  *             emails, commits
@@ -54,6 +55,10 @@ comments, is left alone.
 There is one field to set per row.
   repos:  lod  0 hidden, 1 one bubble, 2 bubble with folders, 3 folders and files
   people: team which team they are on; a team with shown: false is left out
+
+repos also carry \`branch\`, the one their history is read from. The scan fills
+it in from the branch that repo has checked out and never overwrites it after
+that, so a project that develops off its default branch stays right.
 
 merge: lists people the grouping kept apart who are the same person. The
 first id in a group keeps its row and the others fold into it.`;
@@ -114,12 +119,13 @@ function ensureMap(doc, key, value) {
 }
 
 /** Key order for a new row: identity, then the field to edit, then the counts. */
-function orderRow(row, key, defaults, generated) {
+function orderRow(row, key, defaults, generated, proposed) {
   /** @type {Record<string, unknown>} */
   const ordered = { [key]: row[key] };
   for (const [field, value] of Object.entries(defaults)) {
     ordered[field] = field in row ? row[field] : value;
   }
+  for (const field of proposed) if (field in row) ordered[field] = row[field];
   for (const field of generated) if (field in row) ordered[field] = row[field];
   for (const [field, value] of Object.entries(row)) {
     if (!(field in ordered)) ordered[field] = value;
@@ -159,7 +165,7 @@ function dropRows(doc, section, key, ids) {
  *
  * @param {import('yaml').Document} doc
  */
-function mergeRows(doc, section, scanned, key, generated, defaults) {
+function mergeRows(doc, section, scanned, key, generated, defaults, proposed = []) {
   if (!doc.has(section)) doc.set(section, doc.createNode([]));
   const seq = /** @type {import('yaml').YAMLSeq<any>} */ (doc.get(section));
   /** @type {Map<string, any>} */
@@ -173,7 +179,7 @@ function mergeRows(doc, section, scanned, key, generated, defaults) {
       (row.emails ? findByEmail(seq.items, row.emails) : undefined);
     if (found) matched.add(String(found.get(key)));
     if (!found) {
-      seq.add(doc.createNode(orderRow(row, key, defaults, generated)));
+      seq.add(doc.createNode(orderRow(row, key, defaults, generated, proposed)));
       continue;
     }
     for (const field of generated) {
@@ -183,6 +189,9 @@ function mergeRows(doc, section, scanned, key, generated, defaults) {
     }
     for (const [field, value] of Object.entries(defaults)) {
       if (!found.has(field)) found.set(field, value);
+    }
+    for (const field of proposed) {
+      if (!found.has(field) && field in row) found.set(field, doc.createNode(row[field]));
     }
     found.delete('missing');
   }
@@ -204,7 +213,8 @@ function mergeRows(doc, section, scanned, key, generated, defaults) {
  * }} scan
  * @param {{ repropose?: boolean, merged?: string[] }} [options] repropose
  *   overwrites every person's `as`, including ones set by hand; the level of
- *   detail on a repo is never overwritten, since no rule proposes it.
+ *   detail on a repo is never overwritten, since no rule proposes it, but
+ *   the branch it is read from is re-read from the working copy.
  *   `merged` lists ids the config merged into another row, which are dropped
  *   instead of marked missing.
  */
@@ -217,7 +227,10 @@ export function mergeScan(doc, scan, { repropose = false, merged = [] } = {}) {
   ensureTeams(doc, scan.teams ?? DEFAULT_TEAMS);
 
   const defaultLod = doc.getIn(['defaults', 'lod']) ?? DEFAULTS.lod;
-  mergeRows(doc, 'repos', scan.repos ?? [], 'name', GENERATED_REPO_FIELDS, { lod: defaultLod });
+  // `branch` is proposed, not owned: the scan reads it off the working copy
+  // for a row that names none, and leaves a hand-set one alone.
+  const repoFields = repropose ? [...GENERATED_REPO_FIELDS, 'branch'] : GENERATED_REPO_FIELDS;
+  mergeRows(doc, 'repos', scan.repos ?? [], 'name', repoFields, { lod: defaultLod }, ['branch']);
   const personFields = repropose ? [...GENERATED_PERSON_FIELDS, 'team'] : GENERATED_PERSON_FIELDS;
   mergeRows(doc, 'people', scan.people ?? [], 'id', personFields, { team: null });
   dropRows(doc, 'people', 'id', merged);
