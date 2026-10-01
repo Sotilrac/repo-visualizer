@@ -34,3 +34,15 @@ export function tabTitle(configured) {
 export function recordingName(configured, dataset) {
   return configured?.trim() || dataset?.trim() || '';
 }
+
+/**
+ * The smaller line under it: what the dataset is, where the title is not
+ * already saying so.
+ *
+ * @param {string | null | undefined} configured
+ * @param {string | null | undefined} dataset
+ */
+export function recordingSubtitle(configured, dataset) {
+  const name = dataset?.trim() || '';
+  return name === recordingName(configured, dataset) ? '' : name;
+}

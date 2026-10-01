@@ -24,24 +24,28 @@ function formatCommitDate(iso) {
   });
 }
 
-/** Dominant commit author in the analyzed history (repo contributor). */
-export function primaryRepoAuthor(commits) {
-  if (!commits?.length) return '';
-  const counts = new Map();
-  for (const c of commits) {
-    const name = c.author?.trim();
-    if (!name) continue;
-    counts.set(name, (counts.get(name) || 0) + 1);
-  }
-  let best = '';
-  let max = 0;
-  for (const [name, n] of counts) {
-    if (n > max) {
-      max = n;
-      best = name;
-    }
-  }
-  return best;
+/** @param {string | null | undefined} iso */
+function asMonth(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+/**
+ * The stretch of history a recording covers, for the line under its title.
+ *
+ * Months, not days: the date plate at the top is already counting days, and
+ * this one is here to say how long the whole thing is.
+ *
+ * @param {string | null | undefined} first  the oldest commit's date
+ * @param {string | null | undefined} last
+ */
+export function recordingSpan(first, last) {
+  const from = asMonth(first);
+  const to = asMonth(last);
+  if (!from || !to) return '';
+  return from === to ? from : `${from} – ${to}`;
 }
 
 /**
@@ -77,27 +81,27 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
   }
 
   const repoName = meta.repoName?.trim() || '';
-  const repoAuthor = meta.repoAuthor?.trim() || '';
-  if (repoName || repoAuthor) {
+  const subtitle = meta.subtitle?.trim() || '';
+  if (repoName || subtitle) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
 
     let blockH = 0;
     let nameW = 0;
-    let authorW = 0;
+    let countW = 0;
 
     if (repoName) {
       ctx.font = sansFont(600, 20);
       nameW = ctx.measureText(repoName).width;
       blockH += 26;
     }
-    if (repoAuthor) {
+    if (subtitle) {
       ctx.font = monoFont(500, 13);
-      authorW = ctx.measureText(repoAuthor).width;
+      countW = ctx.measureText(subtitle).width;
       blockH += repoName ? 22 : 20;
     }
 
-    const bw = Math.max(nameW, authorW) + 32;
+    const bw = Math.max(nameW, countW) + 32;
     const bx = (w - bw) / 2;
     const by = h - padY - blockH;
 
@@ -106,10 +110,10 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
     ctx.fill();
 
     let y = h - padY - 8;
-    if (repoAuthor) {
+    if (subtitle) {
       ctx.font = monoFont(500, 13);
       ctx.fillStyle = fgMuted;
-      ctx.fillText(repoAuthor, w / 2, y);
+      ctx.fillText(subtitle, w / 2, y);
       y -= 22;
     }
     if (repoName) {

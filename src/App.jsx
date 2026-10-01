@@ -8,14 +8,14 @@ import TuningPanel from './components/TuningPanel.jsx';
 import { isClusterExcluded } from './engine/excludes.js';
 import { clusterPalette, collectAllClusters } from './engine/graphState.js';
 import { startRecording } from './engine/recorder.js';
-import { primaryRepoAuthor } from './engine/recordingOverlay.js';
+import { recordingSpan } from './engine/recordingOverlay.js';
 import { DEFAULT_TUNING, loadTuning, saveTuning } from './engine/tuning.js';
 import { useDataset } from './engine/useDataset.js';
 import { useFrameRate } from './engine/useFrameRate.js';
 import { isCompactLayout, useLayoutMode } from './engine/useLayoutMode.js';
 import { resolveAuthor as resolveFromDirectory, usePeople } from './engine/usePeople.js';
 import { useTimeline } from './engine/useTimeline.js';
-import { recordingName, tabTitle } from './shared/pageTitle.js';
+import { recordingName, recordingSubtitle, tabTitle } from './shared/pageTitle.js';
 import PixiVisualizer from './visualizers/PixiVisualizer.jsx';
 
 /** Breathing room between the layout card and the topmost year marker. */
@@ -130,17 +130,22 @@ export default function App() {
   const currentAuthor = currentCommit ? resolveAuthor(currentCommit) : null;
   if (currentAuthor) shownCommitRef.current = currentCommit;
   const shownCommit = currentAuthor ? currentCommit : shownCommitRef.current;
-  const repoAuthor = useMemo(() => primaryRepoAuthor(timeline.commits), [timeline.commits]);
   // The title over a recording, and the name its file is saved under.
   const repoName = recordingName(dataset?.title, dataset?.repo);
+  // Under it, what the dataset holds and how far back it goes.
+  const subtitle = useMemo(() => {
+    const commits = timeline.commits;
+    const span = recordingSpan(commits[0]?.date, commits[commits.length - 1]?.date);
+    return [recordingSubtitle(dataset?.title, dataset?.repo), span].filter(Boolean).join(' · ');
+  }, [dataset?.title, dataset?.repo, timeline.commits]);
   const recordingOverlay = useMemo(() => {
     if (!recording) return null;
     return {
       repoName,
-      repoAuthor,
+      subtitle,
       commitDate: currentCommit?.date ?? null,
     };
-  }, [recording, repoName, repoAuthor, currentCommit?.date]);
+  }, [recording, repoName, subtitle, currentCommit?.date]);
   const allClusters = useMemo(
     () => collectAllClusters(timeline.commits, excludePatterns),
     [timeline.commits, excludePatterns],

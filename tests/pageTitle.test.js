@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TITLE, pageName, recordingName, tabTitle } from '../src/shared/pageTitle.js';
+import {
+  DEFAULT_TITLE,
+  pageName,
+  recordingName,
+  recordingSubtitle,
+  tabTitle,
+} from '../src/shared/pageTitle.js';
 
 describe('what the page is called', () => {
   it('takes the name the config gives it', () => {
@@ -43,5 +49,19 @@ describe('what a recording is called', () => {
 
   it('is empty when there is nothing to say, so no plate is drawn', () => {
     expect(recordingName(null, undefined)).toBe('');
+  });
+});
+
+describe('the line under a recording title', () => {
+  it('says what the dataset is, which the title no longer does', () => {
+    expect(recordingSubtitle('Six Years at Dephy', '64 repos')).toBe('64 repos');
+  });
+
+  it('says nothing when the title is already saying it', () => {
+    expect(recordingSubtitle(null, 'flexsea-dephy')).toBe('');
+  });
+
+  it('says nothing when there is no dataset name at all', () => {
+    expect(recordingSubtitle('Six Years at Dephy', '')).toBe('');
   });
 });
