@@ -601,10 +601,6 @@ export default function App() {
         />
       )}
 
-      {exportOpen && !recording && !encoding && (
-        <ExportPanel open onClose={() => setExportOpen(false)} onStartRecord={handleStartRecord} />
-      )}
-
       {tuningOpen && (
         <TuningPanel
           tuning={tuning}

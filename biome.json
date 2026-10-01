@@ -20,7 +20,12 @@
   "linter": {
     "enabled": true,
     "domains": { "react": "recommended" },
-    "rules": { "preset": "recommended" }
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "noUndeclaredVariables": "error"
+      }
+    }
   },
   "javascript": {
     "formatter": { "quoteStyle": "single", "semicolons": "always", "trailingCommas": "all" }
