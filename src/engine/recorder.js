@@ -12,6 +12,8 @@ import gifWorkerUrl from 'gif.js/dist/gif.worker.js?url';
 import { captureFrames, framePlan } from './frameCapture.js';
 import { openVideo } from './videoSink.js';
 
+const GIF_MAX_FRAMES = 600;
+
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -130,13 +132,16 @@ export async function startRecording({
 
   if (opts.format === 'gif') {
     const sink = gifSink(canvas, plan.frameMs);
+    // gif.js holds every frame in memory as pixels before it encodes any of
+    // them, so a long history is a video, not a gif.
+    let frames = 0;
     const kept = await captureFrames({
       plan,
       sink,
       advanceTo,
       drawFrame,
       onProgress: onCaptureProgress,
-      shouldStop,
+      shouldStop: () => shouldStop() || frames++ >= GIF_MAX_FRAMES,
     });
     if (!kept) throw new Error('No frames captured');
     onEncodingStart?.('gif');
