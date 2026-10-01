@@ -1,3 +1,4 @@
+import ExportPanel from './ExportPanel.jsx';
 import ToolButton from './ToolButton.jsx';
 
 function ExportIcon() {
@@ -39,12 +40,14 @@ export function FrameRate({ fps = null }) {
 export default function ExportControls({
   exportOpen = false,
   onToggleExport,
+  onCloseExport,
   recording = false,
   recordingProgress = 0,
   encoding = false,
   encodeProgress = 0,
   encodeFormat = 'webm',
   recordingPlaying = false,
+  onStartRecord,
   onStopRecord,
   onPauseRecord,
 }) {
@@ -102,6 +105,9 @@ export default function ExportControls({
             )
           )}
         </div>
+        {!recording && !encoding && (
+          <ExportPanel open={exportOpen} onClose={onCloseExport} onStartRecord={onStartRecord} />
+        )}
       </div>
     </div>
   );

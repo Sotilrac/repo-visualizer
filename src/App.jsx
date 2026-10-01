@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CommitCard from './components/CommitCard.jsx';
 import ControlBar from './components/ControlBar.jsx';
-import ExportPanel from './components/ExportPanel.jsx';
 import Header from './components/Header.jsx';
 import Legend from './components/Legend.jsx';
 import NodeInspector from './components/NodeInspector.jsx';
@@ -148,12 +147,16 @@ export default function App() {
   const shownCommit = currentAuthor ? currentCommit : shownCommitRef.current;
   // The title over a recording, and the name its file is saved under.
   const repoName = recordingName(dataset?.title, dataset?.repo);
-  // Under it, what the dataset holds and how far back it goes.
-  const subtitle = useMemo(() => {
+  // The stretch of history a recording covers: under the title, and in the
+  // name of the file it is saved as.
+  const covers = useMemo(() => {
     const commits = timeline.commits;
-    const span = recordingSpan(commits[0]?.date, commits[commits.length - 1]?.date);
+    return { first: commits[0]?.date ?? null, last: commits[commits.length - 1]?.date ?? null };
+  }, [timeline.commits]);
+  const subtitle = useMemo(() => {
+    const span = recordingSpan(covers.first, covers.last);
     return [recordingSubtitle(dataset?.title, dataset?.repo), span].filter(Boolean).join(' · ');
-  }, [dataset?.title, dataset?.repo, timeline.commits]);
+  }, [dataset?.title, dataset?.repo, covers]);
   const recordingOverlay = useMemo(() => {
     if (!recording) return null;
     // The card on screen is HTML and a canvas capture cannot see it, so the
@@ -361,7 +364,7 @@ export default function App() {
         const canvas = getCanvas();
         if (!canvas) return;
         setExportOpen(false);
-        await startRecording({ canvas, opts, name: repoName });
+        await startRecording({ canvas, opts, name: repoName, span: covers });
         return;
       }
 
@@ -405,6 +408,7 @@ export default function App() {
           onEncodingStart: handleEncodingStart,
           shouldStop: () => recordStopRef.current,
           name: repoName,
+          span: covers,
         });
       } finally {
         renderClock.end();
@@ -417,7 +421,7 @@ export default function App() {
         setExportAspect(null);
       }
     },
-    [repoName, timeline, handleEncodingStart],
+    [repoName, covers, timeline, handleEncodingStart],
   );
 
   const handleToggleExport = useCallback(() => {
@@ -643,12 +647,14 @@ export default function App() {
           fps,
           exportOpen,
           onToggleExport: handleToggleExport,
+          onCloseExport: () => setExportOpen(false),
           recording,
           recordingProgress,
           encoding,
           encodeProgress,
           encodeFormat,
           recordingPlaying: timeline.playing,
+          onStartRecord: handleStartRecord,
           onStopRecord: handleStopRecord,
           onPauseRecord: handlePauseRecord,
         }}

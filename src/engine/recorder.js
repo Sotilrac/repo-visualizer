@@ -9,6 +9,7 @@
 
 import GIF from 'gif.js/dist/gif.js';
 import gifWorkerUrl from 'gif.js/dist/gif.worker.js?url';
+import { exportFilename } from './exportName.js';
 import { captureFrames, framePlan } from './frameCapture.js';
 import { openVideo } from './videoSink.js';
 
@@ -30,17 +31,6 @@ function captureFrame(canvas) {
       else reject(new Error('Failed to capture frame'));
     }, 'image/png');
   });
-}
-
-/** A filename stem from whatever the recording is called. */
-function stemOf(name) {
-  return (
-    String(name ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'history'
-  );
 }
 
 /** Canvas context tuned for repeated getImageData (gif.js). */
@@ -95,6 +85,8 @@ function gifSink(canvas, frameMs) {
  * @param {HTMLCanvasElement} params.canvas the stage canvas to capture
  * @param {{ format: 'webm'|'gif'|'png', fps?: number }} params.opts
  * @param {{ commits: number, msPerCommit: number }} [params.playback]
+ * @param {{ first?: string | null, last?: string | null }} [params.span] dates
+ *   the recording covers, which go in the filename
  * @param {(commit: number) => Promise<void> | void} [params.advanceTo]
  * @param {(ms: number) => Promise<void> | void} [params.drawFrame]
  * @param {(done: number) => void} [params.onCaptureProgress] 0 to 1 while drawing
@@ -114,12 +106,13 @@ export async function startRecording({
   onEncodingStart,
   shouldStop = () => false,
   name,
+  span = {},
 }) {
   if (!canvas) throw new Error('No canvas found on stage');
-  const stem = stemOf(name);
+  const named = (ext) => exportFilename(name, { ...span, ext });
 
   if (opts.format === 'png') {
-    downloadBlob(await captureFrame(canvas), `${stem}-frame.png`);
+    downloadBlob(await captureFrame(canvas), named('png'));
     return;
   }
 
@@ -145,7 +138,7 @@ export async function startRecording({
     });
     if (!kept) throw new Error('No frames captured');
     onEncodingStart?.('gif');
-    downloadBlob(await sink.close(onEncodeProgress), `${stem}-history.gif`);
+    downloadBlob(await sink.close(onEncodeProgress), named('gif'));
     onEncodeProgress?.(1);
     return;
   }
@@ -168,6 +161,6 @@ export async function startRecording({
 
   onEncodingStart?.('webm');
   onEncodeProgress?.(0.5);
-  downloadBlob(await sink.close(), `${stem}-history.webm`);
+  downloadBlob(await sink.close(), named('webm'));
   onEncodeProgress?.(1);
 }

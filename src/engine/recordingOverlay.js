@@ -60,7 +60,16 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
   const fgMuted = light ? 'rgba(12, 14, 20, 0.62)' : 'rgba(255, 255, 255, 0.62)';
   const panel = light ? 'rgba(255, 255, 255, 0.72)' : 'rgba(6, 8, 16, 0.55)';
   const padY = Math.max(22, h * 0.04);
-  const ink = { fg, muted: fgMuted, panel, cool: '#8affd3', hot: '#ff8ad8' };
+  // The commit card is the one on screen, drawn again: its own background
+  // rather than the overlay's plate.
+  const ink = {
+    fg,
+    muted: fgMuted,
+    card: light ? 'rgba(255, 255, 255, 0.92)' : 'rgba(18, 22, 36, 0.86)',
+    line: light ? 'rgba(15, 17, 22, 0.12)' : 'rgba(255, 255, 255, 0.08)',
+    cool: '#8affd3',
+    hot: '#ff8ad8',
+  };
 
   ctx.save();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -83,7 +92,10 @@ export function drawRecordingOverlay(ctx, { w, h, dpr }, meta, background = '#03
   }
 
   if (meta.card) {
-    drawCommitCard(ctx, { x: w - padY - CARD_WIDTH, bottom: h - padY }, meta.card, ink, face);
+    // Top right, so the list can run as far down the frame as the commit
+    // needs without the head of the card ever moving.
+    const at = { x: w - padY - CARD_WIDTH, top: padY, maxHeight: h - padY * 2 };
+    drawCommitCard(ctx, at, meta.card, ink, face);
   }
 
   const repoName = meta.repoName?.trim() || '';
