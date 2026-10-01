@@ -87,8 +87,8 @@ function gifSink(canvas, frameMs) {
  * @param {{ commits: number, msPerCommit: number }} [params.playback]
  * @param {{ first?: string | null, last?: string | null }} [params.span] dates
  *   the recording covers, which go in the filename
- * @param {(commit: number) => Promise<void> | void} [params.advanceTo]
- * @param {(ms: number) => Promise<void> | void} [params.drawFrame]
+ * @param {(commit: number) => unknown} [params.advanceTo]
+ * @param {(ms: number) => unknown} [params.drawFrame]
  * @param {(done: number) => void} [params.onCaptureProgress] 0 to 1 while drawing
  * @param {(n: number) => void} [params.onEncodeProgress] 0 to 1 while building the file
  * @param {(format: 'webm'|'gif') => void} [params.onEncodingStart]

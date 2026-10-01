@@ -65,7 +65,10 @@ function fakeContext() {
       },
     },
   );
-  return { ctx, calls };
+  // A Proxy answers for every method the card reaches for; the cast is what
+  // tells the typechecker so.
+  const asContext = /** @type {CanvasRenderingContext2D} */ (/** @type {unknown} */ (ctx));
+  return { ctx: asContext, calls };
 }
 
 const ink = {

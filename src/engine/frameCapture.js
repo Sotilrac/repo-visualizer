@@ -37,9 +37,9 @@ export function framePlan({ commits, msPerCommit, fps, tailMs = 1200 }) {
  * @param {object} params
  * @param {ReturnType<typeof framePlan>} params.plan
  * @param {{ add: (timestamp: number, duration: number) => Promise<void> | void }} params.sink
- * @param {(commit: number) => Promise<void> | void} params.advanceTo  put the
+ * @param {(commit: number) => unknown} params.advanceTo  put the
  *   timeline on this commit, and let the page catch up with it
- * @param {(ms: number) => Promise<void> | void} params.drawFrame  one frame,
+ * @param {(ms: number) => unknown} params.drawFrame  one frame,
  *   advancing the simulation by exactly `ms`
  * @param {(done: number) => void} [params.onProgress]
  * @param {() => boolean} [params.shouldStop]
